@@ -170,3 +170,36 @@ def test_재분류하면_기존_행이_새_등급으로_갱신된다(store):
             (첫_id,),
         )
         assert cur.fetchone() == (3, ["보안팀"])
+
+
+def test_청크를_지우면_문서와_조항은_남는다(store):
+    doc_id = store.upsert_document(_문서())
+    ids = store.insert_clauses(doc_id, [Clause(code="2.6.1", title="가", text="본문")])
+    store.insert_chunks(
+        doc_id, ids, [Chunk(clause_code="2.6.1", ordinal=0, text="청크")], [_벡터()]
+    )
+
+    assert store.delete_chunks(doc_id) == 1
+    assert store.count_all_chunks() == 0
+
+    # 문서와 조항은 살아 있어야 한다 — 재적재가 새 조항 id 를 만들면
+    # 기존 인용(조항 코드)이 가리키던 행이 사라진다.
+    with store.conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM documents WHERE id = %s", (doc_id,))
+        assert cur.fetchone()[0] == 1
+        cur.execute("SELECT count(*) FROM clauses WHERE document_id = %s", (doc_id,))
+        assert cur.fetchone()[0] == 1
+
+
+def test_같은_문서를_두_번_적재해도_청크가_늘지_않는다(store):
+    def 적재():
+        doc_id = store.upsert_document(_문서())
+        store.delete_chunks(doc_id)
+        ids = store.insert_clauses(doc_id, [Clause(code="2.6.1", title="가", text="본문")])
+        store.insert_chunks(
+            doc_id, ids, [Chunk(clause_code="2.6.1", ordinal=0, text="청크")], [_벡터()]
+        )
+
+    적재()
+    적재()
+    assert store.count_all_chunks() == 1

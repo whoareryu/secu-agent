@@ -76,6 +76,9 @@ def test_포트를_스텁이_만족한다():
         def insert_chunks(self, document_id, clause_ids, chunks, vectors):
             return len(chunks)
 
+        def delete_chunks(self, document_id):
+            return 0
+
         def count_all_chunks(self):
             return 0
 

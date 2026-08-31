@@ -50,6 +50,16 @@ class DocumentStore(Protocol):
         """청크와 벡터를 저장하고 저장한 개수를 돌려준다."""
         ...
 
+    def delete_chunks(self, document_id: int) -> int:
+        """문서의 청크를 전부 지우고 지운 개수를 돌려준다.
+
+        재적재를 멱등하게 만드는 유일한 수단이다. UNIQUE (document_id,
+        clause_id, ordinal) 제약으로는 안 된다 — clause_id 가 NULL 인
+        청크(조항 밖 텍스트)는 SQL 에서 NULL 끼리 서로 다르다고 보므로
+        제약이 아예 걸리지 않는다.
+        """
+        ...
+
     def count_all_chunks(self) -> int:
         """권한과 무관하게 코퍼스 전체 청크 수를 센다. 요청을 처리하는 경로에서
         호출하면 안 된다 — 존재 여부를 우회하는 채널이 된다. 적재 직후

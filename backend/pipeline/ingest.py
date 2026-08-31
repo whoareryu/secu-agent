@@ -43,6 +43,9 @@ def ingest(
     clauses, chunks = loader(path)
 
     document_id = store.upsert_document(doc)
+    # 배치 루프 **밖**이다. insert_chunks 안에 두면 두 번째 배치가 첫 번째
+    # 배치를 지운다 — 314청크짜리 ISMS-P 가 마지막 배치만 남는다.
+    store.delete_chunks(document_id)
     clause_ids = store.insert_clauses(document_id, clauses) if clauses else {}
 
     if not chunks:

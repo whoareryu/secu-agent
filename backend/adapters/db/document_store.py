@@ -127,6 +127,22 @@ class PgDocumentStore:
             self.conn.rollback()
             raise
 
+    def delete_chunks(self, document_id: int) -> int:
+        """문서의 청크를 전부 지운다. 재적재 전에 한 번 부른다.
+
+        실패하면 롤백한다 — 실패한 statement 는 커넥션을 aborted 로 남기고,
+        그 상태의 다음 에러 메시지는 진짜 원인이 아니다.
+        """
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("DELETE FROM chunks WHERE document_id = %s", (document_id,))
+                지운수 = cur.rowcount
+            self.conn.commit()
+            return 지운수
+        except Exception:
+            self.conn.rollback()
+            raise
+
     def count_all_chunks(self) -> int:
         """권한과 무관한 전체 카운트다 — 요청 처리 경로에서 호출하면 안 된다."""
         with self.conn.cursor() as cur:

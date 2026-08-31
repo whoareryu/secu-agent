@@ -35,6 +35,13 @@ class 메모리저장소:
         self.vectors.extend(vectors)
         return len(chunks)
 
+    def delete_chunks(self, document_id):
+        지운수 = len(self.chunks)
+        self.chunks.clear()
+        self.vectors.clear()
+        self.delete_calls = getattr(self, "delete_calls", 0) + 1
+        return 지운수
+
     def count_all_chunks(self):
         return len(self.chunks)
 
@@ -106,3 +113,27 @@ def test_대량_청크는_배치로_임베딩한다():
     assert len(e.calls) == 4  # 64 · 64 · 64 · 58
     assert all(n <= 64 for n, _ in e.calls)
     assert sum(n for n, _ in e.calls) == 250
+
+
+def test_두_번_적재해도_청크가_누적되지_않는다():
+    # 재적재가 누적되면 같은 본문이 두 벌 검색되고 평가 지표가 거짓이 된다.
+    e, s = 스텁임베더(), 메모리저장소()
+    ingest(Path("a.pdf"), _문서(), _로더, e, s)
+    ingest(Path("a.pdf"), _문서(), _로더, e, s)
+    assert len(s.chunks) == 2
+
+
+def test_청크_삭제는_배치마다가_아니라_적재당_한_번이다():
+    """배치 루프 안에서 지우면 두 번째 배치가 첫 번째 배치를 지운다.
+
+    실측: 255쪽 ISMS-P 는 청크 314개 · batch_size 64 로 5배치다.
+    루프 안에서 지우면 마지막 배치 58개만 남는다.
+    """
+
+    def 큰로더(path):
+        return [], [Chunk(clause_code=None, ordinal=i, text=f"청크 {i}") for i in range(250)]
+
+    e, s = 스텁임베더(), 메모리저장소()
+    ingest(Path("a.pdf"), _문서(), 큰로더, e, s, batch_size=64)
+    assert s.delete_calls == 1
+    assert len(s.chunks) == 250
