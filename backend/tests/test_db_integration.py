@@ -84,10 +84,13 @@ def test_허용부서가_비면_NULL_로_저장된다(store):
 
 def test_조항을_저장하고_코드_매핑을_돌려준다(store):
     doc_id = store.upsert_document(_문서())
-    ids = store.insert_clauses(doc_id, [
-        Clause(code="1.1.1", title="가", text="본문 가"),
-        Clause(code="2.6.1", title="나", text="본문 나"),
-    ])
+    ids = store.insert_clauses(
+        doc_id,
+        [
+            Clause(code="1.1.1", title="가", text="본문 가"),
+            Clause(code="2.6.1", title="나", text="본문 나"),
+        ],
+    )
     assert set(ids) == {"1.1.1", "2.6.1"}
 
 
@@ -95,7 +98,8 @@ def test_청크와_벡터를_저장한다(store):
     doc_id = store.upsert_document(_문서())
     ids = store.insert_clauses(doc_id, [Clause(code="1.1.1", title="가", text="본문")])
     n = store.insert_chunks(
-        doc_id, ids,
+        doc_id,
+        ids,
         [Chunk(clause_code="1.1.1", ordinal=0, text="청크 본문")],
         [_벡터()],
     )

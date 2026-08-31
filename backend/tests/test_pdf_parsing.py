@@ -137,7 +137,7 @@ def test_짧은_조항은_청크_하나다():
 
 
 def test_긴_조항은_여러_청크로_쪼개진다():
-    긴본문 = "가나다라마바사아자차카타파하 " * 200   # 약 2,800자
+    긴본문 = "가나다라마바사아자차카타파하 " * 200  # 약 2,800자
     chunks = chunk_clauses([Clause(code="9.9.9", title="김", text=긴본문)], max_chars=900)
     assert len(chunks) > 1
     assert all(len(c.text) <= 900 for c in chunks)
@@ -147,8 +147,9 @@ def test_긴_조항은_여러_청크로_쪼개진다():
 def test_청크가_겹쳐진다():
     # 문장이 청크 경계에서 잘리면 그 문장은 어느 쪽에서도 검색되지 않는다.
     긴본문 = "".join(f"{i}번째문장. " for i in range(300))
-    chunks = chunk_clauses([Clause(code="9.9.9", title="김", text=긴본문)],
-                           max_chars=500, overlap=100)
+    chunks = chunk_clauses(
+        [Clause(code="9.9.9", title="김", text=긴본문)], max_chars=500, overlap=100
+    )
     assert len(chunks) >= 2
     # 앞 청크의 끝부분이 뒤 청크의 앞부분에 나타난다
     assert chunks[0].text[-50:] in chunks[1].text

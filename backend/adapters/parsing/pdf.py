@@ -73,9 +73,7 @@ def split_clauses(text: str) -> list[Clause]:
     return [by_code[code] for code in order]
 
 
-def chunk_clauses(
-    clauses: list[Clause], max_chars: int = 900, overlap: int = 150
-) -> list[Chunk]:
+def chunk_clauses(clauses: list[Clause], max_chars: int = 900, overlap: int = 150) -> list[Chunk]:
     """조항 안에서만 청킹한다. 청크는 조항 경계를 넘지 않는다.
 
     겹침을 두는 이유: 문장이 청크 경계에서 잘리면 그 문장은 어느 쪽에서도
@@ -84,9 +82,7 @@ def chunk_clauses(
     if overlap >= max_chars:
         # step = max_chars - overlap 가 0 이하가 되어 시작 위치가 전진하지
         # 않는다 — while 루프가 끝나지 않는다.
-        raise ValueError(
-            f"overlap({overlap})은 max_chars({max_chars})보다 작아야 한다"
-        )
+        raise ValueError(f"overlap({overlap})은 max_chars({max_chars})보다 작아야 한다")
     chunks: list[Chunk] = []
     for c in clauses:
         본문 = c.text

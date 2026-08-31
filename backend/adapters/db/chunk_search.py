@@ -128,7 +128,7 @@ class PgChunkSearch:
                 {
                     "clearance": principal.clearance,
                     "dept": principal.department,
-                    "q": tsq,   # 원문이 아니라 변환된 tsquery 를 넘긴다
+                    "q": tsq,  # 원문이 아니라 변환된 tsquery 를 넘긴다
                     "k": k,
                 },
             )

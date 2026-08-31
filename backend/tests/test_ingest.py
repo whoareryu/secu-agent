@@ -41,17 +41,25 @@ class 메모리저장소:
 
 def _로더(path: Path):
     return (
-        [Clause(code="1.1.1", title="가", text="본문 가"),
-         Clause(code="2.6.1", title="나", text="본문 나")],
-        [Chunk(clause_code="1.1.1", ordinal=0, text="청크 1"),
-         Chunk(clause_code="2.6.1", ordinal=0, text="청크 2")],
+        [
+            Clause(code="1.1.1", title="가", text="본문 가"),
+            Clause(code="2.6.1", title="나", text="본문 나"),
+        ],
+        [
+            Chunk(clause_code="1.1.1", ordinal=0, text="청크 1"),
+            Chunk(clause_code="2.6.1", ordinal=0, text="청크 2"),
+        ],
     )
 
 
 def _문서() -> Document:
     return Document(
-        id=0, title="테스트", source_path="a.pdf", doc_type="pdf",
-        required_clearance=1, allowed_departments=(),
+        id=0,
+        title="테스트",
+        source_path="a.pdf",
+        doc_type="pdf",
+        required_clearance=1,
+        allowed_departments=(),
     )
 
 
@@ -95,6 +103,6 @@ def test_대량_청크는_배치로_임베딩한다():
 
     e, s = 스텁임베더(), 메모리저장소()
     ingest(Path("a.pdf"), _문서(), 큰로더, e, s, batch_size=64)
-    assert len(e.calls) == 4          # 64 · 64 · 64 · 58
+    assert len(e.calls) == 4  # 64 · 64 · 64 · 58
     assert all(n <= 64 for n, _ in e.calls)
     assert sum(n for n, _ in e.calls) == 250

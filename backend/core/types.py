@@ -33,7 +33,7 @@ class Document:
     id: int
     title: str
     source_path: str
-    doc_type: str                       # "pdf" | "docx" | "md"
+    doc_type: str  # "pdf" | "docx" | "md"
     required_clearance: int
     allowed_departments: tuple[str, ...]  # 비어 있으면 전사 공개
 

@@ -1,7 +1,7 @@
 """실제 DB 로 하이브리드 검색을 확인한다.
 
-    docker compose up -d
-    .venv/bin/python -m pytest -m db -v
+docker compose up -d
+.venv/bin/python -m pytest -m db -v
 """
 
 import os
@@ -37,18 +37,30 @@ def db():
     conn.commit()
 
     store = PgDocumentStore(conn)
-    doc_id = store.upsert_document(Document(
-        id=0, title="ISMS-P", source_path="a.pdf", doc_type="pdf",
-        required_clearance=1, allowed_departments=(),
-    ))
-    ids = store.insert_clauses(doc_id, [
-        Clause(code="2.6.1", title="네트워크 접근", text="네트워크 접근 통제"),
-        Clause(code="2.5.1", title="사용자 계정 관리", text="계정 발급과 관리"),
-    ])
+    doc_id = store.upsert_document(
+        Document(
+            id=0,
+            title="ISMS-P",
+            source_path="a.pdf",
+            doc_type="pdf",
+            required_clearance=1,
+            allowed_departments=(),
+        )
+    )
+    ids = store.insert_clauses(
+        doc_id,
+        [
+            Clause(code="2.6.1", title="네트워크 접근", text="네트워크 접근 통제"),
+            Clause(code="2.5.1", title="사용자 계정 관리", text="계정 발급과 관리"),
+        ],
+    )
     store.insert_chunks(
-        doc_id, ids,
-        [Chunk(clause_code="2.6.1", ordinal=0, text="네트워크에 대한 비인가 접근을 통제한다"),
-         Chunk(clause_code="2.5.1", ordinal=0, text="사용자 계정 발급 절차를 수립한다")],
+        doc_id,
+        ids,
+        [
+            Chunk(clause_code="2.6.1", ordinal=0, text="네트워크에 대한 비인가 접근을 통제한다"),
+            Chunk(clause_code="2.5.1", ordinal=0, text="사용자 계정 발급 절차를 수립한다"),
+        ],
         [[0.1] * EMBEDDING_DIM, [0.9] * EMBEDDING_DIM],
     )
     yield conn, PgChunkSearch(conn)
@@ -117,7 +129,7 @@ def test_본문에_없는_말은_키워드_검색에서_0건이다(db):
 def test_하이브리드_검색이_두_경로를_모두_쓴다(db):
     _, searcher = db
     hits = search("네트워크 접근", 사원, 고정임베더(), searcher, k=10)
-    assert len(hits) == 2      # 벡터가 2건을 주고 키워드가 1건을 더한다
+    assert len(hits) == 2  # 벡터가 2건을 주고 키워드가 1건을 더한다
 
 
 def test_조항_코드까지_불러온다(db):
@@ -140,12 +152,19 @@ def test_load_hits_는_권한_밖_청크의_본문을_주지_않는다(db):
     """
     conn, searcher = db
     store = PgDocumentStore(conn)
-    기밀 = store.upsert_document(Document(
-        id=0, title="3급 기밀", source_path="secret.pdf", doc_type="pdf",
-        required_clearance=3, allowed_departments=(),
-    ))
+    기밀 = store.upsert_document(
+        Document(
+            id=0,
+            title="3급 기밀",
+            source_path="secret.pdf",
+            doc_type="pdf",
+            required_clearance=3,
+            allowed_departments=(),
+        )
+    )
     store.insert_chunks(
-        기밀, {},
+        기밀,
+        {},
         [Chunk(clause_code=None, ordinal=0, text="대외비: 마스터 키")],
         [[0.5] * EMBEDDING_DIM],
     )

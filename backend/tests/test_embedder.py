@@ -51,6 +51,7 @@ def test_관련_문장이_무관한_문장보다_가깝다(embedder):
         ],
         kind="passage",
     )
+
     def 내적(a, b):
         return sum(x * y for x, y in zip(a, b, strict=True))
 
