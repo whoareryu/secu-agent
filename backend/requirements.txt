@@ -1,12 +1,3 @@
-# 런타임 의존성 — 파이프라인과 평가 하네스가 도는 데 필요한 최소.
-#
-# 이 파일이 단일 출처는 아니다. pyproject.toml 이 원본이고 이 파일은 그로부터
-# 생성한다(아래 명령). 둘이 어긋나면 pyproject 를 믿는다.
-#
-#   uv pip compile pyproject.toml -o requirements.txt
-#   pip install -r requirements.txt
-#
-# 파인튜닝 환경은 requirements-finetune.txt 에 따로 있다 — torch 만 2GB 가까이
-# 되고, 파이프라인과 평가는 그것 없이 돌아야 한다.
-
-pyyaml>=6.0
+psycopg[binary]>=3.2
+pypdf>=5.1
+sentence-transformers>=3.3
