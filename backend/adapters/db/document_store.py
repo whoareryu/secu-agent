@@ -127,7 +127,8 @@ class PgDocumentStore:
             self.conn.rollback()
             raise
 
-    def count_chunks(self) -> int:
+    def count_all_chunks(self) -> int:
+        """권한과 무관한 전체 카운트다 — 요청 처리 경로에서 호출하면 안 된다."""
         with self.conn.cursor() as cur:
             cur.execute("SELECT count(*) FROM chunks")
             return cur.fetchone()[0]

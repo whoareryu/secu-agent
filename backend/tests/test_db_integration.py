@@ -104,7 +104,7 @@ def test_청크와_벡터를_저장한다(store):
         [_벡터()],
     )
     assert n == 1
-    assert store.count_chunks() == 1
+    assert store.count_all_chunks() == 1
 
 
 def test_조항_밖_청크도_저장된다(store):
@@ -136,7 +136,7 @@ def test_문서를_지우면_조항과_청크도_지워진다(store):
     with store.conn.cursor() as cur:
         cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
     store.conn.commit()
-    assert store.count_chunks() == 0
+    assert store.count_all_chunks() == 0
 
 
 def test_삽입_실패_후_커넥션이_다음_작업에_쓸_수_있다(store):

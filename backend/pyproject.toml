@@ -1,7 +1,7 @@
 [project]
 name = "secu-agent"
 version = "0.1.0"
-description = "운동 컨텍스트 기반 로컬 플레이스 큐레이션"
+description = "권한 기반 보안 정책 문서 검색 에이전트"
 requires-python = ">=3.12"
 dependencies = [
     "psycopg[binary]>=3.2",

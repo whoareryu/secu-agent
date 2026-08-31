@@ -76,7 +76,7 @@ def test_포트를_스텁이_만족한다():
         def insert_chunks(self, document_id, clause_ids, chunks, vectors):
             return len(chunks)
 
-        def count_chunks(self):
+        def count_all_chunks(self):
             return 0
 
     class 검색기:

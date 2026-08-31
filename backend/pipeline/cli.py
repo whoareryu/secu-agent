@@ -60,7 +60,7 @@ def main() -> int:
         print(f"{args.path} 적재 중… (모델 로드에 시간이 걸린다)")
         report = ingest(args.path, doc, load, E5Embedder(), store)
         print(f"  조항 {report.clauses}개 · 청크 {report.chunks}개")
-        print(f"  DB 총 청크: {store.count_chunks()}")
+        print(f"  DB 총 청크: {store.count_all_chunks()}")
         conn.close()
 
     if args.cmd == "search":

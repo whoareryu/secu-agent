@@ -43,8 +43,10 @@ def test_HNSW_와_GIN_인덱스가_있다():
 
 
 def test_권한_필터_컬럼에_인덱스가_있다():
-    # 사전 필터링은 WHERE 가 먼저 적용되므로 이 인덱스가 없으면 느려지고,
-    # 느려지는 정도가 권한에 따라 달라지면 타이밍 누출이 된다(spec 5.2).
+    # by_vector 는 이 컬럼으로 거른 집합을 AS MATERIALIZED CTE 로 먼저
+    # 확정한 뒤 그 위에서 정렬한다 — 스캔 비용이 등급과 무관하게 상수라
+    # 타이밍 누출은 이미 구조로 막혀 있다. 이 인덱스는 그 상수 비용
+    # 자체를 낮추는 성능 목적이다.
     assert re.search(r"CREATE INDEX.*documents.*required_clearance", SCHEMA, re.IGNORECASE)
 
 

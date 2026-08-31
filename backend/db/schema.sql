@@ -5,8 +5,11 @@
 -- 벡터를 전부 함께 바꿔야 한다.
 --
 -- documents.required_clearance 와 allowed_departments 가 사전 필터링의
--- WHERE 절이 된다. 이 두 컬럼에 인덱스를 두는 이유는 성능만이 아니다 —
--- 필터가 느리면 그 지연이 권한에 따라 달라져 타이밍 누출이 된다.
+-- WHERE 절이 된다. by_vector 가 이 필터를 AS MATERIALIZED CTE 로 먼저
+-- 확정한 뒤 그 위에서 정렬하므로(adapters/db/chunk_search.py), 이 인덱스가
+-- 있든 없든 스캔 비용은 등급과 무관하게 "허용된 문서 전체"로 고정된다 —
+-- 타이밍이 등급에 따라 갈릴 수 없다. 인덱스를 두는 이유는 그 상수 비용
+-- 자체를 낮추는 성능 목적이다.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -47,6 +50,10 @@ CREATE TABLE IF NOT EXISTS chunks (
     text_tsv    TSVECTOR    NOT NULL
 );
 
+-- by_vector 의 유일한 벡터 질의는 이 인덱스를 못 쓴다 — CTE Scan 은
+-- base-table 인덱스에 닿지 않는다(by_vector 의 독스트링 참고: "대가는
+-- HNSW 를 못 쓴다"). 그래도 남겨두는 이유: 코퍼스가 커져 권한 컬럼을
+-- chunks 로 비정규화하면 이 인덱스를 바로 쓸 계획이 이미 있다.
 CREATE INDEX IF NOT EXISTS chunks_embedding_idx
     ON chunks USING hnsw (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS chunks_tsv_idx ON chunks USING gin (text_tsv);

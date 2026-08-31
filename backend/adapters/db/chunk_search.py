@@ -36,10 +36,12 @@ def 한국어_tsquery(query: str) -> str:
 
 # 권한 필터. 두 검색 메서드가 같은 조건을 쓴다 — 한쪽만 적용하면 그쪽으로 누출된다.
 # 전사 공개는 두 가지로 저장될 수 있다: NULL 과 빈 배열.
-# core.types.Document 는 allowed_departments=() 를 전사 공개로 정의한다
-# (tests/test_types.py::test_문서의_허용부서가_비면_전사_공개다).
-# 어댑터는 () 를 NULL 로 정규화해 넣지만, 읽는 쪽도 빈 배열을 공개로 인정한다.
-# 실측: 빈 배열을 안 받아주면 그 문서는 자기 부서에도 안 보인다 — 조용히 사라진다.
+# core.types.Document 는 allowed_departments=() 를 전사 공개로 정의하고
+# upsert_document 는 이를 NULL 로 정규화해 넣는다(adapters/db/document_store.py).
+# cardinality(...) = 0 절은 그 정규화를 거치지 않고 빈 배열을 직접 써넣는
+# 다른 경로(수동 SQL, 다른 어댑터)에 대비한 방어책이다 — 정규화를 믿지 않고
+# 여기서도 한 번 더 받아준다. 실측: 빈 배열을 안 받아주면 그 문서는 자기
+# 부서에도 안 보인다 — 조용히 사라진다.
 _권한_WHERE = """
     d.required_clearance <= %(clearance)s
     AND (
@@ -109,6 +111,12 @@ class PgChunkSearch:
             return [row[0] for row in cur.fetchall()]
 
     def by_keyword(self, query: str, principal: Principal, k: int) -> list[int]:
+        """이 메서드에는 `AS MATERIALIZED` 가 필요 없다 — GIN 은 정확 인덱스라
+        조건에 맞는 후보 전체를 내놓으므로, HNSW 처럼 근사 검색이 권한 밖
+        후보만 뽑아 사후 필터 결과가 0건이 되는 일이 없다. by_vector 와
+        형태를 맞추려고 이걸 옮기거나 빼면 안 된다 — 인덱스 정확도 차이지
+        스타일 문제가 아니다.
+        """
         tsq = 한국어_tsquery(query)
         if not tsq:
             # 검색할 낱말이 없다. 빈 tsquery 를 넘기면 Postgres 가 NOTICE 를

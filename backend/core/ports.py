@@ -50,7 +50,11 @@ class DocumentStore(Protocol):
         """청크와 벡터를 저장하고 저장한 개수를 돌려준다."""
         ...
 
-    def count_chunks(self) -> int: ...
+    def count_all_chunks(self) -> int:
+        """권한과 무관하게 코퍼스 전체 청크 수를 센다. 요청을 처리하는 경로에서
+        호출하면 안 된다 — 존재 여부를 우회하는 채널이 된다. 적재 직후
+        운영자에게 확인시키는 용도로만 쓴다(pipeline/cli.py 의 ingest)."""
+        ...
 
 
 @runtime_checkable

@@ -35,7 +35,7 @@ class 메모리저장소:
         self.vectors.extend(vectors)
         return len(chunks)
 
-    def count_chunks(self):
+    def count_all_chunks(self):
         return len(self.chunks)
 
 
