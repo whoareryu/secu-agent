@@ -2683,11 +2683,25 @@ git commit -m "CI 를 추가했다
 
 경계 테스트가 여기서 돈다. core/ 에 langchain 이나 psycopg 가 들어오면
 CI 가 막는다."
-git push -u origin main
-gh run watch --exit-status
 ```
 
-Expected: CI 성공
+**푸시하지 마라.** 이 브랜치는 `feat/w1-document-pipeline` 이고 `main` 이 아니다.
+원격 푸시는 이 워크스페이스 바깥으로 나가는 작업이라 사람의 승인이 필요하다 —
+컨트롤러가 최종 리뷰 뒤에 물어본다.
+
+대신 워크플로가 문법적으로 유효한지, 그리고 CI 가 돌릴 명령이 로컬에서 통과하는지
+확인한다.
+
+```bash
+cd /Users/ryujun/Documents/secu-agent
+python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml')); print('YAML 유효')"
+cd backend
+.venv/bin/python -m ruff check .
+.venv/bin/python -m ruff format --check .
+.venv/bin/python -m pytest -q
+```
+
+Expected: 네 명령 모두 exit 0
 
 ---
 
@@ -2700,7 +2714,8 @@ Expected: CI 성공
 - [ ] `tests/test_boundaries.py` 가 위반을 **실제로 잡는다** (일부러 어겨 확인)
 - [ ] `python -m pipeline.cli ingest ../data/raw/ismsp.pdf --title "ISMS-P 인증기준 안내서"` 가 고유 조항 **102개**를 적재한다 (2.10~2.12 포함 여부로 패턴 자릿수 결함을 잡는다)
 - [ ] `python -m pipeline.cli search "네트워크 접근 통제는 어떻게 해야 하나"` 가 **조항 코드와 함께** 결과를 낸다
-- [ ] CI 가 통과한다
+- [ ] CI 워크플로 YAML 이 유효하고, CI 가 돌릴 명령(`ruff check`·`ruff format --check`·
+      `pytest -q`)이 로컬에서 전부 exit 0 이다 (실제 CI 실행은 푸시 승인 후)
 
 ## 다음 계획으로 넘길 것
 
