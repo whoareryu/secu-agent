@@ -14,7 +14,7 @@ from pathlib import Path
 from adapters.db.connection import apply_schema, connect
 from adapters.db.document_store import PgDocumentStore
 from adapters.embedding.e5 import E5Embedder
-from adapters.parsing.loader import load
+from adapters.parsing.loader import load, load_meta
 from core.types import Document
 from pipeline.ingest import ingest
 
@@ -29,6 +29,10 @@ def main() -> int:
     ing.add_argument("--clearance", type=int, default=1, help="1(사원) 2(팀장) 3(임원)")
     ing.add_argument("--departments", nargs="*", default=[], help="비우면 전사 공개")
     ing.add_argument("--dsn", default=None)
+
+    ind = sub.add_parser("ingest-dir", help="디렉토리의 마크다운 규정을 전부 적재한다")
+    ind.add_argument("path", type=Path)
+    ind.add_argument("--dsn", default=None)
 
     sch = sub.add_parser("search", help="하이브리드 검색")
     sch.add_argument("query")
@@ -61,6 +65,37 @@ def main() -> int:
         report = ingest(args.path, doc, load, E5Embedder(), store)
         print(f"  조항 {report.clauses}개 · 청크 {report.chunks}개")
         print(f"  DB 총 청크: {store.count_all_chunks()}")
+        conn.close()
+
+    if args.cmd == "ingest-dir":
+        경로들 = sorted(args.path.glob("*.md"))
+        if not 경로들:
+            print(f"마크다운 문서가 없다: {args.path}", file=sys.stderr)
+            return 1
+
+        conn = connect(args.dsn)
+        apply_schema(conn)
+        store = PgDocumentStore(conn)
+        embedder = E5Embedder()  # 모델을 한 번만 로드한다
+
+        for p in 경로들:
+            meta = load_meta(p)
+            doc = Document(
+                id=0,
+                title=meta["title"],
+                source_path=str(p),
+                doc_type="md",
+                required_clearance=int(meta["clearance"]),
+                allowed_departments=tuple(meta.get("departments") or ()),
+            )
+            report = ingest(p, doc, load, embedder, store)
+            부서 = ",".join(doc.allowed_departments) or "전사"
+            print(
+                f"  {p.name}: 조항 {report.clauses}개 · 청크 {report.chunks}개 "
+                f"(등급 {doc.required_clearance} · {부서})"
+            )
+
+        print(f"DB 총 청크: {store.count_all_chunks()}")
         conn.close()
 
     if args.cmd == "search":
