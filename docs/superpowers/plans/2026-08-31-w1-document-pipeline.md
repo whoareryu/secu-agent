@@ -831,8 +831,12 @@ from pypdf import PdfReader
 from core.types import Chunk, Clause
 
 # "1.3.1 보호대책 구현" — 줄 앞의 조항 코드와 제목.
-# 실측: ISMS-P 안내서 41~70쪽에서 이 패턴이 14건 정확히 매치됐다.
-조항_패턴 = re.compile(r"^\s*(\d\.\d\.\d+)\s+(\S[^\n]{0,60})$", re.MULTILINE)
+#
+# 각 자리는 반드시 \d+ 다. \d 로 쓰면 2.10·2.11·2.12 가 구조적으로 매치되지
+# 않는다 — 실측에서 그 16개(2.10.1~2.12.2)를 통째로 잃었다. 그 안에는
+# "2.11.3 이상행위 분석 및 모니터링" 처럼 이 프로젝트의 핵심 조항이 들어 있다.
+# 실측: 255쪽 전문에서 고유 조항 102개 — ISMS-P 2022 공식 인증기준 수와 일치한다.
+조항_패턴 = re.compile(r"^\s*(\d+\.\d+\.\d+)\s+(\S[^\n]{0,60})$", re.MULTILINE)
 
 
 def extract_text(path: Path) -> str:
@@ -937,7 +941,24 @@ print(f'본문이 20자 미만인 조항: {len(빈본문)}개 {빈본문[:8]}')
 "
 ```
 
-Expected: 조항 100개 이상. **본문이 20자 미만인 조항이 절반을 넘으면 목차 페이지를 조항으로 오인한 것이다** — 그 경우 `split_clauses` 에 최소 본문 길이 필터를 넣고 테스트를 추가한다.
+Expected: **고유 조항 코드 102개** (실측값 — ISMS-P 2022 공식 인증기준 수와 같다). 부문별로 1.x 16개 · 2.x 64개 · 3.x 22개다.
+
+**102 보다 적게 나오면 최소 본문 길이 필터를 넣지 마라 — 그건 반대 방향이다.** 수가 모자라는 것은 조항을 *덜* 잡았다는 뜻이므로, 먼저 어느 절이 통째로 빠졌는지 확인한다:
+
+```bash
+.venv/bin/python -c "
+import re, collections
+from adapters.parsing.loader import extract_text
+전문 = extract_text('../data/raw/ismsp.pdf')
+코드 = set(re.findall(r'(?<![\d.])(\d+\.\d+\.\d+)(?![\d.])', 전문))
+절 = collections.Counter('.'.join(c.split('.')[:2]) for c in 코드)
+print(sorted(절.items(), key=lambda kv: [int(x) for x in kv[0].split('.')]))
+"
+```
+
+2.10~2.12 가 비어 있으면 패턴의 자릿수 문제다(`\d` vs `\d+`).
+
+각 조항 코드는 목차와 본문에 각각 한 번씩, 전체 172회 등장한다. `split_clauses` 는 **고유 코드 기준**으로 세어야 하며, 목차 항목이 본문을 덮어쓰지 않아야 한다.
 
 관측한 숫자를 기록해 둔다. 다음 태스크의 적재 검증에서 쓴다.
 
@@ -1817,7 +1838,7 @@ cd backend
   --title "ISMS-P 인증기준 안내서" --clearance 1
 ```
 
-Expected: 조항 100개 이상, 청크 수백~수천 개. **출력된 숫자를 기록한다** — Task 4 Step 5 에서 본 조항 수와 일치해야 한다.
+Expected: 고유 조항 102개, 청크 수백~수천 개. **출력된 숫자를 기록한다** — Task 4 Step 5 에서 본 조항 수(102)와 일치해야 한다.
 
 멱등성을 확인한다:
 
@@ -2388,7 +2409,7 @@ Expected: CI 성공
 - [ ] `.venv/bin/python -m pytest -q` 가 DB 없이 전부 통과한다
 - [ ] `.venv/bin/python -m pytest -m db -v` 가 컨테이너와 함께 전부 통과한다
 - [ ] `tests/test_boundaries.py` 가 위반을 **실제로 잡는다** (일부러 어겨 확인)
-- [ ] `python -m pipeline.cli ingest ../data/raw/ismsp.pdf --title "ISMS-P 인증기준 안내서"` 가 조항 100개 이상을 적재한다
+- [ ] `python -m pipeline.cli ingest ../data/raw/ismsp.pdf --title "ISMS-P 인증기준 안내서"` 가 고유 조항 **102개**를 적재한다 (2.10~2.12 포함 여부로 패턴 자릿수 결함을 잡는다)
 - [ ] `python -m pipeline.cli search "네트워크 접근 통제는 어떻게 해야 하나"` 가 **조항 코드와 함께** 결과를 낸다
 - [ ] CI 가 통과한다
 
