@@ -974,7 +974,7 @@ print(sorted(절.items(), key=lambda kv: [int(x) for x in kv[0].split('.')]))
 
 2.10~2.12 가 비어 있으면 패턴의 자릿수 문제다(`\d` vs `\d+`).
 
-각 조항 코드는 목차와 본문에 각각 한 번씩, 전체 172회 등장한다. `split_clauses` 는 **고유 코드 기준**으로 세어야 하며, 목차 항목이 본문을 덮어쓰지 않아야 한다.
+각 조항 코드는 목차와 본문에 각각 한 번씩, 전체 204회(102×2) 등장한다. `split_clauses` 는 **고유 코드 기준**으로 세어야 하며, 목차 항목이 본문을 덮어쓰지 않아야 한다.
 
 관측한 숫자를 기록해 둔다. 다음 태스크의 적재 검증에서 쓴다.
 
@@ -1473,6 +1473,16 @@ class PgDocumentStore:
 
         text_tsv 를 to_tsvector 로 여기서 채운다. 비워두면 키워드 검색이
         조용히 0건을 낸다 — 에러가 아니라 빈 결과라 발견이 늦다.
+
+        색인 대상은 본문만이 아니라 **조항 코드 + 제목 + 본문**이다.
+        조항 코드와 제목은 본문 안에 들어 있지 않다(실측). 본문만 색인하면
+        "규정 2.11.3 위반" 도, 그 조항의 제목인 "이상행위 분석 및 모니터링"
+        도 키워드로 찾을 수 없다 — 정작 그 조항이 존재하는데도 0건이 난다.
+
+        코드·제목은 이미 clauses 에 있으므로 SQL 안에서 되짚는다. 그래야
+        insert_chunks 의 시그니처(core/ports.py 소유)를 바꾸지 않는다.
+        저장되는 text 컬럼은 본문 그대로 둔다 — LLM 에 넘길 문맥을
+        메타데이터로 오염시키지 않기 위해서다.
         """
         if len(chunks) != len(vectors):
             raise ValueError(f"청크 {len(chunks)}개와 벡터 {len(vectors)}개의 수가 다르다")
@@ -1484,16 +1494,25 @@ class PgDocumentStore:
                 cur.execute(
                     """
                     INSERT INTO chunks (document_id, clause_id, ordinal, text, embedding, text_tsv)
-                    VALUES (%s, %s, %s, %s, %s, to_tsvector('simple', %s))
+                    VALUES (
+                        %(doc)s, %(clause)s, %(ord)s, %(text)s, %(vec)s,
+                        to_tsvector(
+                            'simple',
+                            coalesce(
+                                (SELECT cl.code || ' ' || cl.title
+                                   FROM clauses cl WHERE cl.id = %(clause)s),
+                                ''
+                            ) || ' ' || %(text)s
+                        )
+                    )
                     """,
-                    (
-                        document_id,
-                        clause_ids.get(ch.clause_code) if ch.clause_code else None,
-                        ch.ordinal,
-                        ch.text,
-                        str(vec),
-                        ch.text,
-                    ),
+                    {
+                        "doc": document_id,
+                        "clause": clause_ids.get(ch.clause_code) if ch.clause_code else None,
+                        "ord": ch.ordinal,
+                        "text": ch.text,
+                        "vec": str(vec),
+                    },
                 )
         self.conn.commit()
         return len(chunks)
@@ -2033,6 +2052,51 @@ Expected: PASS — 5개 + 경계 테스트
 
 - [ ] **Step 5: DB 검색 어댑터를 구현한다**
 
+**한국어 키워드 검색**
+
+한국어는 조사가 뒤에 붙는 교착어다. `simple` 설정은 형태소를 모르므로
+`이상행위` 는 저장된 토큰 `이상행위를` 과 매치되지 않는다. 게다가
+`plainto_tsquery` 는 모든 낱말을 AND 로 묶어서, 사용자가 문장으로 물으면
+조사와 어미까지 전부 필수 조건이 된다.
+
+**실측(pgvector:pg16 컨테이너):**
+
+```
+질문: "이상행위 모니터링은 어떻게 하나요?"
+  plainto_tsquery → '이상행위' & '모니터링은' & '어떻게' & '하나요'  → 0건
+  접두어 OR       → '이상행위':* | '모니터링은':* | ...              → 2.11.3 적중
+```
+
+그래서 토큰마다 접두어 매칭(`:*`)을 붙이고 `|` 로 잇는다. 접두어 매칭이
+한국어에 잘 맞는 이유는 조사가 **뒤에** 붙기 때문이다 — `이상행위:*` 가
+`이상행위를`·`이상행위가`·`이상행위는` 을 모두 흡수한다.
+
+`AND 먼저, 없으면 OR 재시도` 방식은 쓰지 않는다. 질의 경로가 둘로 갈리면
+"권한 없는 문서의 존재가 응답시간으로 새지 않는다"(spec 5.3)를 증명할
+표면이 두 배가 된다. 경로는 하나로 둔다.
+
+```python
+# 조항 번호는 한 덩어리로 남겨야 한다. simple 파서도 '2.11.3' 을 한 토큰으로
+# 본다(실측). 그래서 점은 낱말 문자로 취급한다.
+_낱말 = re.compile(r"[0-9A-Za-z가-힣]+(?:\.[0-9A-Za-z가-힣]+)*")
+
+
+def 한국어_tsquery(query: str) -> str:
+    """자연어 질의를 접두어 OR tsquery 문자열로 바꾼다.
+
+    낱말이 하나도 없으면 빈 문자열을 준다 — 호출부가 그때 빈 결과를 낸다.
+    """
+    낱말들 = [w for w in _낱말.findall(query) if len(w) >= 2]
+    # 중복 낱말은 점수만 부풀리고 결과를 바꾸지 않는다. 순서는 유지한다.
+    본_것: set[str] = set()
+    고유 = [w for w in 낱말들 if not (w in 본_것 or 본_것.add(w))]
+    return " | ".join(f"{w}:*" for w in 고유)
+```
+
+**`to_tsquery` 에 넘기기 전에 반드시 이 함수를 거쳐야 한다.** 사용자 입력을
+그대로 `to_tsquery` 에 넣으면 `&`·`|`·`!`·`(` 같은 글자가 tsquery 문법으로
+해석되어 구문 오류가 난다. 위 정규식이 그 글자들을 모두 버린다.
+
 `backend/adapters/db/chunk_search.py`:
 
 ```python
@@ -2086,6 +2150,11 @@ class PgChunkSearch:
             return [row[0] for row in cur.fetchall()]
 
     def by_keyword(self, query: str, principal: Principal, k: int) -> list[int]:
+        tsq = 한국어_tsquery(query)
+        if not tsq:
+            # 검색할 낱말이 없다. 빈 tsquery 를 넘기면 Postgres 가 NOTICE 를
+            # 뿜으므로 여기서 끊는다. 권한과 무관한 경로라 누출과 상관없다.
+            return []
         with self.conn.cursor() as cur:
             cur.execute(
                 f"""
@@ -2093,14 +2162,14 @@ class PgChunkSearch:
                 FROM chunks c
                 JOIN documents d ON d.id = c.document_id
                 WHERE {_권한_WHERE}
-                  AND c.text_tsv @@ plainto_tsquery('simple', %(q)s)
-                ORDER BY ts_rank(c.text_tsv, plainto_tsquery('simple', %(q)s)) DESC
+                  AND c.text_tsv @@ to_tsquery('simple', %(q)s)
+                ORDER BY ts_rank(c.text_tsv, to_tsquery('simple', %(q)s)) DESC
                 LIMIT %(k)s
                 """,
                 {
                     "clearance": principal.clearance,
                     "dept": principal.department,
-                    "q": query,
+                    "q": tsq,   # 원문이 아니라 변환된 tsquery 를 넘긴다
                     "k": k,
                 },
             )
