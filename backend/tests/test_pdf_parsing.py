@@ -1,3 +1,5 @@
+import pytest
+
 from adapters.parsing.pdf import chunk_clauses, split_clauses
 from core.types import Chunk, Clause
 
@@ -61,6 +63,52 @@ def test_조항이_없는_텍스트는_빈_리스트다():
     assert split_clauses("조항 코드가 하나도 없는 평범한 문단.") == []
 
 
+# 실제 ISMS-P 안내서는 모든 조항 코드가 목차(제목만, 본문 거의 없음)와
+# 본문(실제 조항 내용)에 각각 한 번씩 나온다. 목차가 먼저, 본문이 나중이다.
+중복_샘플 = """차례
+
+1.3.1 보호대책 구현
+
+본문
+
+1.3.1 보호대책 구현
+선정된 보호대책은 이행계획에 따라 효과적으로 구현하고, 이행 결과의
+정확성 및 효과성 여부를 확인하여야 한다.
+"""
+
+
+def test_중복된_조항_코드는_본문이_긴_쪽이_이긴다():
+    # 목차 항목(본문 "본문" 4자)과 실제 본문(80자 이상)이 같은 코드로 두 번
+    # 잡힌다. 짧은 목차 항목이 실제 본문을 덮어쓰면 인용이 텅 빈 조항을
+    # 가리키게 된다.
+    clauses = split_clauses(중복_샘플)
+    codes = [c.code for c in clauses]
+    assert codes.count("1.3.1") == 1
+    by_code = {c.code: c for c in clauses}
+    assert "선정된 보호대책은" in by_code["1.3.1"].text
+    assert by_code["1.3.1"].text != "본문"
+
+
+# 실제 ISMS-P 안내서는 마지막 조항(3.5.3) 바로 뒤에 "참고자료(가나다 순)"
+# 표지로 시작하는 참고문헌 목록이 붙는다. 다음 조항 코드가 없으므로 표지를
+# 찾지 못하면 그 목록까지 본문으로 삼켜, 3.5.3 인용이 규정이 아니라
+# 참고문헌 제목을 인용하게 된다.
+후주_샘플 = """3.5.3 이용내역 통지
+개인정보처리자는 정보주체에게 개인정보 이용내역을 통지하여야 한다.
+
+참고자료(가나다 순)
+ 가명정보 처리 가이드라인
+ 개인정보 손해배상책임 보장제도 안내서
+"""
+
+
+def test_마지막_조항_뒤_참고자료_목록은_본문에서_제외한다():
+    clauses = split_clauses(후주_샘플)
+    by_code = {c.code: c for c in clauses}
+    assert "이용내역을 통지하여야" in by_code["3.5.3"].text
+    assert "가명정보 처리 가이드라인" not in by_code["3.5.3"].text
+
+
 def test_청크가_조항_코드를_들고_다닌다():
     chunks = chunk_clauses(split_clauses(샘플))
     assert all(isinstance(c, Chunk) for c in chunks)
@@ -89,3 +137,14 @@ def test_청크가_겹쳐진다():
     assert len(chunks) >= 2
     # 앞 청크의 끝부분이 뒤 청크의 앞부분에 나타난다
     assert chunks[0].text[-50:] in chunks[1].text
+
+
+def test_overlap가_max_chars_이상이면_예외를_던진다():
+    # step = max_chars - overlap 가 0 이하면 시작 위치가 전진하지 않아
+    # while 루프가 끝나지 않는다.
+    with pytest.raises(ValueError):
+        chunk_clauses(
+            [Clause(code="9.9.9", title="김", text="가" * 5000)],
+            max_chars=100,
+            overlap=100,
+        )

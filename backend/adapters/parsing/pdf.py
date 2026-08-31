@@ -22,6 +22,13 @@ from core.types import Chunk, Clause
 # 실측: 255쪽 전문에서 고유 조항 102개 — ISMS-P 2022 공식 인증기준 수와 일치한다.
 조항_패턴 = re.compile(r"^\s*(\d+\.\d+\.\d+)\s+(\S[^\n]{0,60})$", re.MULTILINE)
 
+# 마지막 조항(3.5.3) 뒤에 붙는 참고문헌 목록의 시작 표지.
+# ISMS-P 안내서 실물(인쇄본 기준 약 250쪽)의 후주에서 실측으로 확인한
+# 값이다 — 일반적인 규칙이 아니라 이 문서에 한정된 값이므로, 다른
+# 안내서나 개정판에서는 다시 확인해야 한다. 이 표지가 없으면(픽스처처럼
+# 후주가 없는 텍스트) 마지막 조항은 지금처럼 문서 끝까지 이어진다.
+참고자료_표지 = "참고자료"
+
 
 def extract_text(path: Path) -> str:
     reader = PdfReader(str(path))
@@ -44,7 +51,16 @@ def split_clauses(text: str) -> list[Clause]:
     order: list[str] = []
     for i, m in enumerate(matches):
         시작 = m.end()
-        끝 = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        if i + 1 < len(matches):
+            끝 = matches[i + 1].start()
+        else:
+            # 마지막 조항은 다음 조항 코드가 없어 원래 문서 끝까지 이어진다.
+            # 그런데 ISMS-P 안내서는 마지막 조항(3.5.3) 바로 뒤에 참고문헌
+            # 목록이 붙어 있어, 표지를 찾지 못하면 그 목록까지 본문으로
+            # 삼켜버린다. 표지가 있으면 거기서 끊고, 없으면(픽스처처럼
+            # 후주가 없는 텍스트) 지금까지처럼 문서 끝까지 쓴다.
+            표지_위치 = text.find(참고자료_표지, 시작)
+            끝 = 표지_위치 if 표지_위치 != -1 else len(text)
         본문 = text[시작:끝].strip()
         code = m.group(1)
         clause = Clause(code=code, title=m.group(2).strip(), text=본문)
@@ -65,6 +81,12 @@ def chunk_clauses(
     겹침을 두는 이유: 문장이 청크 경계에서 잘리면 그 문장은 어느 쪽에서도
     온전히 검색되지 않는다.
     """
+    if overlap >= max_chars:
+        # step = max_chars - overlap 가 0 이하가 되어 시작 위치가 전진하지
+        # 않는다 — while 루프가 끝나지 않는다.
+        raise ValueError(
+            f"overlap({overlap})은 max_chars({max_chars})보다 작아야 한다"
+        )
     chunks: list[Chunk] = []
     for c in clauses:
         본문 = c.text
