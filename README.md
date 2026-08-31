@@ -56,3 +56,14 @@ uv sync                       # 또는: pip install -r requirements.txt -r requi
 ```
 
 모든 파이썬 명령은 `backend/` 에서 실행합니다.
+
+DB·임베딩 모델이 필요한 테스트는 기본 스위트에서 제외됩니다:
+
+```bash
+# DB 테스트
+docker compose up -d
+cd backend && .venv/bin/python -m pytest -m db -v
+
+# 임베딩 모델 테스트 (첫 로드에 ~30초)
+cd backend && .venv/bin/python -m pytest -m model -v
+```

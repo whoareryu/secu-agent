@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['jekyll/**', 'docs/**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: 의존성 설치
+        working-directory: backend
+        run: uv sync --dev
+
+      - name: 린트
+        working-directory: backend
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      # DB·LLM·모델 테스트는 pyproject 의 addopts 가 기본 제외한다.
+      # 컨테이너도 API 키도 없고 임베딩 모델도 받아져 있지 않은 환경에서
+      # 스위트 전체가 실패하면 안 된다.
+      - name: 테스트
+        working-directory: backend
+        run: uv run pytest -v
