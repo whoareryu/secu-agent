@@ -25,6 +25,7 @@ import pytest
     "torch",
     "transformers",
     "pypdf",
+    "yaml",
 )
 
 

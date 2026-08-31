@@ -257,7 +257,8 @@ def test_도구_출력에_권한_밖_항목이_있으면_예외가_난다(코퍼
     임원_ids = _검색(searcher, 질의_기밀축, 임원)
     기밀_hits = searcher.load_hits(임원_ids, 임원)
     assert 기밀_hits, "임원 결과가 비면 이 테스트는 공허하다"
-    기밀 = next(h for h in 기밀_hits if h.required_clearance == 3)
+    기밀 = next((h for h in 기밀_hits if h.required_clearance == 3), None)
+    assert 기밀 is not None, "등급 3 청크가 없으면 이 테스트는 공허하다"
 
     사원_hits = searcher.load_hits(_검색(searcher, 질의_공개축, 사원), 사원)
     assert enforce(사원_hits, 사원) == 사원_hits  # 정상 경로는 통과한다
@@ -270,5 +271,6 @@ def test_load_hits_는_권한_밖_id_를_조용히_뺀다(코퍼스):
     """예외를 던지면 안 된다 — "그 id 는 접근 불가"라는 응답 자체가 존재 확인이다."""
     _, searcher = 코퍼스
     임원_ids = _검색(searcher, 질의_기밀축, 임원)
+    assert 임원_ids, "임원 결과가 비면 이 테스트는 공허하다"
     사원_결과 = searcher.load_hits(임원_ids, 사원)  # 예외가 나면 안 된다
     assert 사원_결과 == []

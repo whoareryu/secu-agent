@@ -143,7 +143,7 @@ $ python -m pipeline.cli demo "운영 서버에 접속하려면 어떤 승인이
 cd backend && .venv/bin/python -m eval.run --per-query
 ```
 
-지연은 로컬 컨테이너 warm 상태 기준입니다. 적재 직후 첫 실행은 캐시가 차 있지 않아 p95 가 70ms 까지 올라갑니다.
+지연은 로컬 컨테이너 기준입니다. 한 번 p95 70ms 가 관측되었으나 이후 재실행 세 번에서 재현되지 않았습니다(24~29ms).
 
 Faithfulness 는 LLM 심판이 아니라 조항 코드의 실재 여부로 잽니다 — W3 에서 붙입니다.
 

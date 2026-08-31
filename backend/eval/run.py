@@ -10,6 +10,7 @@ from pathlib import Path
 
 from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
+from adapters.db.document_store import PgDocumentStore
 from adapters.embedding.e5 import E5Embedder
 from eval.golden import DEFAULT_PATH, load
 from eval.harness import evaluate
@@ -25,9 +26,7 @@ def main() -> int:
 
     queries = load(Path(args.golden))
     conn = connect(args.dsn)
-    with conn.cursor() as cur:
-        cur.execute("SELECT count(*) FROM chunks")
-        총청크 = cur.fetchone()[0]
+    총청크 = PgDocumentStore(conn).count_all_chunks()
     if 총청크 == 0:
         print("코퍼스가 비어 있다. 먼저 적재한다:", file=sys.stderr)
         print(
