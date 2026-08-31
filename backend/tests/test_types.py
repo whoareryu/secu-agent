@@ -103,6 +103,9 @@ def test_포트를_스텁이_만족한다():
         def by_keyword(self, q, p, k):
             return []
 
+        def load_hits(self, ids, principal):
+            return []
+
     assert isinstance(임베더(), Embedder)
     assert isinstance(저장소(), DocumentStore)
     assert isinstance(검색기(), ChunkSearch)

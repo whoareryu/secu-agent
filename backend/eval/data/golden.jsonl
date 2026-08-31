@@ -1,0 +1,30 @@
+{"query": "직원이 퇴사할 때 계정과 접근 권한을 어떻게 정리해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.2.5"]}
+{"query": "협력업체 직원에게 시스템 접근을 허용할 때 계약에 넣어야 할 것", "department": "개발팀", "clearance": 1, "relevant": ["2.3.2"]}
+{"query": "서버실에 아무나 들어가지 못하게 하려면 어떻게 해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.4.2"]}
+{"query": "비밀번호를 몇 자리로 하고 얼마나 자주 바꾸게 해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.5.4"]}
+{"query": "관리자 권한을 가진 계정을 따로 관리해야 하는 이유", "department": "개발팀", "clearance": 1, "relevant": ["2.5.5"]}
+{"query": "재택근무자가 사내망에 접속할 때 어떤 통제가 필요한가", "department": "개발팀", "clearance": 1, "relevant": ["2.6.6"]}
+{"query": "사내 무선랜을 외부인이 쓰지 못하게 하려면", "department": "개발팀", "clearance": 1, "relevant": ["2.6.5"]}
+{"query": "개인정보를 저장할 때 암호화를 어떤 기준으로 적용하나", "department": "개발팀", "clearance": 1, "relevant": ["2.7.1"]}
+{"query": "암호키를 어디에 어떻게 보관해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.7.2"]}
+{"query": "개발 환경과 운영 환경을 나눠야 하는 이유", "department": "개발팀", "clearance": 1, "relevant": ["2.8.3"]}
+{"query": "테스트에 실제 고객 자료를 그대로 써도 되나", "department": "개발팀", "clearance": 1, "relevant": ["2.8.4"]}
+{"query": "소스코드에 대한 접근을 제한해야 하는 이유", "department": "개발팀", "clearance": 1, "relevant": ["2.8.5"]}
+{"query": "시스템에 장애가 났을 때 어떻게 대응해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.9.2"]}
+{"query": "백업을 얼마나 자주 받고 어디에 보관해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.9.3"]}
+{"query": "접속기록을 얼마나 오래 보관해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.9.4"]}
+{"query": "쓰던 노트북을 버릴 때 안에 든 자료는 어떻게 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.9.7"]}
+{"query": "클라우드에 시스템을 올릴 때 확인해야 할 보안 사항", "department": "개발팀", "clearance": 1, "relevant": ["2.10.2"]}
+{"query": "보안 패치를 언제까지 적용해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.10.8"]}
+{"query": "인증 실패가 반복되는 계정을 어떻게 찾아내나", "department": "개발팀", "clearance": 1, "relevant": ["2.11.3"]}
+{"query": "침해사고가 났을 때 누구에게 먼저 알리고 무엇부터 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.11.5"]}
+{"query": "취약점 점검은 얼마나 자주 해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.11.2"]}
+{"query": "지진이나 화재에 대비해 무엇을 준비해야 하나", "department": "개발팀", "clearance": 1, "relevant": ["2.12.1"]}
+{"query": "고객 정보를 마케팅에 활용하려면 무엇이 필요한가", "department": "개발팀", "clearance": 1, "relevant": ["3.1.7"]}
+{"query": "주민등록번호를 받아도 되는 경우가 있나", "department": "개발팀", "clearance": 1, "relevant": ["3.1.3"]}
+{"query": "개인정보를 해외 서버에 두어도 되나", "department": "개발팀", "clearance": 1, "relevant": ["3.3.4"]}
+{"query": "임원 성과급은 어떤 기준으로 정해지나", "department": "경영지원팀", "clearance": 3, "relevant": ["6.1.1", "6.1.2"]}
+{"query": "성과급을 지급한 뒤에 되돌려받을 수 있나", "department": "경영지원팀", "clearance": 3, "relevant": ["6.1.3"]}
+{"query": "운영 서버에 접속하려면 어떤 승인을 받아야 하나", "department": "개발팀", "clearance": 1, "relevant": ["5.1.1"]}
+{"query": "운영 서버 접속 기록은 얼마나 보관하나", "department": "개발팀", "clearance": 1, "relevant": ["5.1.3"]}
+{"query": "보안 규정을 어긴 직원을 징계하는 절차", "department": "인사팀", "clearance": 2, "relevant": ["5.2.1"]}

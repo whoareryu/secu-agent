@@ -47,6 +47,23 @@ jekyll/        문서 사이트
 
 **LangChain 은 `adapters/` 에만 삽니다.** 도구 로직과 권한 검증은 프레임워크를 모르는 `core/` 에 있어, 버전 변화가 도메인을 오염시키지 못합니다. `backend/tests/test_boundaries.py` 가 이를 강제합니다.
 
+## 검색 품질
+
+골든셋 30건(ISMS-P 25 · 사내 규정 5), k=10, 코퍼스 338청크 기준.
+
+| 지표 | 값 |
+|---|---|
+| Recall@10 | 0.867 |
+| MRR@10 | 0.577 |
+| nDCG@10 | 0.644 |
+| 지연 p50 / p95 | 19ms / 70ms |
+
+```bash
+cd backend && .venv/bin/python -m eval.run --per-query
+```
+
+Faithfulness 는 LLM 심판이 아니라 조항 코드의 실재 여부로 잽니다 — W3 에서 붙입니다.
+
 ## 개발
 
 ```bash

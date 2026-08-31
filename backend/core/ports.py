@@ -15,7 +15,7 @@ isinstance 는 메서드 존재만 보고 시그니처는 보지 않는다 — �
 from collections.abc import Sequence
 from typing import Literal, Protocol, runtime_checkable
 
-from core.types import Chunk, Clause, Document, Principal
+from core.types import Chunk, Clause, Document, PolicyHit, Principal
 
 Vector = list[float]
 
@@ -79,3 +79,11 @@ class ChunkSearch(Protocol):
         ...
 
     def by_keyword(self, query: str, principal: Principal, k: int) -> list[int]: ...
+
+    def load_hits(self, ids: Sequence[int], principal: Principal) -> list[PolicyHit]:
+        """chunk id → PolicyHit. 권한 밖 id 는 조용히 빠진다.
+
+        principal 이 필수인 이유: 이 메서드는 본문을 돌려준다. 권한 검사를
+        검색 쪽에만 두면 id 를 아는 호출자가 이 경로로 본문을 가져간다.
+        """
+        ...
