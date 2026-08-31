@@ -30,6 +30,13 @@ def main() -> int:
     ing.add_argument("--departments", nargs="*", default=[], help="비우면 전사 공개")
     ing.add_argument("--dsn", default=None)
 
+    sch = sub.add_parser("search", help="하이브리드 검색")
+    sch.add_argument("query")
+    sch.add_argument("--clearance", type=int, default=1)
+    sch.add_argument("--department", default="개발팀")
+    sch.add_argument("-k", type=int, default=5)
+    sch.add_argument("--dsn", default=None)
+
     args = ap.parse_args()
 
     if args.cmd == "ingest":
@@ -54,6 +61,27 @@ def main() -> int:
         report = ingest(args.path, doc, load, E5Embedder(), store)
         print(f"  조항 {report.clauses}개 · 청크 {report.chunks}개")
         print(f"  DB 총 청크: {store.count_chunks()}")
+        conn.close()
+
+    if args.cmd == "search":
+        from adapters.db.chunk_search import PgChunkSearch
+        from core.retrieve.hybrid import search as hybrid_search
+        from core.types import Principal
+
+        conn = connect(args.dsn)
+        searcher = PgChunkSearch(conn)
+        principal = Principal(department=args.department, clearance=args.clearance)
+
+        ids = hybrid_search(args.query, principal, E5Embedder(), searcher, k=args.k)
+        rows = searcher.load_hits(ids)
+
+        print(f"질의: {args.query}")
+        print(f"주체: {principal.department} · 등급 {principal.clearance}")
+        print(f"결과: {len(rows)}건\n")
+        for i, hit in enumerate(rows, start=1):
+            표시 = f"[{hit.clause_code}]" if hit.clause_code else "[조항 밖]"
+            print(f"  {i}. {표시} {hit.doc_title}")
+            print(f"     {hit.text[:100].strip()}…\n")
         conn.close()
 
     return 0
