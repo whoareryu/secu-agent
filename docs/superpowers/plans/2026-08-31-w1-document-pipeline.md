@@ -2139,14 +2139,42 @@ class PgChunkSearch:
         self.conn = conn
 
     def by_vector(self, vec: Vector, principal: Principal, k: int) -> list[int]:
+        """권한 통과 청크만 모은 뒤 그 안에서 정확 검색한다.
+
+        `AS MATERIALIZED` 가 이 메서드의 핵심이고, 성능이 아니라 **보안** 때문에
+        있다. 이것을 빼면 플래너가 CTE 를 인라인해서 HNSW 인덱스를 먼저 타고
+        권한 필터를 나중에 적용한다(사후 필터링). 그 순간:
+
+          · HNSW 는 근사 인덱스라 후보를 ef_search 개만 뽑는다
+          · 그 후보가 전부 권한 밖 문서면 필터 후 **0건**이 남는다
+          · 볼 수 있는 청크가 2,000개 있어도 0건이다
+
+        실측(pgvector:pg16, 공개 2,000 + 기밀 2,000 청크): 인라인되면 등급1
+        사용자가 k=10 을 요청해도 `actual rows=0`. `AS MATERIALIZED` 를 붙이면
+        10건이 온다.
+
+        이건 정확성 문제이면서 동시에 **누출**이다. 받는 결과 개수가 "내가 못
+        보는 곳에 이 질의와 아주 가까운 문서가 있다"를 알려준다 — spec 5.3 이
+        금지한 바로 그 채널이다.
+
+        대가는 HNSW 를 못 쓴다는 것이다. 권한 통과 집합에 대한 순차 정확 검색이
+        된다. 실측 2.5ms(314청크) / 8.8ms(2,000) / 8.0ms(4,000) 이라 이 프로젝트
+        규모에서는 문제가 없다. 코퍼스가 10만 청크를 넘어가면 권한 컬럼을
+        chunks 로 비정규화하고 부분 인덱스를 검토해야 한다 — 그때도 근사 인덱스
+        위에서 사후 필터링으로 돌아가서는 안 된다.
+        """
         with self.conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT c.id
-                FROM chunks c
-                JOIN documents d ON d.id = c.document_id
-                WHERE {_권한_WHERE}
-                ORDER BY c.embedding <=> %(qvec)s
+                WITH 허용 AS MATERIALIZED (
+                    SELECT c.id, c.embedding
+                    FROM chunks c
+                    JOIN documents d ON d.id = c.document_id
+                    WHERE {_권한_WHERE}
+                )
+                SELECT id
+                FROM 허용
+                ORDER BY embedding <=> %(qvec)s
                 LIMIT %(k)s
                 """,
                 {
@@ -2280,6 +2308,44 @@ def test_구현이_포트를_만족한다(db):
 def test_벡터_검색이_결과를_돌려준다(db):
     _, searcher = db
     assert len(searcher.by_vector([0.1] * EMBEDDING_DIM, 사원, k=10)) == 2
+
+
+def test_권한_밖_문서가_가까워도_결과가_줄지_않는다(db):
+    """사후 필터링이면 여기서 결과가 0건이 된다.
+
+    이 테스트가 잡는 것은 성능이 아니라 누출이다. HNSW 는 근사 인덱스라
+    후보를 정해진 개수만 뽑는다. 권한 필터가 그 뒤에 적용되면(사후 필터링),
+    질의에 가장 가까운 후보가 전부 권한 밖 문서일 때 남는 게 없다.
+    사용자는 0건을 받고 "내가 못 보는 곳에 아주 가까운 문서가 있다"를 안다.
+
+    by_vector 의 `AS MATERIALIZED` 를 지우면 이 테스트가 실패한다.
+    실측으로 확인했다(공개 2,000 + 기밀 2,000 청크에서 actual rows=0).
+    """
+    store, searcher = db
+
+    # 질의와 정확히 같은 방향의 벡터를 기밀 문서에 잔뜩 넣는다.
+    질의 = [1.0] + [0.0] * (EMBEDDING_DIM - 1)
+    기밀 = store.upsert_document(_문서(path="secret.pdf", clearance=3))
+    store.insert_chunks(
+        기밀, {},
+        [Chunk(clause_code=None, ordinal=i, text=f"기밀 {i}") for i in range(50)],
+        [질의] * 50,
+    )
+    # 볼 수 있는 문서에는 먼 방향의 벡터를 넣는다.
+    공개 = store.upsert_document(_문서(path="public.pdf", clearance=1))
+    먼벡터 = [0.0] * (EMBEDDING_DIM - 1) + [1.0]
+    store.insert_chunks(
+        공개, {},
+        [Chunk(clause_code=None, ordinal=i, text=f"공개 {i}") for i in range(50)],
+        [먼벡터] * 50,
+    )
+
+    받은 = searcher.by_vector(질의, 사원, k=10)
+    assert len(받은) == 10, (
+        f"k=10 을 요청했는데 {len(받은)}건만 왔다. 볼 수 있는 청크가 50개 "
+        "있으므로 10건이 채워져야 한다. 개수가 모자란 것은 권한 밖 문서의 "
+        "존재가 결과 개수로 새고 있다는 뜻이다(spec 5.3)."
+    )
 
 
 def test_키워드_검색이_본문에_있는_말을_찾는다(db):
