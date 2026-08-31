@@ -1,0 +1,20 @@
+# 로컬 개발용 pgvector.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: secuagent
+      POSTGRES_PASSWORD: secuagent
+      POSTGRES_DB: secuagent
+    ports:
+      - "5433:5432"   # 5432 는 다른 로컬 Postgres 와 부딪히기 쉬워 피한다
+    volumes:
+      - secuagent_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secuagent"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  secuagent_pgdata:
