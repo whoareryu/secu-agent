@@ -1861,8 +1861,10 @@ def test_관련_문장이_무관한_문장보다_가깝다(embedder):
         ],
         kind="passage",
     )
-    쪽 = lambda a, b: sum(x * y for x, y in zip(a, b, strict=True))
-    assert 쪽(q, 관련) > 쪽(q, 무관), "관련 규정이 무관한 규정보다 멀다"
+    def 내적(a, b):
+        return sum(x * y for x, y in zip(a, b, strict=True))
+
+    assert 내적(q, 관련) > 내적(q, 무관), "관련 규정이 무관한 규정보다 멀다"
 ```
 
 Run: `.venv/bin/python -m pytest tests/test_embedder.py -q -m model`
@@ -1983,7 +1985,9 @@ docker compose exec -T db psql -U secuagent -c "SELECT count(*) FROM chunks;"
 
 ```bash
 cd /Users/ryujun/Documents/secu-agent
-git add backend/adapters/embedding/ backend/pipeline/ backend/tests/test_ingest.py
+git add backend/adapters/embedding/ backend/pipeline/ \
+        backend/tests/test_ingest.py backend/tests/test_embedder.py \
+        backend/pyproject.toml
 git commit -m "임베딩 어댑터와 적재 파이프라인을 추가했다
 
 pipeline/ingest.py 는 포트만 안다. psycopg 도 sentence-transformers 도
@@ -2220,6 +2224,23 @@ _권한_WHERE = """
 """
 
 
+# 이 SQL 을 모듈 상수로 둔 이유는 테스트가 EXPLAIN 으로 **실제로 실행되는 문장**을
+# 검사하기 위해서다. 테스트가 SQL 을 다시 적으면 그건 사본을 검사하는 것이고,
+# 구현이 바뀌어도 통과한다.
+_벡터_SQL = f"""
+    WITH 허용 AS MATERIALIZED (
+        SELECT c.id, c.embedding
+        FROM chunks c
+        JOIN documents d ON d.id = c.document_id
+        WHERE {_권한_WHERE}
+    )
+    SELECT id
+    FROM 허용
+    ORDER BY embedding <=> %(qvec)s
+    LIMIT %(k)s
+"""
+
+
 class PgChunkSearch:
     def __init__(self, conn: psycopg.Connection) -> None:
         self.conn = conn
@@ -2251,18 +2272,7 @@ class PgChunkSearch:
         """
         with self.conn.cursor() as cur:
             cur.execute(
-                f"""
-                WITH 허용 AS MATERIALIZED (
-                    SELECT c.id, c.embedding
-                    FROM chunks c
-                    JOIN documents d ON d.id = c.document_id
-                    WHERE {_권한_WHERE}
-                )
-                SELECT id
-                FROM 허용
-                ORDER BY embedding <=> %(qvec)s
-                LIMIT %(k)s
-                """,
+                _벡터_SQL,
                 {
                     "clearance": principal.clearance,
                     "dept": principal.department,
@@ -2339,7 +2349,7 @@ import os
 
 import pytest
 
-from adapters.db.chunk_search import PgChunkSearch
+from adapters.db.chunk_search import PgChunkSearch, _벡터_SQL
 from adapters.db.connection import apply_schema, connect
 from adapters.db.document_store import PgDocumentStore
 from core.ports import ChunkSearch
@@ -2396,41 +2406,41 @@ def test_벡터_검색이_결과를_돌려준다(db):
     assert len(searcher.by_vector([0.1] * EMBEDDING_DIM, 사원, k=10)) == 2
 
 
-def test_권한_밖_문서가_가까워도_결과가_줄지_않는다(db):
-    """사후 필터링이면 여기서 결과가 0건이 된다.
+def test_권한_필터가_순위보다_먼저_적용된다(db):
+    """실행 계획을 직접 본다. 결과 개수로는 이걸 확인할 수 없다.
 
-    이 테스트가 잡는 것은 성능이 아니라 누출이다. HNSW 는 근사 인덱스라
-    후보를 정해진 개수만 뽑는다. 권한 필터가 그 뒤에 적용되면(사후 필터링),
-    질의에 가장 가까운 후보가 전부 권한 밖 문서일 때 남는 게 없다.
-    사용자는 0건을 받고 "내가 못 보는 곳에 아주 가까운 문서가 있다"를 안다.
+    처음에는 "권한 밖 문서를 가까이 심어두고 k 가 채워지는지" 로 쓰려 했다.
+    실측해 보니 그 단언은 **흔들린다** — 문서당 500·2000 청크에서는 누출이
+    재현되는데 50·200·1000 에서는 재현되지 않았다. HNSW 그래프가 삽입 순서와
+    난수에 따라 달라지기 때문이다. `hnsw.ef_search` 를 1 까지 낮춰도 작은
+    픽스처에서는 재현되지 않았다.
 
-    by_vector 의 `AS MATERIALIZED` 를 지우면 이 테스트가 실패한다.
-    실측으로 확인했다(공개 2,000 + 기밀 2,000 청크에서 actual rows=0).
+    흔들리는 보안 테스트는 결국 꺼진다. 그래서 증상 대신 **구조**를 단언한다:
+    권한 통과 집합이 CTE 로 먼저 확정되고, 정렬이 그 CTE 위에서 일어나야 한다.
+    이건 코퍼스 크기와 무관하게 참이거나 거짓이다.
+
+    `AS MATERIALIZED` 를 지우면 플래너가 CTE 를 인라인해서 이 노드가 사라지고
+    테스트가 실패한다.
     """
-    store, searcher = db
+    conn, _ = db
+    with conn.cursor() as cur:
+        cur.execute(
+            "EXPLAIN " + _벡터_SQL,
+            {
+                "clearance": 사원.clearance,
+                "dept": 사원.department,
+                "qvec": str([0.1] * EMBEDDING_DIM),
+                "k": 10,
+            },
+        )
+        계획 = "\n".join(row[0] for row in cur.fetchall())
 
-    # 질의와 정확히 같은 방향의 벡터를 기밀 문서에 잔뜩 넣는다.
-    질의 = [1.0] + [0.0] * (EMBEDDING_DIM - 1)
-    기밀 = store.upsert_document(_문서(path="secret.pdf", clearance=3))
-    store.insert_chunks(
-        기밀, {},
-        [Chunk(clause_code=None, ordinal=i, text=f"기밀 {i}") for i in range(50)],
-        [질의] * 50,
+    assert "CTE 허용" in 계획, (
+        "권한 통과 집합이 CTE 로 확정되지 않는다. AS MATERIALIZED 가 빠졌거나 "
+        f"플래너가 인라인했다. 사후 필터링이 되어 존재가 새어나간다(spec 5.3).\n{계획}"
     )
-    # 볼 수 있는 문서에는 먼 방향의 벡터를 넣는다.
-    공개 = store.upsert_document(_문서(path="public.pdf", clearance=1))
-    먼벡터 = [0.0] * (EMBEDDING_DIM - 1) + [1.0]
-    store.insert_chunks(
-        공개, {},
-        [Chunk(clause_code=None, ordinal=i, text=f"공개 {i}") for i in range(50)],
-        [먼벡터] * 50,
-    )
-
-    받은 = searcher.by_vector(질의, 사원, k=10)
-    assert len(받은) == 10, (
-        f"k=10 을 요청했는데 {len(받은)}건만 왔다. 볼 수 있는 청크가 50개 "
-        "있으므로 10건이 채워져야 한다. 개수가 모자란 것은 권한 밖 문서의 "
-        "존재가 결과 개수로 새고 있다는 뜻이다(spec 5.3)."
+    assert "CTE Scan" in 계획, (
+        f"정렬이 CTE 위에서 일어나지 않는다 — 순위가 권한보다 먼저 매겨진다.\n{계획}"
     )
 
 
@@ -2603,6 +2613,31 @@ jobs:
       - name: 테스트
         working-directory: backend
         run: uv run pytest -v
+```
+
+- [ ] **Step 1.5: 먼저 포맷을 맞춘다 — 안 그러면 첫 CI 가 바로 깨진다**
+
+CI 에 `ruff format --check` 가 들어 있는데 이 저장소에서 `ruff format` 을 한 번도
+돌린 적이 없다. 사전 확인 결과 **6개 파일이 재포맷 대상이고 `--check` 는 exit 1** 이다.
+`ruff check`(린트)와 `ruff format`(포맷)은 다른 명령이라, 린트가 통과해도 포맷은 깨진다.
+
+```bash
+cd /Users/ryujun/Documents/secu-agent/backend
+.venv/bin/python -m ruff format .
+.venv/bin/python -m ruff format --check .   # exit 0 이어야 한다
+.venv/bin/python -m pytest -q               # 포맷이 동작을 바꾸지 않았는지 확인
+```
+
+**이 재포맷은 별도 커밋으로 분리한다.** 앞선 태스크들의 코드가 브리프와 글자 단위로
+일치하도록 쓰였는데 포맷이 그걸 흐트러뜨린다. 커밋을 나눠 두면 나중에 diff 를 볼 때
+"무엇이 로직 변경이고 무엇이 포맷인지" 가 분명해진다.
+
+```bash
+git add -A backend/
+git commit -m "ruff format 을 저장소 전체에 적용했다
+
+CI 가 ruff format --check 를 돌리는데 한 번도 포맷을 맞춘 적이 없어
+첫 실행에서 바로 깨질 상태였다. 로직 변경은 없다."
 ```
 
 - [ ] **Step 2: 로컬에서 CI 가 할 일을 그대로 돌린다**
