@@ -73,7 +73,7 @@ def main() -> int:
         principal = Principal(department=args.department, clearance=args.clearance)
 
         ids = hybrid_search(args.query, principal, E5Embedder(), searcher, k=args.k)
-        rows = searcher.load_hits(ids)
+        rows = searcher.load_hits(ids, principal)
 
         print(f"질의: {args.query}")
         print(f"주체: {principal.department} · 등급 {principal.clearance}")

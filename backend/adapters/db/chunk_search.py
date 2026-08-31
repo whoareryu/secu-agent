@@ -134,8 +134,18 @@ class PgChunkSearch:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def load_hits(self, ids: Sequence[int]) -> list[PolicyHit]:
+    def load_hits(self, ids: Sequence[int], principal: Principal) -> list[PolicyHit]:
         """chunk id → PolicyHit. 결과 표시에 쓴다.
+
+        **`principal` 이 필수인 이유:** 이 메서드는 청크 **본문**을 돌려준다.
+        권한 검사를 검색 쪽에만 두면, id 를 아는 호출자는 이 경로로 본문을
+        그대로 가져갈 수 있다. 존재 누출보다 나쁜 내용 누출이다.
+        지금은 호출자가 하나뿐이고 그 호출자가 이미 걸러진 id 만 주지만,
+        W3 의 에이전트와 API 가 다른 데서 온 id 를 넘길 새 호출자다.
+        spec 5.3 이 "나중에 끼워 넣으면 빠뜨린 경로가 생긴다"고 한 그대로다.
+
+        권한 밖 id 는 **조용히 빠진다.** 예외를 던지면 안 된다 —
+        "그 id 는 접근 불가" 라는 응답 자체가 존재 확인이 된다.
 
         순서는 호출자가 준 id 순서를 따른다 — SQL 의 반환 순서에 기대면
         융합 결과의 순위가 뒤집힌다.
@@ -144,14 +154,19 @@ class PgChunkSearch:
             return []
         with self.conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT c.id, c.text, d.title, cl.code
                 FROM chunks c
                 JOIN documents d ON d.id = c.document_id
                 LEFT JOIN clauses cl ON cl.id = c.clause_id
-                WHERE c.id = ANY(%s)
+                WHERE c.id = ANY(%(ids)s)
+                  AND {_권한_WHERE}
                 """,
-                (list(ids),),
+                {
+                    "ids": list(ids),
+                    "clearance": principal.clearance,
+                    "dept": principal.department,
+                },
             )
             by_id = {
                 row[0]: PolicyHit(

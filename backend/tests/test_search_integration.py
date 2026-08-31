@@ -123,14 +123,47 @@ def test_하이브리드_검색이_두_경로를_모두_쓴다(db):
 def test_조항_코드까지_불러온다(db):
     _, searcher = db
     hits = search("네트워크", 사원, 고정임베더(), searcher, k=10)
-    rows = searcher.load_hits(hits)
+    rows = searcher.load_hits(hits, 사원)
     assert all(isinstance(r, PolicyHit) for r in rows)
     assert {r.clause_code for r in rows} == {"2.6.1", "2.5.1"}
+
+
+def test_load_hits_는_권한_밖_청크의_본문을_주지_않는다(db):
+    """검색을 막아도 여기가 뚫리면 소용없다.
+
+    load_hits 는 청크 **본문**을 돌려준다. 권한 검사를 검색 쪽에만 두면
+    id 를 아는 호출자가 이 경로로 본문을 그대로 가져간다. 존재 누출보다
+    나쁜 내용 누출이다.
+
+    권한 밖 id 는 조용히 빠져야 한다. 예외를 던지면 "그 id 는 접근 불가"
+    라는 응답 자체가 존재 확인이 된다.
+    """
+    conn, searcher = db
+    store = PgDocumentStore(conn)
+    기밀 = store.upsert_document(Document(
+        id=0, title="3급 기밀", source_path="secret.pdf", doc_type="pdf",
+        required_clearance=3, allowed_departments=(),
+    ))
+    store.insert_chunks(
+        기밀, {},
+        [Chunk(clause_code=None, ordinal=0, text="대외비: 마스터 키")],
+        [[0.5] * EMBEDDING_DIM],
+    )
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM chunks")
+        전체 = [r[0] for r in cur.fetchall()]
+
+    받은 = searcher.load_hits(전체, 사원)
+
+    assert all("대외비" not in r.text for r in 받은), (
+        "등급 1 사원이 3급 기밀 청크의 본문을 받았다. load_hits 에 권한 필터가 없다."
+    )
+    assert len(받은) < len(전체), "권한 밖 청크가 걸러지지 않았다"
 
 
 def test_load_hits_가_준_순서를_지킨다(db):
     # SQL 반환 순서에 기대면 융합 결과의 순위가 뒤집힌다.
     _, searcher = db
     ids = searcher.by_vector([0.1] * EMBEDDING_DIM, 사원, k=10)
-    rows = searcher.load_hits(list(reversed(ids)))
+    rows = searcher.load_hits(list(reversed(ids)), 사원)
     assert [r.chunk_id for r in rows] == list(reversed(ids))
