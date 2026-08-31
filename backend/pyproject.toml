@@ -24,8 +24,9 @@ testpaths = ["tests"]
 markers = [
     "llm: 실제 LLM API 를 호출하는 테스트 (기본 제외)",
     "db: 실제 데이터베이스가 필요한 테스트 (기본 제외)",
+    "model: 실제 임베딩 모델을 로드하는 테스트 (기본 제외, 로드에 ~30초)",
 ]
-addopts = "-m 'not llm and not db'"
+addopts = "-m 'not llm and not db and not model'"
 
 [tool.ruff]
 line-length = 100
