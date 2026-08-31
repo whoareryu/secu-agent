@@ -17,13 +17,16 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
-LOGS = Path("jekyll/_logs")
+# 경로는 스크립트 위치에서 푼다 — 훅이 어느 디렉토리에서 불릴지 알 수 없다.
+# 상대 경로로 두면 CWD 가 다른 순간 조용히 아무것도 안 하고 끝난다.
+REPO = Path(__file__).resolve().parent.parent
+LOGS = REPO / "jekyll" / "_logs"
 
 # 저장소 디렉토리 → 칸반·개발로그의 작업 영역.
 # 이 매핑은 jekyll/kanban.markdown 의 area 설명과 같은 이름을 쓴다.
 AREA_RULES: list[tuple[str, str]] = [
     ("backend/pipeline/", "data"),
-    ("backend/adapters/source/", "data"),
+    ("backend/adapters/parsing/", "data"),
     ("backend/adapters/db/", "data"),
     ("backend/db/", "data"),
     ("data/", "data"),
@@ -45,7 +48,7 @@ DEFAULT_AREA = "infra"
 
 def _git(*args: str) -> str:
     return subprocess.run(
-        ["git", *args], capture_output=True, text=True, check=True
+        ["git", *args], capture_output=True, text=True, check=True, cwd=REPO
     ).stdout.strip()
 
 
@@ -109,11 +112,14 @@ def main() -> int:
     if not LOGS.is_dir():
         return 0  # Jekyll 사이트가 없는 체크아웃에서는 조용히 지나간다
 
+    # 인자 없이 부르면 HEAD. 훅이 놓친 커밋을 나중에 채워 넣을 때만 인자를 준다.
+    ref = sys.argv[1] if len(sys.argv) > 1 else "HEAD"
+
     try:
-        sha = _git("rev-parse", "--short", "HEAD")
-        subject = _git("log", "-1", "--pretty=%s")
-        body = _git("log", "-1", "--pretty=%b")
-        changed = [p for p in _git("show", "--name-only", "--pretty=", "HEAD").splitlines() if p]
+        sha = _git("rev-parse", "--short", ref)
+        subject = _git("log", "-1", "--pretty=%s", ref)
+        body = _git("log", "-1", "--pretty=%b", ref)
+        changed = [p for p in _git("show", "--name-only", "--pretty=", ref).splitlines() if p]
     except subprocess.CalledProcessError:
         return 0  # 커밋이 없거나 git 저장소가 아니면 아무것도 하지 않는다
 

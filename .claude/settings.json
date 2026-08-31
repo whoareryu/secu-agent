@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/commit_to_devlog.py\" 2>/dev/null || true",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}/scripts/commit_to_devlog.py\" || true",
             "if": "Bash(git commit *)",
             "timeout": 15,
             "statusMessage": "개발 로그 기록 중"
