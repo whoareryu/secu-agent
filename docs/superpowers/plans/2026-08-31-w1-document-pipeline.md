@@ -1787,6 +1787,92 @@ def ingest(
     return IngestReport(clauses=len(clauses), chunks=저장수)
 ```
 
+- [ ] **Step 4.5: 진짜 모델로 임베더 자체를 검증한다**
+
+스텁임베더는 `ingest` 가 `kind="passage"` 를 넘기는지만 본다. **`E5Embedder` 가
+그 `kind` 로 실제 접두어를 붙이는지는 아무도 검사하지 않는다.** `encode` 에서
+접두어 줄을 지워도 위의 테스트는 전부 통과하고, 검색 품질만 조용히 나빠진다 —
+Global Constraints 가 경고한 바로 그 실패다.
+
+먼저 `backend/pyproject.toml` 의 마커에 한 줄을 더한다:
+
+```toml
+markers = [
+    "llm: 실제 LLM API 를 호출하는 테스트 (기본 제외)",
+    "db: 실제 데이터베이스가 필요한 테스트 (기본 제외)",
+    "model: 실제 임베딩 모델을 로드하는 테스트 (기본 제외, 로드에 ~30초)",
+]
+addopts = "-m 'not llm and not db and not model'"
+```
+
+`backend/tests/test_embedder.py`:
+
+```python
+import pytest
+
+from adapters.embedding.e5 import E5Embedder
+from core.types import EMBEDDING_DIM
+
+pytestmark = pytest.mark.model
+
+
+@pytest.fixture(scope="module")
+def embedder():
+    # 로드에 ~30초 걸린다. 모듈당 한 번만 한다.
+    return E5Embedder()
+
+
+def test_차원이_EMBEDDING_DIM_과_같다(embedder):
+    vecs = embedder.encode(["네트워크 접근 통제"], kind="passage")
+    assert len(vecs) == 1
+    assert len(vecs[0]) == EMBEDDING_DIM
+
+
+def test_kind_가_모델에_실제로_닿는다(embedder):
+    """접두어가 붙는지를 목 없이 증명한다.
+
+    같은 문장을 kind 만 바꿔 인코딩하면 결과가 달라야 한다. `encode` 에서
+    접두어를 붙이는 줄을 지우면 두 호출이 같은 문자열을 인코딩하게 되어
+    벡터가 완전히 같아지고, 이 테스트가 실패한다.
+
+    실측: 접두어가 붙은 상태에서 두 벡터의 코사인 유사도는 0.9531 이다.
+    """
+    t = "이상행위를 탐지할 수 있도록 로그를 수집한다"
+    q = embedder.encode([t], kind="query")[0]
+    p = embedder.encode([t], kind="passage")[0]
+    assert q != p, (
+        "query 와 passage 가 같은 벡터다. encode 가 kind 를 받고도 "
+        "접두어를 붙이지 않고 있다 — e5 계열은 접두어를 요구한다."
+    )
+
+
+def test_잘못된_kind_는_거부한다(embedder):
+    with pytest.raises(ValueError):
+        embedder.encode(["x"], kind="document")
+
+
+def test_관련_문장이_무관한_문장보다_가깝다(embedder):
+    """모델이 실제로 의미를 잡는지 최소한으로 확인한다."""
+    q = embedder.encode(["이상행위 모니터링은 어떻게 하나요?"], kind="query")[0]
+    관련, 무관 = embedder.encode(
+        [
+            "이상행위를 탐지할 수 있도록 이벤트 로그를 수집하여 분석 및 모니터링하여야 한다",
+            "사용자 계정 발급 절차를 수립하고 계정 권한을 관리하여야 한다",
+        ],
+        kind="passage",
+    )
+    쪽 = lambda a, b: sum(x * y for x, y in zip(a, b, strict=True))
+    assert 쪽(q, 관련) > 쪽(q, 무관), "관련 규정이 무관한 규정보다 멀다"
+```
+
+Run: `.venv/bin/python -m pytest tests/test_embedder.py -q -m model`
+
+Expected: 4 passed. 첫 로드에 ~30초 걸린다.
+
+**회귀 확인:** `e5.py` 의 `prefixed = [f"{kind}: {t}" for t in texts]` 를
+`prefixed = list(texts)` 로 바꾸고 `test_kind_가_모델에_실제로_닿는다` 가
+실패하는지 본다. 확인한 뒤 되돌린다.
+
 - [ ] **Step 5: 테스트가 통과하는지 확인한다**
 
 Run: `.venv/bin/python -m pytest tests/test_ingest.py tests/test_boundaries.py -v`
@@ -2511,8 +2597,9 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-      # DB·LLM 테스트는 pyproject 의 addopts 가 기본 제외한다.
-      # 컨테이너와 API 키가 없는 환경에서 스위트 전체가 실패하면 안 된다.
+      # DB·LLM·모델 테스트는 pyproject 의 addopts 가 기본 제외한다.
+      # 컨테이너도 API 키도 없고 임베딩 모델도 받아져 있지 않은 환경에서
+      # 스위트 전체가 실패하면 안 된다.
       - name: 테스트
         working-directory: backend
         run: uv run pytest -v
@@ -2522,23 +2609,29 @@ jobs:
 
 ```bash
 cd /Users/ryujun/Documents/secu-agent/backend
-uv sync --dev
-uv run ruff check . && uv run ruff format --check .
-uv run pytest -v
+.venv/bin/python -m ruff check . && .venv/bin/python -m ruff format --check .
+.venv/bin/python -m pytest -v
 ```
 
-Expected: 린트 통과, 테스트 전부 통과(DB 테스트 제외)
+Expected: 린트 통과, 테스트 전부 통과(DB·모델 테스트는 addopts 가 제외)
+
+CI 워크플로는 `uv run` 을 쓴다 — GitHub Actions 는 매번 새 환경을 만들기 때문이다.
+로컬에서는 `.venv/bin/python` 을 쓴다.
 
 - [ ] **Step 3: `README.md` 에 개발 절을 확인한다**
 
 이미 있는 `## 개발` 절 아래에 DB 테스트 실행법을 더한다:
 
 ```markdown
-DB 가 필요한 테스트는 기본 스위트에서 제외됩니다:
+DB·임베딩 모델이 필요한 테스트는 기본 스위트에서 제외됩니다:
 
 ```bash
+# DB 테스트
 docker compose up -d
 cd backend && .venv/bin/python -m pytest -m db -v
+
+# 임베딩 모델 테스트 (첫 로드에 ~30초)
+cd backend && .venv/bin/python -m pytest -m model -v
 ```
 ```
 
@@ -2568,6 +2661,7 @@ Expected: CI 성공
 - [ ] `docker compose up -d` 로 pgvector 가 뜨고 `vector` 확장이 확인된다
 - [ ] `.venv/bin/python -m pytest -q` 가 DB 없이 전부 통과한다
 - [ ] `.venv/bin/python -m pytest -m db -v` 가 컨테이너와 함께 전부 통과한다
+- [ ] `.venv/bin/python -m pytest -m model -v` 가 전부 통과한다
 - [ ] `tests/test_boundaries.py` 가 위반을 **실제로 잡는다** (일부러 어겨 확인)
 - [ ] `python -m pipeline.cli ingest ../data/raw/ismsp.pdf --title "ISMS-P 인증기준 안내서"` 가 고유 조항 **102개**를 적재한다 (2.10~2.12 포함 여부로 패턴 자릿수 결함을 잡는다)
 - [ ] `python -m pipeline.cli search "네트워크 접근 통제는 어떻게 해야 하나"` 가 **조항 코드와 함께** 결과를 낸다
