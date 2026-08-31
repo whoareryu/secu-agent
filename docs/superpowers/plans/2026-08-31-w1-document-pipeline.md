@@ -168,8 +168,10 @@ def _최상위_import(py: Path) -> list[str]:
         if isinstance(node, ast.Import):
             names += [a.name for a in node.names]
         elif isinstance(node, ast.ImportFrom):
-            # `from . import x` 는 node.module 이 None 이다 — 상대 import 는 검사 대상이 아니다
-            if node.level == 0 and node.module:
+            # `from . import x` 만 건너뛴다 — 이때만 node.module 이 None 이다.
+            # level 로 거르면 안 된다: `from ..adapters import X` 는
+            # level=2, module='adapters' 라 검사를 통째로 빠져나간다.
+            if node.module:
                 names.append(node.module)
     return [n.split(".")[0] for n in names]
 
