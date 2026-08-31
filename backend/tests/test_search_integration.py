@@ -307,3 +307,50 @@ def test_load_hits_가_준_순서를_지킨다(db):
     ids = searcher.by_vector([0.1] * EMBEDDING_DIM, 사원, k=10)
     rows = searcher.load_hits(list(reversed(ids)), 사원)
     assert [r.chunk_id for r in rows] == list(reversed(ids))
+
+
+def test_load_hits_가_권한_메타를_채운다(db):
+    conn, searcher = db
+    cid = _텍스트로_id(conn, "네트워크에 대한 비인가")
+    hit = searcher.load_hits([cid], 사원)[0]
+    assert hit.required_clearance == 1
+    assert hit.allowed_departments == ()  # NULL 은 빈 튜플로 정규화된다
+
+
+def test_SQL_필터와_파이썬_규칙이_같은_판정을_낸다(db):
+    """권한 규칙이 두 벌 존재한다 — SQL 의 _권한_WHERE 와 core 의 visible.
+
+    어긋나면 enforce 의 재검증이 무의미해진다. 실제 DB 의 모든 청크에 대해
+    두 판정을 대조한다. 픽스처에는 등급 축(임원 전용)과 부서 축(인사팀 내규)이
+    모두 들어 있다.
+    """
+    from core.access.visibility import visible
+
+    conn, searcher = db
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM chunks ORDER BY id")
+        전체 = [r[0] for r in cur.fetchall()]
+    assert len(전체) >= 5, "픽스처가 비면 이 테스트는 공허하게 통과한다"
+
+    for p in (
+        Principal("개발팀", 1),
+        Principal("인사팀", 1),
+        Principal("인사팀", 2),
+        Principal("경영지원팀", 3),
+    ):
+        # SQL 판정: load_hits 가 돌려준 것이 곧 "보인다"
+        sql_보임 = {h.chunk_id for h in searcher.load_hits(전체, p)}
+
+        # 파이썬 판정: 권한 메타를 등급 3 · 그 부서 주체로 전부 읽어와 계산한다
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT c.id, d.required_clearance, d.allowed_departments
+                FROM chunks c JOIN documents d ON d.id = c.document_id
+                """
+            )
+            파이썬_보임 = {
+                cid for cid, cl, depts in cur.fetchall() if visible(cl, tuple(depts or ()), p)
+            }
+
+        assert sql_보임 == 파이썬_보임, f"{p} 에서 SQL 과 파이썬 판정이 다르다"

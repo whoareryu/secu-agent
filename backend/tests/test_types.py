@@ -50,14 +50,28 @@ def test_조항에_속하지_않는_청크도_허용된다():
 
 def test_검색_결과는_조항_코드를_들고_다닌다():
     # 조항 코드가 없으면 리포트에서 "규정 2.6.1 위반"이라고 못 쓴다.
-    h = PolicyHit(chunk_id=1, text="본문", doc_title="ISMS-P", clause_code="2.6.1")
+    h = PolicyHit(
+        chunk_id=1,
+        text="본문",
+        doc_title="ISMS-P",
+        clause_code="2.6.1",
+        required_clearance=1,
+        allowed_departments=(),
+    )
     assert h.clause_code == "2.6.1"
     with pytest.raises(dataclasses.FrozenInstanceError):
         h.text = "x"
 
 
 def test_조항_밖_결과는_코드가_None_이다():
-    h = PolicyHit(chunk_id=1, text="목차", doc_title="ISMS-P", clause_code=None)
+    h = PolicyHit(
+        chunk_id=1,
+        text="목차",
+        doc_title="ISMS-P",
+        clause_code=None,
+        required_clearance=1,
+        allowed_departments=(),
+    )
     assert h.clause_code is None
 
 

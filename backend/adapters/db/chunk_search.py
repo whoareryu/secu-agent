@@ -163,7 +163,8 @@ class PgChunkSearch:
         with self.conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT c.id, c.text, d.title, cl.code
+                SELECT c.id, c.text, d.title, cl.code,
+                       d.required_clearance, d.allowed_departments
                 FROM chunks c
                 JOIN documents d ON d.id = c.document_id
                 LEFT JOIN clauses cl ON cl.id = c.clause_id
@@ -178,7 +179,14 @@ class PgChunkSearch:
             )
             by_id = {
                 row[0]: PolicyHit(
-                    chunk_id=row[0], text=row[1], doc_title=row[2], clause_code=row[3]
+                    chunk_id=row[0],
+                    text=row[1],
+                    doc_title=row[2],
+                    clause_code=row[3],
+                    required_clearance=row[4],
+                    # NULL(전사 공개)은 빈 튜플로 정규화한다. core 쪽 규칙은
+                    # 빈 튜플을 전사 공개로 읽으므로 여기서 맞춰준다.
+                    allowed_departments=tuple(row[5] or ()),
                 )
                 for row in cur.fetchall()
             }

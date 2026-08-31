@@ -66,10 +66,20 @@ class PolicyHit:
     """검색 결과 한 건.
 
     점수를 담지 않는다 — 리스트의 순서가 곧 순위이고, RRF 점수 자체를
-    화면에 보여줄 일이 없다. 나중에 필요해지면 그때 더한다.
+    화면에 보여줄 일이 없다.
+
+    권한 메타 두 필드를 담는 이유: core/agent/policy.py 의 enforce 가
+    도구 출력을 재검증하려면 판단 근거가 결과 안에 있어야 한다(spec 5.4).
+    없으면 enforce 는 DB 를 다시 부르거나 전부 통과시키는 수밖에 없고,
+    둘 다 재검증이 아니다.
+
+    기본값을 주지 않는다. 기본값이 있으면 새 호출자가 권한 메타를 빠뜨려도
+    조용히 "등급 1 · 전사 공개"로 만들어지고, enforce 는 그것을 통과시킨다.
     """
 
     chunk_id: int
     text: str
     doc_title: str
     clause_code: str | None
+    required_clearance: int
+    allowed_departments: tuple[str, ...]
