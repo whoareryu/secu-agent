@@ -717,7 +717,9 @@ DB 없이 테스트되어야 한다.
   - `adapters.parsing.pdf.chunk_clauses(clauses, max_chars=900, overlap=150) -> list[Chunk]`
   - `adapters.parsing.loader.load(path: Path) -> tuple[list[Clause], list[Chunk]]`
 
-**실측 근거:** ISMS-P 안내서에서 조항 코드가 `1.3.1 보호대책 구현` 형태로 줄 앞에 나온다. 41~70쪽에서 14건이 정규식으로 정확히 잡혔다.
+**실측 근거:** ISMS-P 안내서에서 조항 코드가 `1.3.1 보호대책 구현` 형태로 줄 앞에 나온다. **255쪽 전문**에서 고유 조항 코드 102개가 잡힌다 — ISMS-P 2022 공식 인증기준 수와 같다 (1.x 16 · 2.x 64 · 3.x 22).
+
+처음에는 41~70쪽만 표본으로 삼아 "14건 정확히 매치"를 근거로 썼다. 그 구간은 1.x 뿐이라 `2.10`·`2.11`·`2.12` 를 못 잡는 결함이 드러날 수 없었다. **표본은 결함이 나타날 수 있는 구간을 포함해야 한다.**
 
 - [ ] **Step 1: 실패하는 테스트를 쓴다**
 
@@ -742,12 +744,26 @@ from adapters.parsing.pdf import chunk_clauses, split_clauses
 2.6.1 네트워크 접근
 네트워크에 대한 비인가 접근을 통제하기 위하여 네트워크 접근 통제
 정책을 수립하고 이행하여야 한다.
+
+2.11.3 이상행위 분석 및 모니터링
+내외부에 의한 침해시도, 개인정보유출 시도, 부정행위 등 이상행위를
+탐지할 수 있도록 주요 정보시스템, 응용프로그램, 네트워크, 보안시스템
+등에서 발생한 네트워크 트래픽, 데이터 흐름, 이벤트 로그 등을 수집하여
+분석 및 모니터링하여야 한다.
 """
 
 
 def test_조항_코드로_분할한다():
     clauses = split_clauses(샘플)
-    assert [c.code for c in clauses] == ["1.3.1", "1.3.2", "2.6.1"]
+    assert [c.code for c in clauses] == ["1.3.1", "1.3.2", "2.6.1", "2.11.3"]
+
+
+def test_절_번호가_두_자리인_조항도_잡는다():
+    # 정규식을 \d\.\d\.\d+ 로 쓰면 2.10·2.11·2.12 가 통째로 사라진다.
+    # 실측에서 그렇게 16개를 잃었고, 그 안에 이 조항이 있었다.
+    by_code = {c.code: c for c in split_clauses(샘플)}
+    assert "2.11.3" in by_code
+    assert by_code["2.11.3"].title == "이상행위 분석 및 모니터링"
 
 
 def test_조항_제목을_뽑는다():
@@ -776,7 +792,7 @@ def test_조항이_없는_텍스트는_빈_리스트다():
 def test_청크가_조항_코드를_들고_다닌다():
     chunks = chunk_clauses(split_clauses(샘플))
     assert all(isinstance(c, Chunk) for c in chunks)
-    assert {c.clause_code for c in chunks} == {"1.3.1", "1.3.2", "2.6.1"}
+    assert {c.clause_code for c in chunks} == {"1.3.1", "1.3.2", "2.6.1", "2.11.3"}
 
 
 def test_짧은_조항은_청크_하나다():
