@@ -41,6 +41,13 @@ def main() -> int:
     sch.add_argument("-k", type=int, default=5)
     sch.add_argument("--dsn", default=None)
 
+    sub.add_parser("seed-principals", help="시연 계정을 넣는다")
+
+    dem = sub.add_parser("demo", help="같은 질의를 세 계정으로 던진다")
+    dem.add_argument("query")
+    dem.add_argument("-k", type=int, default=5)
+    dem.add_argument("--dsn", default=None)
+
     args = ap.parse_args()
 
     if args.cmd == "ingest":
@@ -117,6 +124,59 @@ def main() -> int:
             표시 = f"[{hit.clause_code}]" if hit.clause_code else "[조항 밖]"
             print(f"  {i}. {표시} {hit.doc_title}")
             print(f"     {hit.text[:100].strip()}…\n")
+        conn.close()
+
+    if args.cmd == "seed-principals":
+        import json
+
+        경로 = Path(__file__).resolve().parents[2] / "data" / "principals.json"
+        계정들 = json.loads(경로.read_text(encoding="utf-8"))
+
+        conn = connect(None)
+        apply_schema(conn)
+        with conn.cursor() as cur:
+            for p in 계정들:
+                cur.execute(
+                    """
+                    INSERT INTO principals (name, department, clearance)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET
+                        department = EXCLUDED.department,
+                        clearance = EXCLUDED.clearance
+                    """,
+                    (p["name"], p["department"], p["clearance"]),
+                )
+        conn.commit()
+        for p in 계정들:
+            print(f"  {p['name']} · {p['department']} · 등급 {p['clearance']}")
+        conn.close()
+
+    if args.cmd == "demo":
+        from adapters.db.chunk_search import PgChunkSearch
+        from core.retrieve.hybrid import search as hybrid_search
+        from core.types import Principal
+
+        conn = connect(args.dsn)
+        searcher = PgChunkSearch(conn)
+        embedder = E5Embedder()  # 세 계정이 모델을 공유한다
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT name, department, clearance FROM principals ORDER BY clearance")
+            계정들 = cur.fetchall()
+        if not 계정들:
+            print("시연 계정이 없다. 먼저: python -m pipeline.cli seed-principals", file=sys.stderr)
+            return 1
+
+        print(f'질의: "{args.query}"\n')
+        for 이름, 부서, 등급 in 계정들:
+            principal = Principal(department=부서, clearance=등급)
+            ids = hybrid_search(args.query, principal, embedder, searcher, k=args.k)
+            rows = searcher.load_hits(ids, principal)
+            print(f"── {이름} ({부서} · 등급 {등급}) — {len(rows)}건")
+            for i, hit in enumerate(rows, start=1):
+                표시 = f"[{hit.clause_code}]" if hit.clause_code else "[조항 밖]"
+                print(f"   {i}. {표시} {hit.doc_title}")
+            print()
         conn.close()
 
     return 0

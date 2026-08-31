@@ -203,3 +203,21 @@ def test_같은_문서를_두_번_적재해도_청크가_늘지_않는다(store)
     적재()
     적재()
     assert store.count_all_chunks() == 1
+
+
+def test_같은_이름의_계정을_두_번_넣으면_갱신된다(store):
+    """시연 계정 시드를 여러 번 돌려도 행이 늘면 안 된다.
+
+    principals.name 에 UNIQUE 가 걸려 있어 ON CONFLICT 가 동작해야 한다.
+    """
+    with store.conn.cursor() as cur:
+        for 등급 in (1, 3):
+            cur.execute(
+                "INSERT INTO principals (name, department, clearance) VALUES (%s, %s, %s) "
+                "ON CONFLICT (name) DO UPDATE SET clearance = EXCLUDED.clearance",
+                ("김개발", "개발팀", 등급),
+            )
+        cur.execute("SELECT count(*), max(clearance) FROM principals WHERE name = '김개발'")
+        개수, 등급 = cur.fetchone()
+    store.conn.commit()
+    assert (개수, 등급) == (1, 3)

@@ -1,0 +1,5 @@
+[
+  {"name": "김개발", "department": "개발팀",     "clearance": 1},
+  {"name": "박인사", "department": "인사팀",     "clearance": 2},
+  {"name": "최임원", "department": "경영지원팀", "clearance": 3}
+]
