@@ -2119,9 +2119,18 @@ from core.types import PolicyHit, Principal
 Vector = list[float]
 
 # 권한 필터. 두 검색 메서드가 같은 조건을 쓴다 — 한쪽만 적용하면 그쪽으로 누출된다.
+# 전사 공개는 두 가지로 저장될 수 있다: NULL 과 빈 배열.
+# core.types.Document 는 allowed_departments=() 를 전사 공개로 정의한다
+# (tests/test_types.py::test_문서의_허용부서가_비면_전사_공개다).
+# 어댑터는 () 를 NULL 로 정규화해 넣지만, 읽는 쪽도 빈 배열을 공개로 인정한다.
+# 실측: 빈 배열을 안 받아주면 그 문서는 자기 부서에도 안 보인다 — 조용히 사라진다.
 _권한_WHERE = """
     d.required_clearance <= %(clearance)s
-    AND (d.allowed_departments IS NULL OR %(dept)s = ANY(d.allowed_departments))
+    AND (
+        d.allowed_departments IS NULL
+        OR cardinality(d.allowed_departments) = 0
+        OR %(dept)s = ANY(d.allowed_departments)
+    )
 """
 
 
