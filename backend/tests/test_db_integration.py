@@ -7,6 +7,7 @@
 
 import os
 
+import psycopg
 import pytest
 
 from adapters.db.connection import apply_schema, connect
@@ -132,3 +133,36 @@ def test_문서를_지우면_조항과_청크도_지워진다(store):
         cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
     store.conn.commit()
     assert store.count_chunks() == 0
+
+
+def test_삽입_실패_후_커넥션이_다음_작업에_쓸_수_있다(store):
+    # insert_chunks 가 차원이 다른 벡터로 실패하면 psycopg.errors.DataException 이 난다.
+    # 롤백이 없으면 커넥션이 aborted 상태로 남아 다음 문서의 upsert_document 까지
+    # InFailedSqlTransaction 으로 죽는다 — 배치 적재에서 원인이 아닌 문서까지 실패한다.
+    doc_id = store.upsert_document(_문서())
+    with pytest.raises(psycopg.errors.DataException):
+        store.insert_chunks(
+            doc_id, {}, [Chunk(clause_code=None, ordinal=0, text="깨진 벡터")], [[0.1, 0.2, 0.3]]
+        )
+
+    # 롤백이 됐다면 커넥션은 멀쩡하고, 다음 문서는 정상적으로 저장돼야 한다.
+    다음_id = store.upsert_document(_문서(path="data/raw/b.pdf"))
+    assert 다음_id > 0
+
+
+def test_재분류하면_기존_행이_새_등급으로_갱신된다(store):
+    # DO UPDATE 가 DO NOTHING 으로 퇴행하면, 기밀로 재분류된 문서가 옛
+    # 허용 등급을 그대로 유지하게 된다 — 이 시스템이 막으려는 바로 그 실패다.
+    첫_id = store.upsert_document(_문서(clearance=1, depts=()))
+    둘째_id = store.upsert_document(_문서(clearance=3, depts=("보안팀",)))
+    assert 첫_id == 둘째_id
+
+    with store.conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM documents")
+        assert cur.fetchone()[0] == 1
+
+        cur.execute(
+            "SELECT required_clearance, allowed_departments FROM documents WHERE id = %s",
+            (첫_id,),
+        )
+        assert cur.fetchone() == (3, ["보안팀"])
