@@ -51,7 +51,7 @@ def test_관련_문장이_무관한_문장보다_가깝다(embedder):
         ],
         kind="passage",
     )
-    def 쪽(a, b):
+    def 내적(a, b):
         return sum(x * y for x, y in zip(a, b, strict=True))
 
-    assert 쪽(q, 관련) > 쪽(q, 무관), "관련 규정이 무관한 규정보다 멀다"
+    assert 내적(q, 관련) > 내적(q, 무관), "관련 규정이 무관한 규정보다 멀다"
