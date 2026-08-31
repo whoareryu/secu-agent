@@ -1,0 +1,55 @@
+# Secu-Agent — 프로젝트 문서 사이트
+#
+# 소스는 저장소 루트가 아니라 이 `jekyll/` 하위에 격리돼 있다 — data/·models/
+# 같은 대용량 디렉토리가 생겨도 지킬 스캔 범위 밖이다.
+
+title: Secu-Agent
+email: fbwns1234@gmail.com
+description: >-
+  기업 사내보안 규정 및 감사 로그 분석 AI 에이전트.
+  권한별 접근 제어가 적용된 하이브리드 RAG 와, AI 가 생성한 코드를
+  신뢰할 수 있게 만드는 검증 체계.
+
+# ⚠ baseurl 은 여기서 비워 둔다 — 로컬 `jekyll serve` 기준이다.
+# 배포는 프로젝트 페이지(whoareryu.github.io/secu-agent/)라 `/secu-agent` 가
+# 한 겹 붙는데, 배포 워크플로가 `--baseurl` 로 덮어쓴다.
+#
+# 그래서 사이트 안의 모든 내부 링크는 반드시 relative_url 필터를 통과시킨다.
+#   O  [아키텍처]({{ '/docs/03/' | relative_url }})
+#   X  [아키텍처](/docs/03/)
+baseurl: ""
+url: "https://whoareryu.github.io"
+github_username: whoareryu
+
+theme: minima
+plugins:
+  - jekyll-feed
+
+header_pages:
+  - toc.markdown
+  - verification.markdown
+
+collections:
+  # 칸반 티켓 — 항목 1건 = 파일 1개.
+  backlogs:
+    output: true
+    permalink: /backlog/:name/
+  # 개별 페이지는 만들지 않는다(output: false). 렌더링은 /progress/ 가 담당한다.
+  logs:
+    output: false
+
+defaults:
+  - scope:
+      path: ""
+      type: backlogs
+    values:
+      layout: doc
+
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/

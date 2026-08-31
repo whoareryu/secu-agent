@@ -1,0 +1,58 @@
+name: Deploy Jekyll site to Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'jekyll/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 배포는 한 번에 하나만. 진행 중인 배포를 취소하지는 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: jekyll
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      # baseurl 을 여기서 덮어쓴다.
+      # _config.yml 의 baseurl 은 빈 값(로컬 `jekyll serve` 기준)이고,
+      # 배포는 프로젝트 페이지라 `/secu-agent` 가 한 겹 붙는다.
+      # 사이트 안의 링크는 전부 `relative_url` 필터를 통과하므로 양쪽에서 동작한다.
+      - name: Build with Jekyll
+        working-directory: jekyll
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: jekyll/_site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

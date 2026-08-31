@@ -1,0 +1,8 @@
+# 개발 도구. CI 와 로컬 테스트에 필요하다.
+#
+#   pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+
+pytest>=8.0
+ruff>=0.6

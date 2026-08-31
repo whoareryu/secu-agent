@@ -1,0 +1,40 @@
+# Jekyll
+jekyll/_site/
+jekyll/.jekyll-cache/
+jekyll/.jekyll-metadata
+jekyll/vendor/
+.bundle/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+
+# 환경 변수 · 자격증명
+.env
+.env.*
+!.env.example
+
+# 데이터 · 모델 (대용량)
+data/raw/
+data/processed/
+models/
+
+# OS
+.DS_Store
+
+# Flutter
+flutter/build/
+flutter/.dart_tool/
+flutter/.flutter-plugins*
+
+# Next.js (frontend/)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
