@@ -2308,8 +2308,18 @@ class PgChunkSearch:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def load_hits(self, ids: Sequence[int]) -> list[PolicyHit]:
+    def load_hits(self, ids: Sequence[int], principal: Principal) -> list[PolicyHit]:
         """chunk id → PolicyHit. 결과 표시에 쓴다.
+
+        **`principal` 이 필수인 이유:** 이 메서드는 청크 **본문**을 돌려준다.
+        권한 검사를 검색 쪽에만 두면, id 를 아는 호출자는 이 경로로 본문을
+        그대로 가져갈 수 있다. 존재 누출보다 나쁜 내용 누출이다.
+        지금은 호출자가 하나뿐이고 그 호출자가 이미 걸러진 id 만 주지만,
+        W3 의 에이전트와 API 가 다른 데서 온 id 를 넘길 새 호출자다.
+        spec 5.3 이 "나중에 끼워 넣으면 빠뜨린 경로가 생긴다"고 한 그대로다.
+
+        권한 밖 id 는 **조용히 빠진다.** 예외를 던지면 안 된다 —
+        "그 id 는 접근 불가" 라는 응답 자체가 존재 확인이 된다.
 
         순서는 호출자가 준 id 순서를 따른다 — SQL 의 반환 순서에 기대면
         융합 결과의 순위가 뒤집힌다.
@@ -2318,17 +2328,24 @@ class PgChunkSearch:
             return []
         with self.conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT c.id, c.text, d.title, cl.code
                 FROM chunks c
                 JOIN documents d ON d.id = c.document_id
                 LEFT JOIN clauses cl ON cl.id = c.clause_id
-                WHERE c.id = ANY(%s)
+                WHERE c.id = ANY(%(ids)s)
+                  AND {_권한_WHERE}
                 """,
-                (list(ids),),
+                {
+                    "ids": list(ids),
+                    "clearance": principal.clearance,
+                    "dept": principal.department,
+                },
             )
             by_id = {
-                row[0]: PolicyHit(chunk_id=row[0], text=row[1], doc_title=row[2], clause_code=row[3])
+                row[0]: PolicyHit(
+                    chunk_id=row[0], text=row[1], doc_title=row[2], clause_code=row[3]
+                )
                 for row in cur.fetchall()
             }
         return [by_id[i] for i in ids if i in by_id]
@@ -2464,16 +2481,49 @@ def test_하이브리드_검색이_두_경로를_모두_쓴다(db):
 def test_조항_코드까지_불러온다(db):
     _, searcher = db
     hits = search("네트워크", 사원, 고정임베더(), searcher, k=10)
-    rows = searcher.load_hits(hits)
+    rows = searcher.load_hits(hits, 사원)
     assert all(isinstance(r, PolicyHit) for r in rows)
     assert {r.clause_code for r in rows} == {"2.6.1", "2.5.1"}
+
+
+def test_load_hits_는_권한_밖_청크의_본문을_주지_않는다(db):
+    """검색을 막아도 여기가 뚫리면 소용없다.
+
+    load_hits 는 청크 **본문**을 돌려준다. 권한 검사를 검색 쪽에만 두면
+    id 를 아는 호출자가 이 경로로 본문을 그대로 가져간다. 존재 누출보다
+    나쁜 내용 누출이다.
+
+    권한 밖 id 는 조용히 빠져야 한다. 예외를 던지면 "그 id 는 접근 불가"
+    라는 응답 자체가 존재 확인이 된다.
+    """
+    conn, searcher = db
+    store = PgDocumentStore(conn)
+    기밀 = store.upsert_document(Document(
+        id=0, title="3급 기밀", source_path="secret.pdf", doc_type="pdf",
+        required_clearance=3, allowed_departments=(),
+    ))
+    store.insert_chunks(
+        기밀, {},
+        [Chunk(clause_code=None, ordinal=0, text="대외비: 마스터 키")],
+        [[0.5] * EMBEDDING_DIM],
+    )
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM chunks")
+        전체 = [r[0] for r in cur.fetchall()]
+
+    받은 = searcher.load_hits(전체, 사원)
+
+    assert all("대외비" not in r.text for r in 받은), (
+        "등급 1 사원이 3급 기밀 청크의 본문을 받았다. load_hits 에 권한 필터가 없다."
+    )
+    assert len(받은) < len(전체), "권한 밖 청크가 걸러지지 않았다"
 
 
 def test_load_hits_가_준_순서를_지킨다(db):
     # SQL 반환 순서에 기대면 융합 결과의 순위가 뒤집힌다.
     _, searcher = db
     ids = searcher.by_vector([0.1] * EMBEDDING_DIM, 사원, k=10)
-    rows = searcher.load_hits(list(reversed(ids)))
+    rows = searcher.load_hits(list(reversed(ids)), 사원)
     assert [r.chunk_id for r in rows] == list(reversed(ids))
 ```
 
@@ -2509,7 +2559,7 @@ Expected: PASS — 앞선 10개 + 이번 7개 = 17개
         principal = Principal(department=args.department, clearance=args.clearance)
 
         ids = hybrid_search(args.query, principal, E5Embedder(), searcher, k=args.k)
-        rows = searcher.load_hits(ids)
+        rows = searcher.load_hits(ids, principal)
 
         print(f"질의: {args.query}")
         print(f"주체: {principal.department} · 등급 {principal.clearance}")
