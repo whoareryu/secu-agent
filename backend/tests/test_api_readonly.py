@@ -1,6 +1,6 @@
 """읽기 엔드포인트 — 문서 · 계정 · 열람 이력. DB 도 LLM 도 없이 스텁으로 검사한다."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -170,7 +170,7 @@ def test_access_log가_ts를_돌려준다(monkeypatch):
     def 에이전트_공장():
         raise AssertionError("이 테스트는 /ask 를 부르지 않는다")
 
-    시각 = datetime(2026, 9, 1, 3, 0, 0, tzinfo=timezone.utc)
+    시각 = datetime(2026, 9, 1, 3, 0, 0, tzinfo=UTC)
     기록들 = [_기록(chunk_id=1, ts=시각)]
     client = TestClient(
         build_app(
