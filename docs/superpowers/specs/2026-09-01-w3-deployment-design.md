@@ -37,14 +37,14 @@ Cloudflare Container — FastAPI + e5 + LangGraph 에이전트 (Dockerfile)
    │ psycopg (TCP)
 Neon — PostgreSQL 16 + pgvector   (스키마는 W1 것 그대로)
    │
-Gemini API — gemini-3.7-flash
+Gemini (Agent Platform) — gemini-3.7-flash · 서비스 계정 자격증명
 ```
 
 **Container 를 쓰는 이유.** 백엔드 이미지는 torch 와 임베딩 모델을 포함해 약 3GB 다. Workers 런타임은 이것을 돌릴 수 없다. Cloudflare Containers 는 Dockerfile 이면 무엇이든 받고 이미지 상한이 20GB 라 여유가 크다(실측 확인). Container 는 정상 리눅스 샌드박스이므로 `psycopg` 가 외부 Postgres 에 그대로 붙는다 — Hyperdrive 는 Workers 용 가속기라 여기서는 쓰지 않는다.
 
 **Postgres 가 외부인 이유.** Cloudflare 에는 1st-party Postgres 가 없다. 프로젝트의 핵심 논증이 SQL 사전 필터링(`WHERE` 가 `ORDER BY` 보다 먼저)이므로 pgvector 를 포기할 수 없고, 따라서 관리형 Postgres 를 외부에서 가져온다.
 
-**비용.** Workers Paid $5/월(Containers 전제) · Neon 무료 티어 · Vercel Hobby 무료 · Gemini 종량.
+**비용.** Workers Paid $5/월(Containers 전제) · Neon 무료 티어 · Vercel Hobby 무료 · Gemini 는 AI Studio 종량이 아니라 Google Cloud 무료 체험판 크레딧으로 커버되는 Agent Platform(Vertex) 경로.
 
 ### 2.1 감수하는 것: cold start
 
@@ -200,6 +200,8 @@ W2 의 최종 리뷰가 정확히 이 지점을 지적했다 — **`principal` �
 **Cloudflare Containers 실측 확인:** 이미지 상한 20GB, 인스턴스 최대 4 vCPU · 12 GiB, Dockerfile 이면 언어 무관, Workers Paid $5/월 필요.
 
 **Cloudflare Access 를 쓰지 않는 이유:** Access 는 `Cf-Access-Jwt-Assertion` 헤더로 JWT 를 넘기고 오리진이 서명을 검증해야 한다(헤더 존재만 확인하면 위조된다). 그러나 다른 도메인의 브라우저 앱이 Access 로 보호된 API 를 호출하려면 `CF_Authorization` 쿠키가 필요하고, 그 쿠키는 Cloudflare 도메인에 산다. BFF 가 이 문제를 통째로 없앤다.
+
+**Vertex(Agent Platform) 경로 실측:** `ChatGoogleGenerativeAI(vertexai=True, project=..., location="global")` 에 서비스 계정 ADC 를 주면 동작한다. `api_key` 인자로는 안 된다 — Express 키를 이 경로가 받지 않고 ADC 를 찾다가 실패한다. `ChatVertexAI` 는 deprecated 라 쓰지 않는다. 실제 호출에서 `content` 가 **리스트**로 왔고(그래서 `.text` 가 필요하다), 진짜 모델이 도구를 스스로 불렀다.
 
 ---
 

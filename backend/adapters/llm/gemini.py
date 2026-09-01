@@ -1,12 +1,15 @@
 """Gemini 모델 구성. 모델 ID 가 이 파일에만 있다.
 
-프로바이더를 바꾸는 변경이 이 파일 하나로 끝나는 것이 adapters 격리의
-목적이다 — adapters/agent/runner.py 는 BaseChatModel 만 알고, core/ 는
-LLM 이 있다는 사실조차 모른다.
+**Vertex(Agent Platform) 백엔드를 쓴다.** AI Studio 의 Gemini API 경로가 아니다.
+이유는 요금이다 — Google Cloud 무료 체험판 크레딧이 AI Studio Gemini API 는
+커버하지 않고 Agent Platform 은 커버한다.
 
-환경변수가 GOOGLE_API_KEY 인 이유: langchain-google-genai 는 GOOGLE_API_KEY 와
-GEMINI_API_KEY 를 모두 읽지만 GOOGLE_API_KEY 를 권장하고, 둘 다 설정되면
-그것을 쓰면서 경고를 낸다. 하나만 쓴다.
+자격증명은 ADC(Application Default Credentials)로 받는다. 이 경로는 API 키를
+받지 않는다 — 실측: api_key 인자를 주면 무시하고 ADC 를 찾다가 실패한다.
+서비스 계정 JSON 의 경로를 GOOGLE_APPLICATION_CREDENTIALS 로 준다.
+
+thinking 을 지정하지 않는다 — 모델이 알아서 한다. 검증할 수 없는 인자를
+넣지 않는다.
 """
 
 import os
@@ -18,11 +21,26 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 MODEL_ID = "gemini-3.7-flash"
 MAX_OUTPUT_TOKENS = 4096
 
+# 실측으로 동작을 확인한 리전. 바꾸려면 실제로 호출해보고 바꾼다.
+DEFAULT_LOCATION = "global"
 
-def build_model(api_key: str | None = None) -> ChatGoogleGenerativeAI:
-    key = api_key or os.environ.get("GOOGLE_API_KEY")
-    if not key:
+
+def build_model(project: str | None = None, location: str | None = None) -> ChatGoogleGenerativeAI:
+    """Vertex 백엔드로 모델을 만든다.
+
+    자격증명은 인자로 받지 않는다. GOOGLE_APPLICATION_CREDENTIALS 가 가리키는
+    서비스 계정 JSON 을 라이브러리가 읽는다 — 자격증명을 파이썬 인자로 나르면
+    로그와 예외 메시지에 섞여 나갈 경로가 생긴다.
+    """
+    proj = project or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if not proj:
         raise RuntimeError(
-            "GOOGLE_API_KEY 가 없다. 환경변수로 주거나 build_model(api_key=...) 로 넘긴다."
+            "GOOGLE_CLOUD_PROJECT 가 없다. 환경변수로 주거나 build_model(project=...) 로 넘긴다."
         )
-    return ChatGoogleGenerativeAI(model=MODEL_ID, max_output_tokens=MAX_OUTPUT_TOKENS, api_key=key)
+    return ChatGoogleGenerativeAI(
+        model=MODEL_ID,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        project=proj,
+        location=location or os.environ.get("GOOGLE_CLOUD_LOCATION", DEFAULT_LOCATION),
+        vertexai=True,
+    )

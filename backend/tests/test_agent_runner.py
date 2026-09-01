@@ -211,17 +211,20 @@ def test_도구를_끝없이_시도해도_종료된다():
 
 @pytest.mark.llm
 def test_실제_모델이_도구를_부르고_한국어로_답한다():
-    """실제 Gemini 호출. GOOGLE_API_KEY 가 필요하다.
+    """실제 Gemini 호출. GOOGLE_APPLICATION_CREDENTIALS 와 GOOGLE_CLOUD_PROJECT 가 필요하다.
 
         .venv/bin/python -m pytest -m llm -v
 
     대본 모델로는 확인할 수 없는 것을 본다 — 진짜 모델이 이 도구 설명과
     시스템 프롬프트를 보고 실제로 도구를 부르는가.
+    Vertex(Agent Platform) 경로다. 서비스 계정 자격증명이 필요하다.
     """
     import os
 
-    if not os.environ.get("GOOGLE_API_KEY"):
-        pytest.skip("GOOGLE_API_KEY 가 없다")
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        pytest.skip("GOOGLE_APPLICATION_CREDENTIALS 가 없다")
+    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        pytest.skip("GOOGLE_CLOUD_PROJECT 가 없다")
 
     from adapters.llm.gemini import build_model
 

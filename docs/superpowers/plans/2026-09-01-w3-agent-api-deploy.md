@@ -2101,7 +2101,8 @@ Task 7·8 이 이 값들을 쓴다.
 | 이름 | 어디서 | 어디에 쓰나 |
 |---|---|---|
 | `SECUAGENT_DSN` | Neon | Cloudflare 시크릿 |
-| `GOOGLE_API_KEY` | aistudio.google.com | Cloudflare 시크릿 |
+| `GOOGLE_CLOUD_PROJECT` | Cloud Console | Cloudflare 시크릿 |
+| `GCP_SA_JSON` | 서비스 계정 JSON 파일 **내용 전체** | Cloudflare 시크릿 |
 | `BACKEND_SHARED_SECRET` | `openssl rand -base64 32` 로 새로 만든다 | Cloudflare 시크릿 + Vercel 환경변수 (**같은 값**) |
 | `AUTH_SECRET` | `openssl rand -base64 32` | Vercel 환경변수 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | 기존 OAuth 클라이언트 | Vercel 환경변수 |
@@ -2214,7 +2215,8 @@ interface Env {
 cd /Users/ryujun/Documents/secu-agent/infra
 npx wrangler login
 npx wrangler secret put SECUAGENT_DSN
-npx wrangler secret put GOOGLE_API_KEY
+npx wrangler secret put GOOGLE_CLOUD_PROJECT
+npx wrangler secret put GCP_SA_JSON   # JSON 파일 내용을 통째로 붙여넣는다
 npx wrangler secret put BACKEND_SHARED_SECRET
 ```
 
@@ -2237,6 +2239,8 @@ npx wrangler deploy
 | 컨테이너가 OOM 으로 죽는다 | `standard` 인스턴스가 모델에 모자람 | `instance_type` 을 더 큰 것으로 올린다. 상한은 4 vCPU · 12 GiB |
 | Workers Paid 필요 오류 | Task 6 Step 4 미완 | 요금제를 켠다 |
 | 이미지 푸시가 느림/실패 | 이미지가 큼 | Task 4 Step 3 에서 잰 크기를 확인한다. CPU 전용 torch 를 썼는지 본다 |
+
+**서비스 계정 자격증명을 컨테이너에 넣는 법.** `wrangler secret` 은 문자열만 받고 파일을 못 넣는다. JSON 내용 전체를 `GCP_SA_JSON` 시크릿으로 넣은 뒤, 컨테이너가 시작할 때 그것을 파일로 써서 `GOOGLE_APPLICATION_CREDENTIALS` 가 가리키게 한다. Dockerfile 의 `CMD` 를 작은 엔트리포인트 스크립트로 바꿔 그 일을 시킨다 — 로컬 compose 는 파일을 직접 마운트하므로 스크립트가 `GCP_SA_JSON` 이 없으면 아무것도 하지 않고 넘어가야 한다.
 
 - [ ] **Step 6: 스모크 테스트한다**
 
