@@ -7,6 +7,7 @@ export type AskResult = {
   persona: { name: string; department: string; clearance: number };
   tool_calls: number;
   remaining: number | null;
+  log_scope?: string | null;
 };
 
 type FoldedHit = Hit & { chunkCount: number };
@@ -64,6 +65,18 @@ export default function Answer({ result, elapsedMs }: { result: AskResult; elaps
         <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.72, textWrap: "pretty", whiteSpace: "pre-wrap" }}>
           {result.answer}
         </p>
+        {result.log_scope && (
+          <p style={{
+            margin: "10px 0 0",
+            fontSize: 12.5,
+            lineHeight: 1.6,
+            color: "var(--color-neutral-700)",
+            borderLeft: "2px solid var(--color-accent-400)",
+            paddingLeft: 10,
+          }}>
+            {result.log_scope}
+          </p>
+        )}
       </Blueprint>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>

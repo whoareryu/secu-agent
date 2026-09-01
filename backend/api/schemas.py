@@ -33,6 +33,9 @@ class AskResponse(BaseModel):
     hits: list[PolicyHitView]
     persona: PersonaView
     tool_calls: int
+    # query_logs 가 불렸을 때만 채운다. 모델의 문장이 아니라 서버가 싣는다 —
+    # 모델은 고지를 잊는다(보충 spec 2.4).
+    log_scope: str | None = None
 
 
 class DocumentView(BaseModel):

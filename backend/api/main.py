@@ -19,6 +19,7 @@ from api.schemas import (
     PrincipalView,
 )
 from api.security import 시크릿_검사
+from core.agent.policy import 로그_범위_고지
 from core.ports import AccessLog, DocumentCatalog, PrincipalStore
 from core.types import AccessRecord
 
@@ -110,6 +111,8 @@ def build_app(
             except Exception:
                 pass
 
+        log_scope = 로그_범위_고지 if ctx.queried_logs else None
+
         return AskResponse(
             # .content 가 아니라 .text 다. Gemini 는 agentic 호출에서 리스트 모양
             # content(thinking + text 파트)를 내고, 그것이 str 로 선언된 필드에
@@ -133,6 +136,7 @@ def build_app(
             # ToolMessage 개수를 세면 상한에 막힌 호출도 잡혀 실제보다 많이
             # 보고된다. ctx.tool_calls 는 도구 본문이 실제로 실행됐을 때만 는다.
             tool_calls=ctx.tool_calls,
+            log_scope=log_scope,
         )
 
     @app.get("/documents", dependencies=[Depends(시크릿_검사)])

@@ -1,16 +1,20 @@
 """API — DB 도 LLM 도 없이 검사한다."""
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
 from adapters.agent.runner import build_agent
 from api.main import build_app
+from core.agent.policy import 로그_범위_고지
 from core.types import EMBEDDING_DIM, PolicyHit, Principal
 from tests.fake_chat import 대본모델
 
 시크릿 = "test-secret-abc123"
 헤더 = {"X-Backend-Secret": 시크릿}
+_시크릿 = 헤더
 
 
 class 고정임베더:
@@ -334,3 +338,89 @@ def test_권한_위반은_502_이고_차단_기록을_남긴다(monkeypatch):
     assert 행.clause_code is None
     assert (행.persona, 행.department, 행.clearance) == ("박인사", "인사팀", 2)
     assert 행.query == "임원 보상"
+
+
+def _클라이언트(에이전트):
+    os.environ["BACKEND_SHARED_SECRET"] = 시크릿
+    저장소 = 스텁주체저장소(
+        {
+            "김개발": Principal("개발팀", 1),
+            "박인사": Principal("인사팀", 2),
+            "최임원": Principal("임원실", 3),
+        }
+    )
+    return TestClient(build_app(lambda: 에이전트, 저장소))
+
+
+class _규정만_에이전트:
+    """query_logs 를 부르지 않는다 — ctx.queried_logs 가 False 로 남는다."""
+
+    def invoke(self, state, context=None):
+        return {"messages": [AIMessage(content="비밀번호는 12자 이상이어야 한다.")]}
+
+
+def _규정만_부르는_에이전트():
+    return _규정만_에이전트()
+
+
+class _로그_에이전트:
+    """query_logs 를 부른 것처럼 ctx.queried_logs 를 세운다."""
+
+    def invoke(self, state, context=None):
+        context.queried_logs = True
+        context.tool_calls += 1
+        return {"messages": [AIMessage(content="어젯밤 인증 실패가 있었다.")]}
+
+
+def _로그를_부르는_에이전트():
+    return _로그_에이전트()
+
+
+class _로그_침묵_에이전트:
+    """query_logs 는 불렀지만 모델이 아무 문장도 내지 않는다."""
+
+    def invoke(self, state, context=None):
+        context.queried_logs = True
+        context.tool_calls += 1
+        return {"messages": [AIMessage(content="")]}
+
+
+def _로그를_부르지만_침묵하는_에이전트():
+    return _로그_침묵_에이전트()
+
+
+def test_로그를_조회하지_않으면_고지가_없다():
+    """규정만 물은 답에 로그 고지가 붙으면 그것도 지어낸 값이다."""
+    client = _클라이언트(에이전트=_규정만_부르는_에이전트())
+    r = client.post("/ask", json={"query": "비밀번호 규정", "persona": "김개발"},
+                    headers=_시크릿)
+    assert r.json()["log_scope"] is None
+
+
+def test_로그를_조회하면_고지가_붙는다():
+    client = _클라이언트(에이전트=_로그를_부르는_에이전트())
+    r = client.post("/ask", json={"query": "어젯밤 인증 실패", "persona": "김개발"},
+                    headers=_시크릿)
+    assert r.json()["log_scope"] == 로그_범위_고지
+
+
+def test_고지_문구가_등급과_무관하게_동일하다():
+    """**이 테스트가 고지를 통로로 만드는 변경을 잡는다.**
+
+    문구가 등급에 따라 갈리는 순간 그 차이가 관측 가능한 신호가 된다.
+    조건 없이 같은 문자열이어야 안전하다(보충 spec 2.3).
+    """
+    client = _클라이언트(에이전트=_로그를_부르는_에이전트())
+    문구 = set()
+    for 페르소나 in ("김개발", "박인사", "최임원"):
+        r = client.post("/ask", json={"query": "어젯밤 인증 실패", "persona": 페르소나},
+                        headers=_시크릿)
+        문구.add(r.json()["log_scope"])
+    assert len(문구) == 1, f"등급에 따라 고지가 갈린다: {문구}"
+
+
+def test_고지가_모델_출력에서_오지_않는다():
+    """모델이 아무 말도 안 해도 고지는 붙는다 — 모델은 잊는다."""
+    client = _클라이언트(에이전트=_로그를_부르지만_침묵하는_에이전트())
+    r = client.post("/ask", json={"query": "로그", "persona": "김개발"}, headers=_시크릿)
+    assert r.json()["log_scope"] == 로그_범위_고지
