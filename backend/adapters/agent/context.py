@@ -22,3 +22,6 @@ class AgentContext:
     # 잡힌다 — 차단된 호출도 ToolMessage 를 만들기 때문이다. 이건 도구 본문이
     # 실행될 때만 늘어난다.
     tool_calls: int = 0
+    # query_logs 가 불렸는가. API 가 범위 고지를 붙일지 정하는 데 쓴다.
+    # 모델이 고지를 문장에 넣어주기를 바라지 않는다 — 모델은 잊는다.
+    queried_logs: bool = False

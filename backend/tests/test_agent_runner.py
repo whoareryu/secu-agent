@@ -42,6 +42,26 @@ class 스텁검색기:
         return [by_id[i] for i in ids if i in by_id]
 
 
+def _임베더():
+    return 고정임베더()
+
+
+def _검색기():
+    return 스텁검색기([_hit()])
+
+
+class _스텁로그검색기:
+    def __init__(self, events=None):
+        self.events = events if events is not None else []
+
+    def query(self, principal, event_type, since, limit):
+        return self.events
+
+
+def _로그검색기():
+    return _스텁로그검색기()
+
+
 def _hit(chunk_id=1, code="2.6.1"):
     return PolicyHit(
         chunk_id=chunk_id,
@@ -77,7 +97,7 @@ def test_principal_이_도구_스키마에_없다():
     던진다 — ToolRuntime 이 callable 필드를 갖기 때문이다(실측).
     """
     도구들 = build_tools(고정임베더(), 스텁검색기([_hit()]))
-    assert len(도구들) == 1
+    assert len(도구들) == 2, "search_policy 와 query_logs 두 개다"
 
     스키마 = 도구들[0].tool_call_schema.model_json_schema()
     필드 = set(스키마["properties"])
@@ -95,6 +115,14 @@ def test_스키마에_query_는_있다():
     스키마 = 도구들[0].tool_call_schema.model_json_schema()
     assert "query" in 스키마["properties"]
     assert "query" in 스키마["required"]
+
+
+def test_query_logs_도구_스키마에_principal_이_없다():
+    """search_policy 와 같은 검사다. 모델이 그 인자의 존재를 몰라야 한다."""
+    도구 = {t.name: t for t in build_tools(_임베더(), _검색기(), _로그검색기())}
+    스키마 = 도구["query_logs"].tool_call_schema.model_json_schema()
+    보이는 = set(스키마["properties"])
+    assert 보이는 == {"event_type", "since", "limit"}, f"모델에게 보이는 인자: {보이는}"
 
 
 # ────────────────────── 컨텍스트 주입 ──────────────────────

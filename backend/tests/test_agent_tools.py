@@ -5,14 +5,36 @@
 안에 있으면 단위 테스트할 방법이 없다. 그래서 로직은 core 에 있다.
 """
 
+from datetime import datetime
+
 import pytest
 
 from core.agent.policy import AccessViolation
 from core.agent.tools import search_policy
 from core.retrieve.hybrid import CANDIDATE_MULTIPLIER
-from core.types import EMBEDDING_DIM, PolicyHit, Principal
+from core.types import EMBEDDING_DIM, LogEvent, PolicyHit, Principal
 
 사원 = Principal(department="개발팀", clearance=1)
+
+
+def _주체():
+    return 사원
+
+
+def _이벤트(id=1, required_clearance=1, allowed_departments=(), raw="", host="host-01"):
+    """LogEvent 를 채워 만드는 지역 헬퍼. 이 파일의 로그 도구 테스트만 쓴다."""
+    return LogEvent(
+        id=id,
+        ts=datetime(2026, 9, 1, 0, 0, 0),
+        host=host,
+        process="sshd",
+        event_type="auth_failure",
+        principal_name=None,
+        raw=raw,
+        severity=None,
+        required_clearance=required_clearance,
+        allowed_departments=allowed_departments,
+    )
 
 
 class 고정임베더:
@@ -119,3 +141,56 @@ def test_음수나_0_인_k_도_안전하다():
     검색기 = 스텁검색기([_hit(1)])
     search_policy("질의", 사원, 고정임베더(), 검색기, k=0)
     assert 검색기.받은_k == [1 * CANDIDATE_MULTIPLIER]
+
+
+def test_query_logs_가_limit_을_상한으로_깎는다():
+    """모델이 준 값을 믿지 않는다 — search_policy 의 k 와 같은 이유다."""
+    from core.agent.policy import MAX_LOG_LIMIT
+    from core.agent.tools import query_logs
+
+    받은 = []
+
+    class 검색기:
+        def query(self, principal, event_type, since, limit):
+            받은.append(limit)
+            return []
+
+    query_logs(_주체(), 검색기(), limit=9999)
+    assert 받은 == [MAX_LOG_LIMIT], "상한을 정확히 그 값으로 깎아야 한다"
+
+    받은.clear()
+    query_logs(_주체(), 검색기(), limit=0)
+    assert 받은 == [1], "하한은 1 이다"
+
+
+def test_권한_밖_이벤트가_섞여_있으면_예외가_난다():
+    """조용히 걸러내면 사후 필터링이 되고, 버그가 개수 뒤에 숨는다.
+    policy.enforce 가 hits 에 대해 하는 것과 같다.
+    """
+    from core.agent.policy import AccessViolation
+    from core.agent.tools import query_logs
+
+    class 새는검색기:
+        def query(self, principal, event_type, since, limit):
+            return [_이벤트(id=77, required_clearance=3)]
+
+    with pytest.raises(AccessViolation) as e:
+        query_logs(Principal(department="개발팀", clearance=1), 새는검색기(), limit=10)
+    메시지 = str(e.value)
+    assert "77" in 메시지
+    assert "유령" not in 메시지, "raw 본문이 예외 메시지에 담기면 안 된다"
+
+
+def test_예외_메시지에_raw_도_호스트도_담기지_않는다():
+    """AccessViolation 이 chunk_id 만 담는 것과 같은 원칙이다 —
+    기록이나 오류가 우회 경로가 되면 안 된다.
+    """
+    from core.agent.policy import AccessViolation, enforce_events
+
+    with pytest.raises(AccessViolation) as e:
+        enforce_events([_이벤트(id=42, required_clearance=3, raw="비밀 내용", host="exec-fs-01")],
+                       Principal(department="개발팀", clearance=1))
+    메시지 = str(e.value)
+    assert "42" in 메시지
+    assert "비밀 내용" not in 메시지
+    assert "exec-fs-01" not in 메시지

@@ -8,12 +8,15 @@ adapters/agent/runner.py 와 분리한 것은 스타일이 아니다. LangChain 
 로직이 @tool 래퍼 안에 있으면 단위 테스트할 방법이 없어진다.
 """
 
-from core.agent.policy import MAX_K, enforce
-from core.ports import ChunkSearch, Embedder
+from datetime import datetime
+
+from core.agent.policy import MAX_K, MAX_LOG_LIMIT, enforce, enforce_events
+from core.ports import ChunkSearch, Embedder, LogSearch
 from core.retrieve.hybrid import search
-from core.types import PolicyHit, Principal
+from core.types import LogEvent, PolicyHit, Principal
 
 DEFAULT_K = 10
+DEFAULT_LOG_LIMIT = 20
 
 
 def search_policy(
@@ -42,3 +45,25 @@ def search_policy(
     ids = search(query, principal, embedder, searcher, k=k)
     hits = searcher.load_hits(ids, principal)
     return enforce(hits, principal)
+
+
+def query_logs(
+    principal: Principal,
+    searcher: LogSearch,
+    event_type: str | None = None,
+    since: datetime | None = None,
+    limit: int = DEFAULT_LOG_LIMIT,
+) -> list[LogEvent]:
+    """권한이 반영된 운영 로그를 최근 순으로 돌려준다.
+
+    search_policy 와 같은 형태다 — principal 이 필수이고, 돌려주기 전에
+    enforce_events 로 한 번 더 검사한다. 정상 경로에서는 발동하지 않는다.
+
+    **개수가 주체에 따라 다른 것은 정상이다.** 문서는 상위 k개라 개수가
+    고정이지만 로그는 개수가 답이다. 그 때문에 생기는 위험(부분 집계를
+    전체로 오해하는 것)은 API 응답의 범위 고지가 막는다 — 모델에게
+    맡기지 않는다(보충 spec 2.4).
+    """
+    limit = max(1, min(limit, MAX_LOG_LIMIT))
+    events = searcher.query(principal, event_type, since, limit)
+    return enforce_events(events, principal)

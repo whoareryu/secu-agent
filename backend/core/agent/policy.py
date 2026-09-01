@@ -10,7 +10,7 @@ LangChain 은 도구가 돌려준 것을 그대로 LLM 에 넘긴다. 권한 밖
 from collections.abc import Sequence
 
 from core.access.visibility import visible
-from core.types import PolicyHit, Principal
+from core.types import LogEvent, PolicyHit, Principal
 
 # 도구 호출 상한. 넘으면 그 도구만 막고 모델은 그때까지의 결과로 답한다.
 # 상한이 없으면 에이전트가 도구를 반복 호출하며 비용과 지연이 무한정 늘어난다.
@@ -50,3 +50,37 @@ def enforce(hits: Sequence[PolicyHit], p: Principal) -> list[PolicyHit]:
             f"(부서 {p.department} · 등급 {p.clearance}) — 사전 필터링이 깨졌다"
         )
     return list(hits)
+
+
+# 로그 조회 한 번에 가져올 최대 이벤트 수. MAX_K 와 짝을 이루는 작업량
+# 상한이다 — 호출자가 LLM 이라 그 값을 믿지 않는다.
+MAX_LOG_LIMIT = 50
+
+# 로그 집계의 범위 고지. **조건 없이 항상 붙는다.**
+#
+# 숨겨진 이벤트가 1000건이든 0건이든 이 문구가 같고, 전 호스트를 볼 수
+# 있는 주체에게도 같은 문장이 나간다. 값에 따라 변하지 않는 고지는 통로가
+# 아니다 — 통로는 관측값이 숨은 데이터의 유무에 따라 *변할* 때 생긴다.
+#
+# 이 문구가 필요한 이유는 누출이 아니라 반대쪽이다. "인증 실패 12건" 은
+# 세상에 대한 절대적 주장으로 읽히고, 그것을 믿은 담당자는 35건을 놓친
+# 채 대응을 종료한다(보충 spec 2.2).
+로그_범위_고지 = "이 집계는 열람 권한이 있는 호스트의 기록만 셉니다."
+
+
+def enforce_events(events: Sequence[LogEvent], p: Principal) -> list[LogEvent]:
+    """권한 밖 이벤트가 있으면 터진다. 걸러내지 않는다.
+
+    enforce 와 같은 이유다 — 조용히 걸러내면 사후 필터링이 되고 버그가
+    개수 뒤에 숨는다(상위 spec 5.4).
+
+    메시지에는 **이벤트 id 만** 담는다. raw 도 호스트 이름도 담지 않는다.
+    오류가 우회 경로가 되면 안 된다.
+    """
+    새는_것 = [e for e in events
+              if not visible(e.required_clearance, e.allowed_departments, p)]
+    if 새는_것:
+        raise AccessViolation(
+            f"권한 밖 이벤트가 도구 출력에 있다: {[e.id for e in 새는_것]}"
+        )
+    return list(events)

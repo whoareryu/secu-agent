@@ -13,6 +13,7 @@ from adapters.db.access_log import PgAccessLog
 from adapters.db.catalog import PgDocumentCatalog
 from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
+from adapters.db.log_search import PgLogSearch
 from adapters.db.principal_store import PgPrincipalStore
 from adapters.embedding.e5 import E5Embedder
 from adapters.llm.gemini import build_model
@@ -40,7 +41,7 @@ def create_app():
 
     def 에이전트_공장():
         conn, embedder = _자원()
-        return build_agent(embedder, PgChunkSearch(conn), build_model())
+        return build_agent(embedder, PgChunkSearch(conn), build_model(), PgLogSearch(conn))
 
     class _지연주체저장소:
         def find(self, name):
