@@ -72,7 +72,7 @@ export default function InquiryDialog({ adminEmail }: { adminEmail: string }) {
       {open && (
         <div
           className="dialog-backdrop"
-          style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", background: "rgba(29,45,61,.45)", zIndex: 50 }}
+          style={{ position: "fixed", inset: 0, display: "grid", placeItems: "center", zIndex: 50 }}
         >
           <Blueprint
             className="dialog"
