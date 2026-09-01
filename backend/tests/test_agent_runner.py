@@ -96,7 +96,7 @@ def test_principal_이_도구_스키마에_없다():
     args_schema.model_json_schema() 는 PydanticInvalidForJsonSchema 를
     던진다 — ToolRuntime 이 callable 필드를 갖기 때문이다(실측).
     """
-    도구들 = build_tools(고정임베더(), 스텁검색기([_hit()]))
+    도구들 = build_tools(고정임베더(), 스텁검색기([_hit()]), _로그검색기())
     assert len(도구들) == 2, "search_policy 와 query_logs 두 개다"
 
     스키마 = 도구들[0].tool_call_schema.model_json_schema()
@@ -111,7 +111,7 @@ def test_principal_이_도구_스키마에_없다():
 
 def test_스키마에_query_는_있다():
     """은닉이 지나쳐 도구가 아무것도 못 받게 되면 안 된다."""
-    도구들 = build_tools(고정임베더(), 스텁검색기([_hit()]))
+    도구들 = build_tools(고정임베더(), 스텁검색기([_hit()]), _로그검색기())
     스키마 = 도구들[0].tool_call_schema.model_json_schema()
     assert "query" in 스키마["properties"]
     assert "query" in 스키마["required"]
@@ -131,7 +131,7 @@ def test_query_logs_도구_스키마에_principal_이_없다():
 def test_요청의_주체가_검색까지_전달된다():
     검색기 = 스텁검색기([_hit()])
     모델 = 대본모델(대본=[_도구_호출(), AIMessage(content="답변")])
-    agent = build_agent(고정임베더(), 검색기, 모델)
+    agent = build_agent(고정임베더(), 검색기, 모델, _로그검색기())
 
     agent.invoke(
         {"messages": [{"role": "user", "content": "네트워크 접근 통제"}]},
@@ -147,7 +147,7 @@ def test_인용_근거가_컨텍스트에_모인다():
     모델 = 대본모델(대본=[_도구_호출(), AIMessage(content="답변")])
     ctx = AgentContext(principal=사원)
 
-    build_agent(고정임베더(), 검색기, 모델).invoke(
+    build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "질문"}]}, context=ctx
     )
     assert [h.clause_code for h in ctx.collected] == ["2.6.1", "2.5.1"]
@@ -158,7 +158,7 @@ def test_도구를_안_부르면_근거가_비어_있다():
     모델 = 대본모델(대본=[AIMessage(content="도구 없이 바로 답한다")])
     ctx = AgentContext(principal=사원)
 
-    res = build_agent(고정임베더(), 검색기, 모델).invoke(
+    res = build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "안녕"}]}, context=ctx
     )
     assert ctx.collected == []
@@ -178,7 +178,7 @@ def test_결과가_없어도_권한을_이유로_말하지_않는다():
     모델 = 대본모델(대본=[_도구_호출(), AIMessage(content="답변")])
     ctx = AgentContext(principal=사원)
 
-    res = build_agent(고정임베더(), 검색기, 모델).invoke(
+    res = build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "질문"}]}, context=ctx
     )
     도구_메시지 = [m for m in res["messages"] if m.__class__.__name__ == "ToolMessage"]
@@ -206,7 +206,7 @@ def test_도구가_상한보다_많이_실행되지_않는다():
     모델 = 대본모델(
         대본=[_도구_호출() for _ in range(MAX_TOOL_CALLS + 2)] + [AIMessage(content="답변")]
     )
-    build_agent(고정임베더(), 검색기, 모델).invoke(
+    build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "질문"}]},
         context=AgentContext(principal=사원),
     )
@@ -227,7 +227,7 @@ def test_도구를_끝없이_시도해도_종료된다():
     모델 = 대본모델(대본=[_도구_호출() for _ in range(50)])
 
     # 예외 없이 끝나는 것 자체가 이 테스트의 암묵적 단언이다.
-    build_agent(고정임베더(), 검색기, 모델).invoke(
+    build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "질문"}]},
         context=AgentContext(principal=사원),
     )
@@ -258,7 +258,7 @@ def test_실제_모델이_도구를_부르고_한국어로_답한다():
 
     검색기 = 스텁검색기([_hit(1, "2.5.4")])
     ctx = AgentContext(principal=사원)
-    res = build_agent(고정임베더(), 검색기, build_model()).invoke(
+    res = build_agent(고정임베더(), 검색기, build_model(), _로그검색기()).invoke(
         {"messages": [{"role": "user", "content": "비밀번호는 얼마나 자주 바꿔야 하나"}]},
         context=ctx,
     )

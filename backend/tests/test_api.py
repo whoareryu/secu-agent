@@ -32,6 +32,14 @@ class 스텁검색기:
         by_id = {h.chunk_id: h for h in self.hits}
         return [by_id[i] for i in ids if i in by_id]
 
+class 빈로그검색기:
+    """로그를 쓰지 않는 테스트용. build_agent 가 log_searcher 를 필수로
+    받으므로 빠뜨릴 수 없다 — 빠뜨림이 생성 시점에 드러나는 편이 낫다."""
+
+    def query(self, principal, event_type, since, limit):
+        return []
+
+
 
 class 스텁주체저장소:
     def __init__(self, 목록):
@@ -90,7 +98,7 @@ def client(monkeypatch):
                 AIMessage(content="규정 2.6.1 을 참고한다."),
             ]
         )
-        return build_agent(고정임베더(), 검색기, 모델)
+        return build_agent(고정임베더(), 검색기, 모델, 빈로그검색기())
 
     return TestClient(build_app(에이전트_공장, 저장소))
 
@@ -159,7 +167,7 @@ def test_리스트_모양_content_도_답변으로_직렬화된다(monkeypatch):
                 )
             ]
         )
-        return build_agent(고정임베더(), 검색기, 모델)
+        return build_agent(고정임베더(), 검색기, 모델, 빈로그검색기())
 
     c = TestClient(build_app(에이전트_공장, 저장소))
     r = c.post("/ask", json={"query": "질문", "persona": "박인사"}, headers=헤더)
@@ -228,7 +236,7 @@ def test_질의가_열람_기록을_남긴다(monkeypatch):
                 AIMessage(content="답변"),
             ]
         )
-        return build_agent(고정임베더(), 검색기, 모델)
+        return build_agent(고정임베더(), 검색기, 모델, 빈로그검색기())
 
     c = TestClient(build_app(공장, 저장소, lambda: True, 기록))
     c.post("/ask", json={"query": "네트워크 접근", "persona": "박인사"}, headers=헤더)
@@ -269,7 +277,7 @@ def test_기록이_실패해도_응답은_정상이다(monkeypatch):
 
     def 공장():
         모델 = 대본모델(대본=[AIMessage(content="답변")])
-        return build_agent(고정임베더(), 검색기, 모델)
+        return build_agent(고정임베더(), 검색기, 모델, 빈로그검색기())
 
     c = TestClient(build_app(공장, 저장소, lambda: True, 터지는기록()))
     r = c.post("/ask", json={"query": "질의", "persona": "박인사"}, headers=헤더)

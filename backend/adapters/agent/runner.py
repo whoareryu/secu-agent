@@ -45,17 +45,17 @@ SYSTEM_PROMPT = """너는 사내 보안 규정을 안내하는 도우미다.
 로그_결과_없음 = "해당하는 기록을 찾지 못했다."
 
 
-def build_tools(
-    embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSearch | None = None
-) -> list:
+def build_tools(embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSearch) -> list:
     """모델에게 넘길 도구 목록을 만든다.
 
     embedder, searcher, log_searcher 를 클로저로 닫는다 — 이것들도 LLM 이
     볼 이유가 없다.
 
-    log_searcher 의 기본값이 None 인 것은 이 도구가 지켜야 할 규칙이
-    아니라 호출자 사정이다 — search_policy 만 쓰는 기존 호출자(예:
-    tests/test_api.py)가 이 인자 없이도 계속 동작해야 한다.
+    **log_searcher 에 기본값을 두지 않는다.** 기본값 None 을 주면 이 인자를
+    빠뜨린 생성이 조용히 통과하고, query_logs 가 None 을 들고 등록된 뒤
+    모델이 그것을 부르는 실행 시점에야 터진다. PolicyHit 과 LogEvent 의
+    권한 필드에 기본값이 없는 것과 같은 이유다 — 빠뜨림은 생성 시점에
+    드러나야 한다.
     """
 
     @tool
@@ -125,7 +125,7 @@ def build_agent(
     embedder: Embedder,
     searcher: ChunkSearch,
     model: BaseChatModel,
-    log_searcher: LogSearch | None = None,
+    log_searcher: LogSearch,
 ):
     """컴파일된 에이전트를 만든다.
 
