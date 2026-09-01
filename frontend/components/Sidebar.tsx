@@ -15,7 +15,7 @@ export default function Sidebar({ role }: { role: Role }) {
     <aside
       style={{
         background: "var(--color-accent-900)",
-        color: "#e9eef3",
+        color: "var(--color-on-accent)",
         display: "flex",
         flexDirection: "column",
         padding: "24px 0",
@@ -32,7 +32,7 @@ export default function Sidebar({ role }: { role: Role }) {
         >
           Secu-Agent
         </div>
-        <div style={{ fontSize: 11, letterSpacing: ".1em", color: "#8fa8bd", marginTop: 2 }}>
+        <div style={{ fontSize: 11, letterSpacing: ".1em", color: "var(--color-on-accent-faint)", marginTop: 2 }}>
           사내 보안 규정 에이전트
         </div>
       </div>
@@ -67,9 +67,9 @@ function navStyle(active: boolean): React.CSSProperties {
     gap: 8,
     width: "100%",
     padding: "11px 20px",
-    background: active ? "rgba(255,255,255,.09)" : "transparent",
+    background: active ? "var(--color-on-accent-wash)" : "transparent",
     borderLeft: active ? "3px solid var(--color-accent-300)" : "3px solid transparent",
-    color: active ? "#ffffff" : "#c9d6e2",
+    color: active ? "var(--color-on-accent-strong)" : "var(--color-on-accent-dim)",
     textDecoration: "none",
     fontFamily: "var(--font-body)",
   };
@@ -104,19 +104,19 @@ function HealthzBlock() {
       style={{
         marginTop: "auto",
         padding: 20,
-        borderTop: "1px solid rgba(255,255,255,.14)",
+        borderTop: "1px solid var(--color-on-accent-divider)",
         display: "flex",
         flexDirection: "column",
         gap: 8,
       }}
     >
-      <div style={{ fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "#8fa8bd" }}>
+      <div style={{ fontSize: 10, letterSpacing: ".16em", textTransform: "uppercase", color: "var(--color-on-accent-faint)" }}>
         GET /healthz
       </div>
       {failed ? (
-        <div style={{ fontSize: 12.5, color: "#e2a1a1" }}>연결 실패 / unreachable</div>
+        <div style={{ fontSize: 12.5, color: "var(--color-on-accent-danger)" }}>연결 실패 / unreachable</div>
       ) : !health ? (
-        <div style={{ fontSize: 12.5, color: "#a9bccd" }}>확인 중… / checking…</div>
+        <div style={{ fontSize: 12.5, color: "var(--color-on-accent-muted)" }}>확인 중… / checking…</div>
       ) : (
         <>
           <HealthzRow label="db" value={String(health.db)} accent />
@@ -131,8 +131,8 @@ function HealthzBlock() {
 function HealthzRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-      <span style={{ color: "#a9bccd" }}>{label}</span>
-      <span style={accent ? { color: "#9fd0a8" } : undefined}>{value}</span>
+      <span style={{ color: "var(--color-on-accent-muted)" }}>{label}</span>
+      <span style={accent ? { color: "var(--color-on-accent-ok)" } : undefined}>{value}</span>
     </div>
   );
 }

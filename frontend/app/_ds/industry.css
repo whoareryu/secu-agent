@@ -41,6 +41,18 @@
   --color-accent-2-800: #314457;
   --color-accent-2-900: #1f2d3a;
 
+  /* 어두운 바닥 위의 전경색. 사이드바가 --color-accent-900 위에 앉는데,
+     위의 밝은 바닥용 램프에는 거기서 읽히는 단계가 없다. */
+  --color-on-accent-strong: #ffffff;
+  --color-on-accent: #e9eef3;
+  --color-on-accent-dim: #c9d6e2;
+  --color-on-accent-muted: #a9bccd;
+  --color-on-accent-faint: #8fa8bd;
+  --color-on-accent-ok: #9fd0a8;
+  --color-on-accent-danger: #e2a1a1;
+  --color-on-accent-wash: color-mix(in srgb, #ffffff 9%, transparent);
+  --color-on-accent-divider: color-mix(in srgb, #ffffff 14%, transparent);
+
   --font-heading: "Barlow Condensed", system-ui, sans-serif;
   --font-heading-weight: 600;
   --font-body: "Barlow", system-ui, sans-serif;
