@@ -16,5 +16,17 @@ services:
       timeout: 3s
       retries: 20
 
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECUAGENT_DSN: postgresql://secuagent:secuagent@db:5432/secuagent
+      BACKEND_SHARED_SECRET: local-dev-secret
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    ports:
+      - "8080:8080"
+
 volumes:
   secuagent_pgdata:
