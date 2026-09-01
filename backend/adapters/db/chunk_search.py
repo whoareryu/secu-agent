@@ -13,6 +13,7 @@ from collections.abc import Sequence
 
 import psycopg
 
+from adapters.db.permission_sql import 권한_WHERE
 from core.types import PolicyHit, Principal
 
 Vector = list[float]
@@ -34,22 +35,9 @@ def 한국어_tsquery(query: str) -> str:
     return " | ".join(f"{w}:*" for w in 고유)
 
 
-# 권한 필터. 두 검색 메서드가 같은 조건을 쓴다 — 한쪽만 적용하면 그쪽으로 누출된다.
-# 전사 공개는 두 가지로 저장될 수 있다: NULL 과 빈 배열.
-# core.types.Document 는 allowed_departments=() 를 전사 공개로 정의하고
-# upsert_document 는 이를 NULL 로 정규화해 넣는다(adapters/db/document_store.py).
-# cardinality(...) = 0 절은 그 정규화를 거치지 않고 빈 배열을 직접 써넣는
-# 다른 경로(수동 SQL, 다른 어댑터)에 대비한 방어책이다 — 정규화를 믿지 않고
-# 여기서도 한 번 더 받아준다. 실측: 빈 배열을 안 받아주면 그 문서는 자기
-# 부서에도 안 보인다 — 조용히 사라진다.
-_권한_WHERE = """
-    d.required_clearance <= %(clearance)s
-    AND (
-        d.allowed_departments IS NULL
-        OR cardinality(d.allowed_departments) = 0
-        OR %(dept)s = ANY(d.allowed_departments)
-    )
-"""
+# documents 를 d 로 조인하는 두 검색 메서드가 같은 조건을 쓴다 —
+# 한쪽만 적용하면 그쪽으로 누출된다.
+_권한_WHERE = 권한_WHERE("d")
 
 
 # 이 SQL 을 모듈 상수로 둔 이유는 테스트가 EXPLAIN 으로 **실제로 실행되는 문장**을
