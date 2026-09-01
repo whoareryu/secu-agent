@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 # core/ 는 안쪽이다. 이 이름들은 전부 바깥이다.
-바깥_계층 = ("adapters", "api", "pipeline", "eval")
+바깥_계층 = ("adapters", "api", "pipeline", "eval", "demo")
 
 # core/ 에 들어오는 순간 경계가 무너지는 것들.
 # langchain 이 여기 있는 것이 핵심이다 — 프레임워크가 도메인에 스며들면
