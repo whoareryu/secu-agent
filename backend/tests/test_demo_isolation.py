@@ -22,8 +22,17 @@ def _import_이름들(py: Path) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             이름 += [a.name for a in node.names]
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            이름.append(node.module)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                이름.append(node.module)
+            else:
+                # from .. import demo — 모듈 경로 없이 이름만 들여오는 형태다.
+                # test_boundaries.py 는 이 형태를 의도적으로 무시하지만, 이
+                # 울타리는 **의도적으로 새는 코드**를 막는 것이라 다르게 판단한다.
+                # 지금은 backend/ 에 최상위 __init__.py 가 없어 이 import 가
+                # 런타임에 실패하므로 악용될 수 없다 — 그러나 "지금은 도달
+                # 불가능" 은 낡는 논거다. 패키지 구조가 바뀌는 날을 위해 막는다.
+                이름 += [a.name for a in node.names]
     return {n.split(".")[0] for n in 이름}
 
 
@@ -65,3 +74,27 @@ def test_demo_모듈이_자기_성격을_문서화한다():
     독스트링 = ast.get_docstring(ast.parse(Path("demo/naive_search.py").read_text("utf-8")))
     assert 독스트링 is not None
     assert "의도적으로" in 독스트링 and "프로덕션" in 독스트링
+
+
+def test_모듈_경로_없는_상대_import_도_잡는다(tmp_path):
+    """`from .. import demo` 는 모듈 경로가 없어 node.module 이 None 이다.
+
+    이 형태를 흘려보내면 울타리에 구멍이 남는다. 지금 패키지 구조에서는
+    런타임에 실패해 악용될 수 없지만, 그 사실은 구조가 바뀌면 사라진다.
+    """
+    py = tmp_path / "샘플.py"
+    py.write_text("from .. import demo\n", encoding="utf-8")
+    assert "demo" in _import_이름들(py)
+
+
+def test_점_있는_경로도_최상위_이름으로_줄인다():
+    """`from demo.naive_search import x` 도 demo 로 읽혀야 한다."""
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
+        f.write("from demo.naive_search import naive_ids\n")
+        경로 = Path(f.name)
+    try:
+        assert "demo" in _import_이름들(경로)
+    finally:
+        경로.unlink()
