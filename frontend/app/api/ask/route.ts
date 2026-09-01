@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { check } from "@/lib/rate-limit";
 
 // 브라우저가 닿는 유일한 엔드포인트다. 백엔드 주소도 시크릿도
 // 브라우저에 내려가지 않는다.
@@ -6,6 +7,13 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session) {
     return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
+  }
+
+  // LLM 을 부르기 전에 상한을 검사한다 — 이미 부른 뒤에 검사하면 요금
+  // 폭주를 막지 못한다.
+  const limit = check(session.user?.email ?? "");
+  if (!limit.allowed) {
+    return Response.json({ error: "오늘 사용 가능한 질의를 모두 썼습니다", remaining: 0 }, { status: 429 });
   }
 
   let query, persona;
@@ -32,5 +40,6 @@ export async function POST(req: Request) {
       { status: upstream.status }
     );
   }
-  return Response.json(await upstream.json());
+  const data = await upstream.json();
+  return Response.json({ ...data, remaining: limit.remaining });
 }

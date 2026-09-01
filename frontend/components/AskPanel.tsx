@@ -28,6 +28,8 @@ export default function AskPanel({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [errorKind, setErrorKind] = useState<ErrorKind>("other");
   const [coldStart, setColdStart] = useState(false);
+  // 알리스트 사용자는 null 로 남아 배지가 뜨지 않는다.
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   // 프로토타입의 로딩 상태는 1.2초를 가정한다. 실제로는 컨테이너가 잠들어
   // 있었으면 임베딩 모델을 올리느라 수십 초 걸린다 — 8초를 넘기면 그 사실을
@@ -61,6 +63,7 @@ export default function AskPanel({
       const data = (await r.json()) as AskResult;
       setElapsedMs(ms);
       setResult(data);
+      setRemaining(data.remaining);
       setStatus("done");
     } catch {
       setElapsedMs(performance.now() - start);
@@ -80,7 +83,10 @@ export default function AskPanel({
 
       <Blueprint className="card" style={{ padding: 22, gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div className="card-kicker">Persona · 시연 계정</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div className="card-kicker">Persona · 시연 계정</div>
+            {remaining !== null && <span className="tag tag-outline">남은 질의 {remaining}회</span>}
+          </div>
           <span style={{ fontSize: 11.5, color: "var(--color-neutral-600)" }}>POST /ask · persona 이름만 전송</span>
         </div>
 

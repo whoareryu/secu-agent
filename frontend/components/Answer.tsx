@@ -6,6 +6,7 @@ export type AskResult = {
   hits: Hit[];
   persona: { name: string; department: string; clearance: number };
   tool_calls: number;
+  remaining: number | null;
 };
 
 type FoldedHit = Hit & { chunkCount: number };
