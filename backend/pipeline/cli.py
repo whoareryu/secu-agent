@@ -43,6 +43,15 @@ def main() -> int:
 
     sub.add_parser("seed-principals", help="시연 계정을 넣는다")
 
+    sh = sub.add_parser("seed-hosts", help="data/hosts.json 의 호스트를 등록한다")
+    sh.add_argument("--dsn", default=None)
+
+    il = sub.add_parser("ingest-logs", help="syslog 파일을 적재한다")
+    il.add_argument("path", type=Path)
+    il.add_argument("--year", type=int, required=True,
+                    help="syslog 형식에는 연도가 없다. 명시한다.")
+    il.add_argument("--dsn", default=None)
+
     dem = sub.add_parser("demo", help="같은 질의를 세 계정으로 던진다")
     dem.add_argument("query")
     dem.add_argument("-k", type=int, default=5)
@@ -149,6 +158,48 @@ def main() -> int:
         conn.commit()
         for p in 계정들:
             print(f"  {p['name']} · {p['department']} · 등급 {p['clearance']}")
+        conn.close()
+
+    if args.cmd == "seed-hosts":
+        import json
+
+        from adapters.db.host_store import PgHostStore
+        from core.types import Host
+
+        경로 = Path(__file__).resolve().parents[2] / "data" / "hosts.json"
+        호스트들 = json.loads(경로.read_text(encoding="utf-8"))
+
+        conn = connect(args.dsn)
+        apply_schema(conn)
+        store = PgHostStore(conn)
+        for h in 호스트들:
+            store.upsert(
+                Host(
+                    name=h["name"],
+                    department=h["department"],
+                    required_clearance=h["required_clearance"],
+                    allowed_departments=tuple(h.get("allowed_departments") or ()),
+                )
+            )
+            print(f"  {h['name']} · {h['department']} · 등급 {h['required_clearance']}")
+        conn.close()
+
+    if args.cmd == "ingest-logs":
+        if not args.path.exists():
+            print(f"파일이 없다: {args.path}", file=sys.stderr)
+            return 1
+
+        from pipeline.ingest_logs import MissingHost, ingest_logs
+
+        conn = connect(args.dsn)
+        apply_schema(conn)
+        try:
+            결과 = ingest_logs(args.path, year=args.year, conn=conn)
+        except MissingHost as e:
+            print(f"거부: {e}", file=sys.stderr)
+            conn.close()
+            return 1
+        print(f"  적재 {결과.적재}건 · 건너뜀 {결과.건너뜀}건")
         conn.close()
 
     if args.cmd == "demo":

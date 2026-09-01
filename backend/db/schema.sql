@@ -86,6 +86,12 @@ CREATE TABLE IF NOT EXISTS log_events (
 CREATE INDEX IF NOT EXISTS log_events_ts_idx ON log_events (ts);
 CREATE INDEX IF NOT EXISTS log_events_type_idx ON log_events (event_type);
 
+-- 같은 파일을 두 번 적재해도 중복되지 않게 한다. ts·host·raw 셋이 같으면
+-- 같은 줄이다. 실제로 같은 순간 같은 호스트에서 완전히 동일한 줄이 두 번
+-- 나오는 경우가 있지만, 그 구별은 이 프로젝트에 필요 없다.
+CREATE UNIQUE INDEX IF NOT EXISTS log_events_dedup_idx
+    ON log_events (ts, host, md5(raw));
+
 CREATE TABLE IF NOT EXISTS principals (
     id         BIGSERIAL PRIMARY KEY,
     name       TEXT NOT NULL UNIQUE,
