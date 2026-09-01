@@ -274,3 +274,55 @@ def test_기록이_실패해도_응답은_정상이다(monkeypatch):
     c = TestClient(build_app(공장, 저장소, lambda: True, 터지는기록()))
     r = c.post("/ask", json={"query": "질의", "persona": "박인사"}, headers=헤더)
     assert r.status_code == 200
+
+
+def test_권한_위반은_502_이고_차단_기록을_남긴다(monkeypatch):
+    """관리자 화면의 "권한 밖 열람 알림" 을 채우는 유일한 생산자다.
+
+    이 경로는 문서화되지 않은 LangChain 동작에 기대고 있다 — ToolNode 가
+    도구 예외를 삼키도록 뒤집히면 아무것도 기록되지 않고 알림 테이블은
+    조용히 영원히 빈다. 성공 기록 경로만 덮으면 그것을 못 잡는다.
+
+    예외 문자열을 손으로 짓지 않고 enforce 가 실제로 내는 것을 쓴다.
+    main._위반_chunk_id 가 그 메시지를 정규식으로 파므로, 메시지 형태가
+    바뀌면 여기서 걸려야 한다.
+    """
+    from core.agent.policy import enforce
+
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+    기록 = 스텁열람기록()
+    저장소 = 스텁주체저장소({"박인사": Principal("인사팀", 2)})
+
+    권한밖 = PolicyHit(
+        chunk_id=77,
+        text="임원 전용 본문",
+        doc_title="임원 보상 규정",
+        clause_code="9.9.9",
+        required_clearance=3,
+        allowed_departments=("임원실",),
+    )
+
+    class 위반에이전트:
+        def invoke(self, state, context=None):
+            enforce([권한밖], context.principal)
+            raise AssertionError("enforce 가 위반을 잡지 못했다")
+
+    c = TestClient(build_app(lambda: 위반에이전트(), 저장소, lambda: True, 기록))
+    r = c.post("/ask", json={"query": "임원 보상", "persona": "박인사"}, headers=헤더)
+
+    assert r.status_code == 502
+
+    # 응답은 무엇이 막혔는지 말하지 않는다. 막으려고 만든 장치가 통로가
+    # 되면 안 된다 — chunk id 도 조항 코드도 문서 제목도 나가지 않는다.
+    본문 = str(r.json())
+    for 금지 in ("77", "9.9.9", "임원 보상 규정", "임원 전용 본문"):
+        assert 금지 not in 본문, f"502 응답이 {금지} 를 흘렸다"
+
+    # 기록은 남는다. 그리고 그 행이 담은 식별자는 chunk_id 뿐이다.
+    assert len(기록.기록) == 1, f"차단 기록이 정확히 한 줄이 아니다: {기록.기록}"
+    행 = 기록.기록[0]
+    assert 행.allowed is False
+    assert 행.chunk_id == 77, "예외 메시지에서 chunk_id 를 뽑지 못했다"
+    assert 행.clause_code is None
+    assert (행.persona, 행.department, 행.clearance) == ("박인사", "인사팀", 2)
+    assert 행.query == "임원 보상"

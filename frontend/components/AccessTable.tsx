@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Blueprint from "./Blueprint";
+import { LOG_LIMIT } from "@/lib/types";
 
 // GET /api/access-log 가 돌려주는 행 그대로 — backend AccessRecordView.
 // 문서 제목·본문은 기록에 없다(Task 1 의 결정). AlertTable.tsx 도 같은 형태를
@@ -58,7 +59,7 @@ export default function AccessTable() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/access-log?limit=200")
+    fetch(`/api/access-log?limit=${LOG_LIMIT}`)
       .then((r) => {
         if (!r.ok) throw new Error(`access-log ${r.status}`);
         return r.json() as Promise<AccessRecord[]>;
@@ -153,7 +154,9 @@ export default function AccessTable() {
         </tbody>
       </table>
       <div style={{ fontSize: 12.5, color: "var(--color-neutral-600)" }}>
-        표시 {rows.length}건 · 전체 {records.length}건
+        {/* 받은 행이 상한과 같으면 그 위에 더 있을 수 있다. "전체" 라고 적으면
+            거짓이 된다 — 실제로 일어난 요청만 보여준다고 밝힌 화면이다. */}
+        표시 {rows.length}건 · {records.length >= LOG_LIMIT ? `최근 ${LOG_LIMIT}건` : `전체 ${records.length}건`}
       </div>
     </Blueprint>
   );

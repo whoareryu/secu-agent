@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Blueprint from "./Blueprint";
 import { formatTs, type AccessRecord } from "./AccessTable";
+import { LOG_LIMIT } from "@/lib/types";
 
 // GET /api/access-log?violations=1 — AccessViolation 이 실제로 발생했을 때만
 // 행이 생긴다(지금은 비어 있는 게 정상 상태다). "처리 상태" 컬럼은 없다 —
@@ -15,7 +16,7 @@ export default function AlertTable() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/access-log?violations=1&limit=200")
+    fetch(`/api/access-log?violations=1&limit=${LOG_LIMIT}`)
       .then((r) => {
         if (!r.ok) throw new Error(`violations ${r.status}`);
         return r.json() as Promise<AccessRecord[]>;
@@ -38,7 +39,7 @@ export default function AlertTable() {
         <span style={{ fontFamily: "var(--font-heading)", fontSize: 21 }}>권한 밖 열람 알림</span>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 12, color: "var(--color-neutral-600)" }}>
-          기록 전체 · {records ? records.length : 0}건
+          {records && records.length >= LOG_LIMIT ? `최근 ${LOG_LIMIT}건` : `기록 전체 · ${records ? records.length : 0}건`}
         </span>
       </div>
       {error ? (

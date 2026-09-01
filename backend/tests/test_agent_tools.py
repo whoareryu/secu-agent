@@ -9,6 +9,7 @@ import pytest
 
 from core.agent.policy import AccessViolation
 from core.agent.tools import search_policy
+from core.retrieve.hybrid import CANDIDATE_MULTIPLIER
 from core.types import EMBEDDING_DIM, PolicyHit, Principal
 
 사원 = Principal(department="개발팀", clearance=1)
@@ -79,11 +80,16 @@ def test_권한_밖_항목이_섞이면_예외가_난다():
 
 
 def test_k_를_검색에_전달한다():
+    """정확한 값을 본다.
+
+    `n >= 3` 만 보면 search_policy 가 k 를 통째로 무시하고 DEFAULT_K 를
+    하드코딩해도 통과한다 — 이 테스트가 지키려던 것이 바로 그 전달이다.
+    hybrid.search 가 후보를 k 의 CANDIDATE_MULTIPLIER 배로 잡으므로
+    검색기가 받아야 할 값은 그 곱이다.
+    """
     검색기 = 스텁검색기([_hit(1)])
     search_policy("질의", 사원, 고정임베더(), 검색기, k=3)
-    # hybrid.search 가 후보를 k 의 배수로 가져가므로 k 자체가 아니라
-    # 그것에 비례한 값이 온다. 0 이나 고정값이 아닌 것만 확인한다.
-    assert 검색기.받은_k and all(n >= 3 for n in 검색기.받은_k)
+    assert 검색기.받은_k == [3 * CANDIDATE_MULTIPLIER]
 
 
 def test_결과가_없으면_빈_리스트다():
@@ -97,16 +103,19 @@ def test_지나치게_큰_k_는_상한으로_깎인다():
 
     hybrid.search 가 후보를 k 의 5배로 잡으므로, 상한이 없으면 허용된
     호출 8번이 각각 증폭된다 — 횟수만 묶고 작업량을 안 묶은 것이다.
+
+    `n <= MAX_K * 5` 는 상한 아래의 아무 값이나 통과시킨다 — k 를 무시하는
+    구현도 포함해서다. 깎인 결과가 정확히 MAX_K 인지를 본다.
     """
     from core.agent.policy import MAX_K
 
     검색기 = 스텁검색기([_hit(1)])
     search_policy("질의", 사원, 고정임베더(), 검색기, k=100000)
-    assert 검색기.받은_k, "검색기가 불리지 않았다"
-    assert all(n <= MAX_K * 5 for n in 검색기.받은_k), f"상한을 넘겼다: {검색기.받은_k}"
+    assert 검색기.받은_k == [MAX_K * CANDIDATE_MULTIPLIER]
 
 
 def test_음수나_0_인_k_도_안전하다():
+    """하한은 정확히 1 이다 — 0 도, DEFAULT_K 도 아니다."""
     검색기 = 스텁검색기([_hit(1)])
     search_policy("질의", 사원, 고정임베더(), 검색기, k=0)
-    assert all(n >= 1 for n in 검색기.받은_k)
+    assert 검색기.받은_k == [1 * CANDIDATE_MULTIPLIER]

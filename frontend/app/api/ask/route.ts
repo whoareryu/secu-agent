@@ -9,18 +9,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
   }
 
-  // LLM 을 부르기 전에 상한을 검사한다 — 이미 부른 뒤에 검사하면 요금
-  // 폭주를 막지 못한다.
-  const limit = check(session.user?.email ?? "");
-  if (!limit.allowed) {
-    return Response.json({ error: "오늘 사용 가능한 질의를 모두 썼습니다", remaining: 0 }, { status: 429 });
-  }
-
   let query, persona;
   try {
     ({ query, persona } = await req.json());
   } catch {
     return Response.json({ error: "잘못된 요청 본문입니다" }, { status: 400 });
+  }
+
+  // 본문을 파싱한 뒤, 백엔드를 부르기 전에 상한을 검사한다. 순서가 둘 다
+  // 중요하다 — 파싱보다 앞이면 형식이 깨진 요청도 하루 할당량을 한 번 쓰고,
+  // 백엔드 호출보다 뒤면 이미 부른 요금을 못 막는다.
+  const limit = check(session.user?.email ?? "");
+  if (!limit.allowed) {
+    return Response.json({ error: "오늘 사용 가능한 질의를 모두 썼습니다", remaining: 0 }, { status: 429 });
   }
 
   const upstream = await fetch(`${process.env.BACKEND_URL}/ask`, {

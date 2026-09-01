@@ -62,11 +62,35 @@ def test_비ASCII_시크릿은_500_이고_통과시키지_않는다(monkeypatch)
     assert e.value.status_code == 500
 
 
-def test_상수_시간_비교를_쓴다():
-    """== 로 비교하면 타이밍으로 시크릿을 한 글자씩 알아낼 수 있다."""
-    import inspect
+def test_상수_시간_비교를_실제로_호출한다(monkeypatch):
+    """== 로 비교하면 타이밍으로 시크릿을 한 글자씩 알아낼 수 있다.
 
-    from api import security
+    소스에 "compare_digest" 라는 글자가 있는지를 보면 안 된다 — 모듈
+    독스트링이 그 단어를 담고 있어서 비교를 `==` 로 바꿔도 통과한다.
+    호출을 관찰한다: hmac.compare_digest 를 감싸 실제로 불렸는지와
+    무엇을 받았는지를 본다.
 
-    소스 = inspect.getsource(security)
-    assert "compare_digest" in 소스, "hmac.compare_digest 를 쓰지 않는다"
+    벽시계 타이밍 측정은 쓰지 않는다 — 이 프로젝트는 그 측정이 두 구현을
+    구별하지 못한다는 것을 이미 실측으로 보였다(jekyll/verification 장치 ①).
+    """
+    import hmac
+
+    진짜 = hmac.compare_digest
+    호출: list[tuple] = []
+
+    def 감시(a, b):
+        호출.append((a, b))
+        return 진짜(a, b)
+
+    monkeypatch.setattr(hmac, "compare_digest", 감시)
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", "s3cret")
+
+    시크릿_검사("s3cret")
+    assert 호출 == [("s3cret", "s3cret")], "맞는 시크릿을 상수 시간 비교로 확인하지 않았다"
+
+    # 틀린 값도 같은 비교를 거쳐야 한다. 길이나 접두어로 미리 가지를 치면
+    # 그 분기 자체가 타이밍 경로가 된다.
+    호출.clear()
+    with pytest.raises(HTTPException):
+        시크릿_검사("wrong")
+    assert 호출 == [("wrong", "s3cret")], "틀린 시크릿이 상수 시간 비교를 거치지 않았다"

@@ -57,3 +57,40 @@ jobs:
         env:
           SECUAGENT_DSN: postgresql://secuagent:secuagent@localhost:5433/secuagent
         run: uv run pytest -m db -v
+
+  # 프론트엔드는 여기 들어오기 전까지 CI 를 전혀 통과하지 않았다 —
+  # TypeScript 9천 줄, 화면 7개, 라우트 핸들러 6개, 그리고 관리자 게이트가
+  # 검사 없이 들어왔다. 로컬 실행만으로는 부족하다는 증거도 이 브랜치에 있다:
+  # tsconfig.tsbuildinfo 증분 캐시가 진짜 타입 오류를 한 번 가렸다.
+  # 그래서 캐시가 없는 환경에서 매번 처음부터 돌린다.
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24' # 로컬(v24.17.0)과 맞춘다
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: frontend
+        run: npm ci
+
+      - name: 테스트
+        working-directory: frontend
+        run: npm test
+
+      - name: 타입 검사
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      # 빌드에 환경변수를 주지 않는다. .env.local 이 없고 환경변수가 하나도
+      # 없는 상태에서 빌드가 통과하는 것을 실측으로 확인했다 — 모든 라우트가
+      # 요청 시점 렌더(ƒ)라 빌드가 auth() 나 백엔드를 부르지 않는다.
+      # 여기에 더미 값을 넣어두면 그 사실이 가려지고, 진짜 비밀이 필요해지는
+      # 순간에도 CI 는 계속 초록불을 낸다.
+      - name: 빌드
+        working-directory: frontend
+        run: npm run build
