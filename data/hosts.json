@@ -1,0 +1,7 @@
+[
+  {"name": "vpn-gw-01",  "department": "정보보안팀", "required_clearance": 1, "allowed_departments": []},
+  {"name": "dev-web-01", "department": "개발팀",     "required_clearance": 1, "allowed_departments": ["개발팀"]},
+  {"name": "dev-db-01",  "department": "개발팀",     "required_clearance": 2, "allowed_departments": ["개발팀"]},
+  {"name": "hr-app-01",  "department": "인사팀",     "required_clearance": 2, "allowed_departments": ["인사팀"]},
+  {"name": "exec-fs-01", "department": "경영지원팀", "required_clearance": 3, "allowed_departments": []}
+]

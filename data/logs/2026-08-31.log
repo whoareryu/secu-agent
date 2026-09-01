@@ -1,0 +1,11 @@
+Aug 31 02:47:19 dev-web-01 sshd[4412]: Failed password for invalid user admin from 203.0.113.44 port 51422 ssh2
+Aug 31 02:47:22 dev-web-01 sshd[4413]: Failed password for invalid user admin from 203.0.113.44 port 51430 ssh2
+Aug 31 02:47:25 dev-web-01 sshd[4414]: Failed password for invalid user admin from 203.0.113.44 port 51438 ssh2
+Aug 31 03:15:00 vpn-gw-01 CRON[1057]: (root) CMD (/usr/local/bin/backup.sh)
+Aug 31 08:57:03 vpn-gw-01 sshd[2201]: Accepted publickey for kimdev from 10.8.0.14 port 39122 ssh2
+Aug 31 09:03:11 vpn-gw-01 sshd[2202]: Accepted publickey for parkhr from 10.8.0.22 port 40011 ssh2
+Aug 31 09:15:44 vpn-gw-01 sshd[2203]: Accepted publickey for choiexec from 10.8.0.31 port 41230 ssh2
+Aug 31 17:50:12 vpn-gw-01 sshd[2202]: pam_unix(sshd:session): session closed for user parkhr
+Aug 31 18:05:00 vpn-gw-01 sshd[2203]: pam_unix(sshd:session): session closed for user choiexec
+Aug 31 18:32:00 vpn-gw-01 sshd[2201]: pam_unix(sshd:session): session closed for user kimdev
+Aug 31 22:10:07 vpn-gw-01 sshd[2260]: Failed password for invalid user test from 198.51.100.5 port 33210 ssh2
