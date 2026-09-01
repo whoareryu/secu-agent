@@ -1,30 +1,20 @@
-import { auth, signIn, signOut } from "@/auth";
+import { auth, signInAction } from "@/auth";
+import SignIn from "@/components/SignIn";
 import AskForm from "@/components/AskForm";
+import AppShellLayout from "./(app)/layout";
 
 export default async function Home() {
   const session = await auth();
 
-  if (!session) {
-    return (
-      <main>
-        <h1>Secu-Agent</h1>
-        <p>부서·등급에 따라 검색 범위가 달라지는 사내보안 규정 에이전트입니다.</p>
-        <form action={async () => { "use server"; await signIn("google"); }}>
-          <button type="submit">구글로 로그인</button>
-        </form>
-      </main>
-    );
+  if (!session?.user?.email) {
+    return <SignIn signInAction={signInAction} />;
   }
 
+  // Ask 화면 자체를 다듬는 것은 다음 태스크의 몫이다 — 기존 컴포넌트를 셸
+  // 안에 그대로 둔다.
   return (
-    <main>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1>Secu-Agent</h1>
-        <form action={async () => { "use server"; await signOut(); }}>
-          <button type="submit">로그아웃</button>
-        </form>
-      </header>
+    <AppShellLayout>
       <AskForm />
-    </main>
+    </AppShellLayout>
   );
 }
