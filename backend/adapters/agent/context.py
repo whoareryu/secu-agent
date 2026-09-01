@@ -1,0 +1,20 @@
+"""에이전트 한 번의 실행에 딸리는 런타임 컨텍스트.
+
+principal 이 여기 있는 것이 요점이다 — 도구 인자가 아니라 컨텍스트다.
+그래서 LLM 이 볼 수도, 지정할 수도 없다.
+
+collected 는 도구가 채우고 호출자가 읽는다. 컨텍스트 객체는 그래프를
+지나 도구까지 **같은 객체로** 전달되므로(실측: id 가 일치), 도구가 여기에
+담은 것을 invoke 가 끝난 뒤 바깥에서 그대로 꺼낼 수 있다. API 가
+인용 근거를 얻는 경로가 이것이다.
+"""
+
+from dataclasses import dataclass, field
+
+from core.types import PolicyHit, Principal
+
+
+@dataclass
+class AgentContext:
+    principal: Principal
+    collected: list[PolicyHit] = field(default_factory=list)

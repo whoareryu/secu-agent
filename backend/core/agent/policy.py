@@ -17,6 +17,11 @@ from core.types import PolicyHit, Principal
 # 8 은 "규정 검색 → 재검색" 을 여러 바퀴 돌 수 있는 여유다(상위 spec 7.2).
 MAX_TOOL_CALLS = 8
 
+# 모델 호출 상한. 도구 상한만으로는 종료가 보장되지 않는다 — 차단된 도구를
+# 계속 시도하는 모델은 모델 호출만 반복하고, 비용은 그쪽에서 난다.
+# 정상 경로에서는 발동하지 않는다: 도구 8회 + 최종 답변 1회면 충분하다.
+MAX_MODEL_CALLS = 12
+
 
 class AccessViolation(Exception):
     """도구 출력에 권한 밖 항목이 있다. 사전 필터링이 깨졌다는 뜻이다."""
