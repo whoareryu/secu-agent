@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from adapters.agent.runner import build_agent
 from adapters.db.access_log import PgAccessLog
+from adapters.db.catalog import PgDocumentCatalog
 from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
 from adapters.db.principal_store import PgPrincipalStore
@@ -58,10 +59,25 @@ def create_app():
             conn, _ = _자원()
             return PgAccessLog(conn).violations(limit)
 
+    class _지연카탈로그:
+        def documents(self):
+            conn, _ = _자원()
+            return PgDocumentCatalog(conn).documents()
+
+        def principals(self):
+            conn, _ = _자원()
+            return PgDocumentCatalog(conn).principals()
+
     def 모델_준비됨() -> bool:
         return _자원.cache_info().currsize > 0
 
-    return build_app(에이전트_공장, _지연주체저장소(), 모델_준비됨, 열람기록=_지연열람기록())
+    return build_app(
+        에이전트_공장,
+        _지연주체저장소(),
+        모델_준비됨,
+        열람기록=_지연열람기록(),
+        카탈로그=_지연카탈로그(),
+    )
 
 
 app = create_app()

@@ -15,7 +15,16 @@ isinstance 는 메서드 존재만 보고 시그니처는 보지 않는다 — �
 from collections.abc import Sequence
 from typing import Literal, Protocol, runtime_checkable
 
-from core.types import AccessRecord, Chunk, Clause, Document, PolicyHit, Principal
+from core.types import (
+    AccessRecord,
+    Chunk,
+    Clause,
+    Document,
+    DocumentRow,
+    PolicyHit,
+    Principal,
+    PrincipalRow,
+)
 
 Vector = list[float]
 
@@ -117,3 +126,18 @@ class AccessLog(Protocol):
     def violations(self, limit: int) -> list[AccessRecord]:
         """allowed=False 인 기록만. 권한 밖 요청 알림에 쓴다."""
         ...
+
+
+@runtime_checkable
+class DocumentCatalog(Protocol):
+    def documents(self) -> list[DocumentRow]:
+        """전체 문서 목록. 권한 필터를 적용하지 않는다 —
+
+        문서 화면은 "이 페르소나에게 무엇이 보이는가"를 클라이언트가 계산해
+        보여주는 화면이고, 그 계산의 입력이 필요하다. 검색 경로가 아니므로
+        여기서 필터링하지 않는 것이 맞다. 대신 이 엔드포인트는 공유 시크릿
+        뒤에 있고 본문을 돌려주지 않는다.
+        """
+        ...
+
+    def principals(self) -> list[PrincipalRow]: ...

@@ -2,7 +2,14 @@ import dataclasses
 
 import pytest
 
-from core.ports import AccessLog, ChunkSearch, DocumentStore, Embedder, PrincipalStore
+from core.ports import (
+    AccessLog,
+    ChunkSearch,
+    DocumentCatalog,
+    DocumentStore,
+    Embedder,
+    PrincipalStore,
+)
 from core.types import EMBEDDING_DIM, Chunk, Clause, Document, PolicyHit, Principal
 
 
@@ -120,11 +127,19 @@ def test_포트를_스텁이_만족한다():
         def violations(self, limit):
             return []
 
+    class 카탈로그:
+        def documents(self):
+            return []
+
+        def principals(self):
+            return []
+
     assert isinstance(임베더(), Embedder)
     assert isinstance(저장소(), DocumentStore)
     assert isinstance(검색기(), ChunkSearch)
     assert isinstance(주체저장소(), PrincipalStore)
     assert isinstance(열람기록(), AccessLog)
+    assert isinstance(카탈로그(), DocumentCatalog)
 
 
 def test_포트를_만족하지_않으면_False_다():

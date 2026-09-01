@@ -6,12 +6,20 @@
 
 from collections.abc import Callable
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 from adapters.agent.context import AgentContext
-from api.schemas import AskRequest, AskResponse, PersonaView, PolicyHitView
+from api.schemas import (
+    AccessRecordView,
+    AskRequest,
+    AskResponse,
+    DocumentView,
+    PersonaView,
+    PolicyHitView,
+    PrincipalView,
+)
 from api.security import 시크릿_검사
-from core.ports import AccessLog, PrincipalStore
+from core.ports import AccessLog, DocumentCatalog, PrincipalStore
 from core.types import AccessRecord
 
 
@@ -20,6 +28,7 @@ def build_app(
     주체저장소: PrincipalStore,
     모델_준비됨: Callable[[], bool] = lambda: True,
     열람기록: AccessLog | None = None,
+    카탈로그: DocumentCatalog | None = None,
 ) -> FastAPI:
     """앱을 조립한다. 의존성을 인자로 받아 테스트가 스텁을 넣을 수 있다."""
     app = FastAPI(title="secu-agent")
@@ -126,7 +135,64 @@ def build_app(
             tool_calls=ctx.tool_calls,
         )
 
+    @app.get("/documents", dependencies=[Depends(시크릿_검사)])
+    def documents() -> list[DocumentView]:
+        """전체 문서 목록. 권한 필터를 적용하지 않는다 —
+
+        문서 화면은 "이 페르소나에게 무엇이 보이는가"를 클라이언트가 계산해
+        보여주는 화면이고, 그 계산의 입력이 필요하다. 검색 경로가 아니므로
+        여기서 필터링하지 않는 것이 맞다. 대신 이 엔드포인트는 공유 시크릿
+        뒤에 있고 본문을 돌려주지 않는다.
+        """
+        if 카탈로그 is None:
+            raise HTTPException(status_code=503, detail="카탈로그 준비되지 않음")
+        return [
+            DocumentView(
+                id=d.id,
+                title=d.title,
+                doc_type=d.doc_type,
+                required_clearance=d.required_clearance,
+                allowed_departments=d.allowed_departments,
+                source_path=d.source_path,
+                chunk_count=d.chunk_count,
+            )
+            for d in 카탈로그.documents()
+        ]
+
+    @app.get("/principals", dependencies=[Depends(시크릿_검사)])
+    def principals() -> list[PrincipalView]:
+        if 카탈로그 is None:
+            raise HTTPException(status_code=503, detail="카탈로그 준비되지 않음")
+        return [
+            PrincipalView(name=p.name, department=p.department, clearance=p.clearance)
+            for p in 카탈로그.principals()
+        ]
+
+    @app.get("/access-log", dependencies=[Depends(시크릿_검사)])
+    def access_log(limit: int = Query(default=50, ge=1, le=200)) -> list[AccessRecordView]:
+        if 열람기록 is None:
+            raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
+        return [_기록으로(r) for r in 열람기록.recent(limit)]
+
+    @app.get("/access-log/violations", dependencies=[Depends(시크릿_검사)])
+    def access_violations(limit: int = Query(default=20, ge=1, le=200)) -> list[AccessRecordView]:
+        if 열람기록 is None:
+            raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
+        return [_기록으로(r) for r in 열람기록.violations(limit)]
+
     return app
+
+
+def _기록으로(r: AccessRecord) -> AccessRecordView:
+    return AccessRecordView(
+        persona=r.persona,
+        department=r.department,
+        clearance=r.clearance,
+        query=r.query,
+        clause_code=r.clause_code,
+        chunk_id=r.chunk_id,
+        allowed=r.allowed,
+    )
 
 
 def _위반_chunk_id(e: Exception) -> list[int]:

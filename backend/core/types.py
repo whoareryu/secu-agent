@@ -86,6 +86,29 @@ class PolicyHit:
 
 
 @dataclass(frozen=True)
+class DocumentRow:
+    """문서 목록 한 줄. 문서 화면이 쓴다.
+
+    본문을 담지 않는다 — 목록은 어떤 문서가 있는지만 보여준다.
+    """
+
+    id: int
+    title: str
+    doc_type: str
+    required_clearance: int
+    allowed_departments: tuple[str, ...]
+    source_path: str
+    chunk_count: int
+
+
+@dataclass(frozen=True)
+class PrincipalRow:
+    name: str
+    department: str
+    clearance: int
+
+
+@dataclass(frozen=True)
 class AccessRecord:
     """열람 기록 한 줄. 관리자 대시보드가 읽는다.
 

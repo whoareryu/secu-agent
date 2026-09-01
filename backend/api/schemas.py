@@ -31,3 +31,29 @@ class AskResponse(BaseModel):
     hits: list[PolicyHitView]
     persona: PersonaView
     tool_calls: int
+
+
+class DocumentView(BaseModel):
+    id: int
+    title: str
+    doc_type: str
+    required_clearance: int
+    allowed_departments: tuple[str, ...]
+    source_path: str
+    chunk_count: int
+
+
+class PrincipalView(BaseModel):
+    name: str
+    department: str
+    clearance: int
+
+
+class AccessRecordView(BaseModel):
+    persona: str
+    department: str
+    clearance: int
+    query: str
+    clause_code: str | None
+    chunk_id: int
+    allowed: bool
