@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 16 (App Router), React 19, TypeScript, Auth.js 5.0.0-beta.32, FastAPI, psycopg 3
 
-**Handoff:** `docs/handoff/2026-09-01-frontend-handoff.md` · 프로토타입 `docs/handoff/prototype.dc.html`
+**Handoff:** `docs/handoff/2026-09-01-frontend-handoff.md` · 프로토타입 `docs/handoff/prototype.dc.html` · **스크린샷 11장 `docs/handoff/screenshots/`** (파일명이 화면과 대응한다 — 마크업이 애매하면 이것부터 본다)
 **Spec:** `docs/superpowers/specs/2026-09-01-w3-deployment-design.md`
 **상위 Spec:** `docs/superpowers/specs/2026-08-31-secu-agent-design.md`
 
@@ -49,6 +49,10 @@
 담지 않는 것: 청크 본문 · 문서 제목
 
 > 문서 제목을 빼는 이유: 제목만으로도 존재가 드러난다. "임원 성과급 산정 기준"이 로그에 있으면 그 문서의 존재가 확인된다.
+
+**목업이 이 지점에서 자기모순이다.** `screenshots/10-admin-access-log.png` 의 차단된 행은 이렇게 적혀 있다 — `박인사 · "임원 성과급 지급 시기" · 열람 문서: 임원 성과급 산정 기준 · 조항 6.1.3 · 결과: 차단`. **차단됐는데 무엇이 차단됐는지가 다 적혀 있다.** 그런데 같은 화면 알림 표 아래 주석은 *"알림에는 대상 식별자만 담기지만 문서 본문과 제목은 담기지 않습니다"* 라고 말한다. 표가 주석을 반증한다.
+
+주석이 옳고 표가 틀렸다. 이 계획은 주석을 따른다 — 기록에 제목을 담지 않고, 화면에도 `chunk_id` 만 보여준다.
 
 ### ③ 문서·계정 화면은 목이 아니라 실제 DB 를 읽는다
 
@@ -1012,6 +1016,12 @@ cd frontend && npx tsc --noEmit && npm run build
 프로토타입 그대로. 태그 행(페르소나 `.tag-accent`, 부서·등급 `.tag-neutral`), 우측 메타 `tool_calls N · hits N · NNNms`. 근거는 `repeat(auto-fill, minmax(280px,1fr))` 그리드, 카드마다 순위 kicker · 조항 코드 `.tag-outline` · 문서명 `.card-title` · 발췌 · `chunk_id`.
 
 **소요 시간은 클라이언트가 잰다** — 백엔드가 돌려주지 않으므로 `performance.now()` 차이를 쓴다. 지어낸 값을 넣지 않는다.
+
+**조항 코드로 중복을 접는다 (Ruling W3b-R5).** 목업은 근거 카드 5장을 그렸지만 실제 응답은 `k=10` 이고, 한 조항이 여러 청크로 쪼개져 있어 같은 코드가 반복된다 — 브라우저 실측에서 `[1.1.2]` 가 10건 중 3번 나왔다. 목업대로 10장을 깔면 화면이 노이즈로 찬다.
+
+같은 `clause_code` 가 여러 번 오면 **첫 번째만 카드로 그리고** 그 카드에 `청크 N개` 를 표시한다. 코드가 `null` 인 항목(조항 밖 텍스트)은 각각 별개로 둔다.
+
+> **`hits` 배열 자체는 손대지 않는다.** 개수가 권한을 누출하지 않는다는 것이 이 프로젝트의 중심 논증이고 그것은 `hits` 길이에 걸려 있다. 접는 것은 표시 계층뿐이다. 그래서 답변 카드 우측 메타에 **`hits N · 조항 M`** 을 함께 적어, 카드 수가 `hits` 수와 다른 이유가 화면에 드러나게 한다.
 
 - [ ] **Step 5: 사전 필터링 설명 카드**
 
