@@ -95,8 +95,7 @@ def enforce_events(events: Sequence[LogEvent], p: Principal) -> list[LogEvent]:
     메시지에는 **이벤트 id 만** 담는다. raw 도 호스트 이름도 담지 않는다.
     오류가 우회 경로가 되면 안 된다.
     """
-    새는_것 = [e for e in events
-              if not visible(e.required_clearance, e.allowed_departments, p)]
+    새는_것 = [e for e in events if not visible(e.required_clearance, e.allowed_departments, p)]
     if 새는_것:
         위반 = [e.id for e in 새는_것]
         raise AccessViolation(

@@ -197,7 +197,8 @@ def test_LogEvent_에는_기본값이_없다():
     from core.types import LogEvent
 
     권한_필드 = [
-        f for f in dataclasses.fields(LogEvent)
+        f
+        for f in dataclasses.fields(LogEvent)
         if f.name in ("required_clearance", "allowed_departments")
     ]
     assert len(권한_필드) == 2
@@ -214,10 +215,12 @@ def test_Host_가_documents_와_같은_권한_컬럼을_갖는다():
     from core.types import Document, Host
 
     문서_권한 = {f.name for f in dataclasses.fields(Document)} & {
-        "required_clearance", "allowed_departments"
+        "required_clearance",
+        "allowed_departments",
     }
     호스트_권한 = {f.name for f in dataclasses.fields(Host)} & {
-        "required_clearance", "allowed_departments"
+        "required_clearance",
+        "allowed_departments",
     }
     assert 문서_권한 == 호스트_권한 == {"required_clearance", "allowed_departments"}
 
@@ -226,8 +229,9 @@ def test_visible_이_Host_에도_그대로_쓰인다():
     from core.access.visibility import visible
     from core.types import Host, Principal
 
-    h = Host(name="hr-app-01", department="인사팀", required_clearance=2,
-             allowed_departments=("인사팀",))
+    h = Host(
+        name="hr-app-01", department="인사팀", required_clearance=2, allowed_departments=("인사팀",)
+    )
     개발자 = Principal(department="개발팀", clearance=3)
     인사팀장 = Principal(department="인사팀", clearance=2)
 

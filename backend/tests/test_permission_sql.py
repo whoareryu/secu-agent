@@ -27,7 +27,7 @@ def test_권한_컬럼이_별칭_없이_등장하지_않는다():
     for 컬럼 in ("required_clearance", "allowed_departments"):
         # 컬럼 이름 바로 앞이 "h." 가 아닌 등장을 찾는다
         for m in re.finditer(re.escape(컬럼), 조각):
-            앞 = 조각[max(0, m.start() - 2):m.start()]
+            앞 = 조각[max(0, m.start() - 2) : m.start()]
             assert 앞 == "h.", f"{컬럼} 이 별칭 없이 등장한다 (앞: {앞!r})"
 
 

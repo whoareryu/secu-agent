@@ -48,8 +48,10 @@ def ingest_logs(path: Path, year: int, conn: psycopg.Connection) -> 적재결과
             VALUES (%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT DO NOTHING
             """,
-            [(e.ts, e.host, e.process, e.event_type, e.principal_name, e.raw, e.severity)
-             for e in 이벤트],
+            [
+                (e.ts, e.host, e.process, e.event_type, e.principal_name, e.raw, e.severity)
+                for e in 이벤트
+            ],
         )
     conn.commit()
     return 적재결과(적재=len(이벤트), 건너뜀=건너뜀)

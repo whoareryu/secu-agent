@@ -40,8 +40,7 @@ def test_거부하면_한_줄도_들어가지_않는다(db연결, tmp_path):
         cur.execute("TRUNCATE log_events RESTART IDENTITY CASCADE")
         cur.execute("TRUNCATE hosts RESTART IDENTITY CASCADE")
         cur.execute(
-            "INSERT INTO hosts (name, department, required_clearance) "
-            "VALUES ('open-01','개발팀',1)"
+            "INSERT INTO hosts (name, department, required_clearance) VALUES ('open-01','개발팀',1)"
         )
     db연결.commit()
 
@@ -66,8 +65,7 @@ def test_등록된_호스트만_있으면_적재한다(db연결, tmp_path):
         cur.execute("TRUNCATE log_events RESTART IDENTITY CASCADE")
         cur.execute("TRUNCATE hosts RESTART IDENTITY CASCADE")
         cur.execute(
-            "INSERT INTO hosts (name, department, required_clearance) "
-            "VALUES ('open-01','개발팀',1)"
+            "INSERT INTO hosts (name, department, required_clearance) VALUES ('open-01','개발팀',1)"
         )
     db연결.commit()
 
@@ -87,8 +85,7 @@ def test_두_번_적재해도_중복되지_않는다(db연결, tmp_path):
         cur.execute("TRUNCATE log_events RESTART IDENTITY CASCADE")
         cur.execute("TRUNCATE hosts RESTART IDENTITY CASCADE")
         cur.execute(
-            "INSERT INTO hosts (name, department, required_clearance) "
-            "VALUES ('open-01','개발팀',1)"
+            "INSERT INTO hosts (name, department, required_clearance) VALUES ('open-01','개발팀',1)"
         )
     db연결.commit()
 

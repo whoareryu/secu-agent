@@ -36,13 +36,13 @@ class 스텁검색기:
         by_id = {h.chunk_id: h for h in self.hits}
         return [by_id[i] for i in ids if i in by_id]
 
+
 class 빈로그검색기:
     """로그를 쓰지 않는 테스트용. build_agent 가 log_searcher 를 필수로
     받으므로 빠뜨릴 수 없다 — 빠뜨림이 생성 시점에 드러나는 편이 낫다."""
 
     def query(self, principal, event_type, since, limit):
         return []
-
 
 
 class 스텁주체저장소:
@@ -376,8 +376,10 @@ def test_로그_권한_위반은_502_이고_로그_이벤트로_기록된다(mon
 
     class 로그위반에이전트:
         def invoke(self, state, context=None):
-            enforce_events([_로그이벤트(77, raw="exec-fs-01 sshd: Failed password for root")],
-                           context.principal)
+            enforce_events(
+                [_로그이벤트(77, raw="exec-fs-01 sshd: Failed password for root")],
+                context.principal,
+            )
             raise AssertionError("enforce_events 가 위반을 잡지 못했다")
 
     c = TestClient(build_app(lambda: 로그위반에이전트(), 저장소, lambda: True, 기록))
@@ -474,15 +476,15 @@ def _로그를_부르지만_침묵하는_에이전트():
 def test_로그를_조회하지_않으면_고지가_없다():
     """규정만 물은 답에 로그 고지가 붙으면 그것도 지어낸 값이다."""
     client = _클라이언트(에이전트=_규정만_부르는_에이전트())
-    r = client.post("/ask", json={"query": "비밀번호 규정", "persona": "김개발"},
-                    headers=_시크릿)
+    r = client.post("/ask", json={"query": "비밀번호 규정", "persona": "김개발"}, headers=_시크릿)
     assert r.json()["log_scope"] is None
 
 
 def test_로그를_조회하면_고지가_붙는다():
     client = _클라이언트(에이전트=_로그를_부르는_에이전트())
-    r = client.post("/ask", json={"query": "어젯밤 인증 실패", "persona": "김개발"},
-                    headers=_시크릿)
+    r = client.post(
+        "/ask", json={"query": "어젯밤 인증 실패", "persona": "김개발"}, headers=_시크릿
+    )
     assert r.json()["log_scope"] == 로그_범위_고지
 
 
@@ -495,8 +497,9 @@ def test_고지_문구가_등급과_무관하게_동일하다():
     client = _클라이언트(에이전트=_로그를_부르는_에이전트())
     문구 = set()
     for 페르소나 in ("김개발", "박인사", "최임원"):
-        r = client.post("/ask", json={"query": "어젯밤 인증 실패", "persona": 페르소나},
-                        headers=_시크릿)
+        r = client.post(
+            "/ask", json={"query": "어젯밤 인증 실패", "persona": 페르소나}, headers=_시크릿
+        )
         문구.add(r.json()["log_scope"])
     # len(문구) == 1 로 쓰면 셋 다 None 이어도 통과한다 — 고지가 아예
     # 사라진 것과 같은 문구인 것을 구별하지 못한다.

@@ -48,8 +48,9 @@ def main() -> int:
 
     il = sub.add_parser("ingest-logs", help="syslog 파일을 적재한다")
     il.add_argument("path", type=Path)
-    il.add_argument("--year", type=int, required=True,
-                    help="syslog 형식에는 연도가 없다. 명시한다.")
+    il.add_argument(
+        "--year", type=int, required=True, help="syslog 형식에는 연도가 없다. 명시한다."
+    )
     il.add_argument("--dsn", default=None)
 
     dem = sub.add_parser("demo", help="같은 질의를 세 계정으로 던진다")

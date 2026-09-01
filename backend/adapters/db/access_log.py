@@ -10,9 +10,7 @@ import psycopg
 
 from core.types import AccessRecord
 
-_삽입_열 = (
-    "persona, department, clearance, query, clause_code, resource_kind, resource_id, allowed"
-)
+_삽입_열 = "persona, department, clearance, query, clause_code, resource_kind, resource_id, allowed"
 _조회_열 = _삽입_열 + ", ts"
 
 

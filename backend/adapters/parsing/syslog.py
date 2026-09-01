@@ -23,8 +23,9 @@ _줄 = re.compile(
     r"(?P<msg>.*)$"
 )
 
-_월 = {m: i for i, m in enumerate(
-    "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(), start=1)}
+_월 = {
+    m: i for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(), start=1)
+}
 
 # 메시지 본문에서 유형과 사용자명을 읽는다. 순서가 의미를 갖는다 —
 # 먼저 맞는 것이 이긴다.

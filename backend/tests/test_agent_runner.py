@@ -197,9 +197,16 @@ def test_시각이_없는_이벤트도_도구가_터지지_않는다():
     from core.types import LogEvent
 
     시각없음 = LogEvent(
-        id=1, ts=None, host="dev-web-01", process="sshd", event_type="auth_failure",
-        principal_name="devuser", raw="Failed password", severity=None,
-        required_clearance=1, allowed_departments=(),
+        id=1,
+        ts=None,
+        host="dev-web-01",
+        process="sshd",
+        event_type="auth_failure",
+        principal_name="devuser",
+        raw="Failed password",
+        severity=None,
+        required_clearance=1,
+        allowed_departments=(),
     )
     모델 = 대본모델(
         대본=[
@@ -211,9 +218,9 @@ def test_시각이_없는_이벤트도_도구가_터지지_않는다():
         ]
     )
     ctx = AgentContext(principal=사원)
-    res = build_agent(
-        고정임베더(), _검색기(), 모델, _스텁로그검색기([시각없음])
-    ).invoke({"messages": [{"role": "user", "content": "인증 실패"}]}, context=ctx)
+    res = build_agent(고정임베더(), _검색기(), 모델, _스텁로그검색기([시각없음])).invoke(
+        {"messages": [{"role": "user", "content": "인증 실패"}]}, context=ctx
+    )
 
     본문 = [m for m in res["messages"] if m.__class__.__name__ == "ToolMessage"][0].content
     assert "dev-web-01" in 본문 and "auth_failure" in 본문

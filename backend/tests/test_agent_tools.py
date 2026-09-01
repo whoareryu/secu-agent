@@ -190,8 +190,10 @@ def test_예외_메시지에_raw_도_호스트도_담기지_않는다():
     from core.agent.policy import AccessViolation, enforce_events
 
     with pytest.raises(AccessViolation) as e:
-        enforce_events([_이벤트(id=42, required_clearance=3, raw="비밀 내용", host="exec-fs-01")],
-                       Principal(department="개발팀", clearance=1))
+        enforce_events(
+            [_이벤트(id=42, required_clearance=3, raw="비밀 내용", host="exec-fs-01")],
+            Principal(department="개발팀", clearance=1),
+        )
     메시지 = str(e.value)
     assert "42" in 메시지
     assert "비밀 내용" not in 메시지

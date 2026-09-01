@@ -31,7 +31,8 @@ def _이벤트들():
     for p in sorted((_데이터 / "logs").glob("*.log")):
         연도 = int(p.stem[:4])
         이벤트 += [
-            e for e in (parse_line(줄, year=연도) for 줄 in p.read_text("utf-8").splitlines())
+            e
+            for e in (parse_line(줄, year=연도) for 줄 in p.read_text("utf-8").splitlines())
             if e is not None
         ]
     return 이벤트
@@ -56,9 +57,13 @@ def test_세_페르소나_모두_기본_limit_이상을_본다():
     호스트 = _호스트들()
     for p in 세_페르소나:
         보이는 = [
-            e for e in _이벤트들()
-            if visible(호스트[e.host]["required_clearance"],
-                       tuple(호스트[e.host]["allowed_departments"]), p)
+            e
+            for e in _이벤트들()
+            if visible(
+                호스트[e.host]["required_clearance"],
+                tuple(호스트[e.host]["allowed_departments"]),
+                p,
+            )
         ]
         assert len(보이는) >= _기본_limit, (
             f"{p.department} 등급{p.clearance} 가 {len(보이는)}건만 본다. "
@@ -71,12 +76,16 @@ def test_가장_최근_이벤트들이_최고_등급_전용이다():
     거짓 통과한다 — 시연도 아무것도 보여주지 못한다.
     """
     호스트 = _호스트들()
-    최근 = sorted(_이벤트들(), key=lambda e: e.ts, reverse=True)[:_기본_limit + 5]
+    최근 = sorted(_이벤트들(), key=lambda e: e.ts, reverse=True)[: _기본_limit + 5]
     개발자 = Principal(department="개발팀", clearance=1)
     보이는_것 = [
-        e for e in 최근
-        if visible(호스트[e.host]["required_clearance"],
-                   tuple(호스트[e.host]["allowed_departments"]), 개발자)
+        e
+        for e in 최근
+        if visible(
+            호스트[e.host]["required_clearance"],
+            tuple(호스트[e.host]["allowed_departments"]),
+            개발자,
+        )
     ]
     assert not 보이는_것, (
         f"최근 {len(최근)}건 중 {len(보이는_것)}건이 등급1 에게 보인다. "
@@ -86,5 +95,4 @@ def test_가장_최근_이벤트들이_최고_등급_전용이다():
 
 def test_다섯_가지_event_type_이_전부_있다():
     유형 = {e.event_type for e in _이벤트들()}
-    assert {"auth_failure", "session_open", "session_close",
-            "privilege_use", "other"} <= 유형
+    assert {"auth_failure", "session_open", "session_close", "privilege_use", "other"} <= 유형

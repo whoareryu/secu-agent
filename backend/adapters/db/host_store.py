@@ -21,8 +21,12 @@ class PgHostStore:
                     allowed_departments = EXCLUDED.allowed_departments
                 """,
                 # 빈 튜플을 NULL 로 정규화한다 — documents 쪽과 같은 규칙이다.
-                (host.name, host.department, host.required_clearance,
-                 list(host.allowed_departments) or None),
+                (
+                    host.name,
+                    host.department,
+                    host.required_clearance,
+                    list(host.allowed_departments) or None,
+                ),
             )
         self.conn.commit()
 

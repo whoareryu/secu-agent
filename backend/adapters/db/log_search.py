@@ -63,8 +63,14 @@ class PgLogSearch:
             )
             return [
                 LogEvent(
-                    id=r[0], ts=r[1], host=r[2], process=r[3], event_type=r[4],
-                    principal_name=r[5], raw=r[6], severity=r[7],
+                    id=r[0],
+                    ts=r[1],
+                    host=r[2],
+                    process=r[3],
+                    event_type=r[4],
+                    principal_name=r[5],
+                    raw=r[6],
+                    severity=r[7],
                     required_clearance=r[8],
                     # NULL(전사 공개)을 빈 튜플로 정규화한다 — core 쪽 규칙이
                     # 빈 튜플을 전사 공개로 읽는다.

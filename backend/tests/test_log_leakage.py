@@ -43,17 +43,35 @@ def 로그코퍼스(db연결):
             "INSERT INTO hosts (name, department, required_clearance, allowed_departments)"
             " VALUES (%s,%s,%s,%s)",
             [
-                ("open-01", "개발팀", 1, None),      # 전사 공개
-                ("exec-01", "경영지원팀", 3, None),   # 등급 3 필요
+                ("open-01", "개발팀", 1, None),  # 전사 공개
+                ("exec-01", "경영지원팀", 3, None),  # 등급 3 필요
             ],
         )
         행 = []
         for i in range(_허용_이벤트):  # 오래된 것
-            행.append((_기준시각 - timedelta(hours=100 - i), "open-01", "sshd",
-                       "auth_failure", "devuser", f"open {i}", None))
+            행.append(
+                (
+                    _기준시각 - timedelta(hours=100 - i),
+                    "open-01",
+                    "sshd",
+                    "auth_failure",
+                    "devuser",
+                    f"open {i}",
+                    None,
+                )
+            )
         for i in range(_제한_이벤트):  # 최근 것
-            행.append((_기준시각 - timedelta(minutes=_제한_이벤트 - i), "exec-01", "sshd",
-                       "auth_failure", "execuser", f"exec {i}", None))
+            행.append(
+                (
+                    _기준시각 - timedelta(minutes=_제한_이벤트 - i),
+                    "exec-01",
+                    "sshd",
+                    "auth_failure",
+                    "execuser",
+                    f"exec {i}",
+                    None,
+                )
+            )
         cur.executemany(
             "INSERT INTO log_events (ts, host, process, event_type, principal_name, raw, severity)"
             " VALUES (%s,%s,%s,%s,%s,%s,%s)",
@@ -149,8 +167,7 @@ def test_since_필터가_권한을_우회하지_않는다(로그코퍼스):
     '그 구간에 뭔가 있다'가 새면 안 된다.
     """
     검색 = PgLogSearch(로그코퍼스)
-    결과 = 검색.query(개발자, event_type=None,
-                     since=_기준시각 - timedelta(minutes=30), limit=200)
+    결과 = 검색.query(개발자, event_type=None, since=_기준시각 - timedelta(minutes=30), limit=200)
     assert 결과 == []
 
 
