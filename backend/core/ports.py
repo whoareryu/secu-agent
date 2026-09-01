@@ -13,6 +13,7 @@ isinstance 는 메서드 존재만 보고 시그니처는 보지 않는다 — �
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Literal, Protocol, runtime_checkable
 
 from core.types import (
@@ -21,6 +22,8 @@ from core.types import (
     Clause,
     Document,
     DocumentRow,
+    Host,
+    LogEvent,
     PolicyHit,
     Principal,
     PrincipalRow,
@@ -141,3 +144,36 @@ class DocumentCatalog(Protocol):
         ...
 
     def principals(self) -> list[PrincipalRow]: ...
+
+
+@runtime_checkable
+class LogSearch(Protocol):
+    def query(
+        self,
+        principal: Principal,
+        event_type: str | None,
+        since: datetime | None,
+        limit: int,
+    ) -> list[LogEvent]:
+        """권한이 반영된 로그 이벤트를 최근 순으로 돌려준다.
+
+        principal 이 필수 인자인 이유는 ChunkSearch 와 같다 — 권한 없는
+        조회를 호출할 방법이 없다(상위 spec 5.3).
+
+        **개수가 주체에 따라 다른 것은 정상이다.** 문서 검색은 상위 k개를
+        돌려주므로 개수가 고정이지만, 로그는 개수 자체가 답이다. 위험은
+        누출이 아니라 부분 집계를 전체로 오해하는 것이고, 그것은 응답의
+        범위 고지가 막는다(보충 spec 2.2~2.4).
+        """
+        ...
+
+
+@runtime_checkable
+class HostStore(Protocol):
+    def upsert(self, host: Host) -> None:
+        """호스트를 등록한다. 같은 이름은 갱신한다."""
+        ...
+
+    def names(self) -> set[str]:
+        """등록된 호스트 이름 전체. 적재가 미등록 호스트를 거부하는 데 쓴다."""
+        ...

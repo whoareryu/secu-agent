@@ -59,11 +59,23 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_idx
 CREATE INDEX IF NOT EXISTS chunks_tsv_idx ON chunks USING gin (text_tsv);
 CREATE INDEX IF NOT EXISTS chunks_document_idx ON chunks (document_id);
 
+-- 로그가 실행된 장비. documents 와 **같은 두 권한 컬럼**을 갖는다.
+--
+-- 같은 이름을 쓰는 이유는 core/access/visibility.py 의 visible() 을 문서와
+-- 로그가 그대로 공유하기 위해서다. 컬럼 이름이 갈리면 판정 함수가 두 벌이
+-- 되고, 그 어긋남은 조용하다(결과가 줄어들 뿐 에러가 아니다).
+CREATE TABLE IF NOT EXISTS hosts (
+    name                TEXT PRIMARY KEY,   -- log_events.host 와 같은 문자열
+    department          TEXT NOT NULL,
+    required_clearance  INT  NOT NULL DEFAULT 1,
+    allowed_departments TEXT[]              -- NULL = 전사 공개
+);
+
 -- W4 에서 채운다. 스키마를 지금 두는 이유는 나중에 마이그레이션하지 않기 위해서다.
 CREATE TABLE IF NOT EXISTS log_events (
     id             BIGSERIAL PRIMARY KEY,
     ts             TIMESTAMPTZ,
-    host           TEXT NOT NULL,
+    host           TEXT NOT NULL REFERENCES hosts(name),
     process        TEXT,
     event_type     TEXT NOT NULL,                   -- auth_failure | session_open | ...
     principal_name TEXT,
@@ -101,3 +113,12 @@ CREATE TABLE IF NOT EXISTS access_records (
 
 CREATE INDEX IF NOT EXISTS access_records_ts_idx ON access_records (ts DESC);
 CREATE INDEX IF NOT EXISTS access_records_allowed_idx ON access_records (allowed);
+
+-- 이미 만들어진 log_events 에 외래키를 붙인다. 두 번 돌려도 안전하다.
+DO $$
+BEGIN
+    ALTER TABLE log_events
+        ADD CONSTRAINT log_events_host_fkey FOREIGN KEY (host) REFERENCES hosts(name);
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;

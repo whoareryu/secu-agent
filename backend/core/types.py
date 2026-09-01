@@ -110,6 +110,44 @@ class PrincipalRow:
 
 
 @dataclass(frozen=True)
+class Host:
+    """로그가 실행된 장비.
+
+    권한 컬럼 이름이 Document 와 같다 — visible() 을 그대로 쓰기 위해서다.
+    스펙 결정 13.
+    """
+
+    name: str
+    department: str
+    required_clearance: int
+    allowed_departments: tuple[str, ...]  # 비어 있으면 전사 공개
+
+
+@dataclass(frozen=True)
+class LogEvent:
+    """운영 로그 한 줄.
+
+    호스트의 권한 두 필드를 들고 다닌다. PolicyHit 과 같은 이유다 —
+    재검증이 DB 를 다시 부르면 그건 검증이 아니라 같은 코드를 두 번
+    믿는 것이다.
+
+    raw 를 그대로 보존한다. 파서가 잘못 읽었을 때 원본이 없으면 확인할
+    방법이 없다(상위 spec §10).
+    """
+
+    id: int
+    ts: datetime | None
+    host: str
+    process: str | None
+    event_type: str
+    principal_name: str | None
+    raw: str
+    severity: str | None
+    required_clearance: int
+    allowed_departments: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class AccessRecord:
     """열람 기록 한 줄. 관리자 대시보드가 읽는다.
 
