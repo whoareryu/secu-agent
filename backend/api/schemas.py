@@ -5,6 +5,8 @@ AskRequest 에 department·clearance 가 **없다**. 클라이언트가 그것�
 principals 테이블에서 번역한다.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -57,3 +59,4 @@ class AccessRecordView(BaseModel):
     clause_code: str | None
     chunk_id: int
     allowed: bool
+    ts: datetime | None = None

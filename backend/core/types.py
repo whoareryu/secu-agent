@@ -5,6 +5,7 @@
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 
 # 임베딩 벡터 차원. intfloat/multilingual-e5-small 은 384 다.
 # 모델을 바꾸면 이 상수와 db/schema.sql 의 vector(N), 그리고 이미 적재된
@@ -114,6 +115,9 @@ class AccessRecord:
 
     text 도 doc_title 도 없다. 기록이 문서 본문이나 제목을 담으면 그 테이블이
     곧 권한 우회 경로가 된다 — 제목만으로도 존재가 드러난다.
+
+    ts 가 선택인 이유: DB 가 DEFAULT now() 로 채운다. 쓰기 경로는 값을 주지
+    않고, 읽기 경로만 채워서 돌려준다.
     """
 
     persona: str
@@ -123,3 +127,4 @@ class AccessRecord:
     clause_code: str | None
     chunk_id: int
     allowed: bool
+    ts: datetime | None = None

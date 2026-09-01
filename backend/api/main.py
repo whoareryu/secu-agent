@@ -192,6 +192,7 @@ def _기록으로(r: AccessRecord) -> AccessRecordView:
         clause_code=r.clause_code,
         chunk_id=r.chunk_id,
         allowed=r.allowed,
+        ts=r.ts,
     )
 
 

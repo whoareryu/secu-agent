@@ -10,7 +10,8 @@ import psycopg
 
 from core.types import AccessRecord
 
-_열 = "persona, department, clearance, query, clause_code, chunk_id, allowed"
+_삽입_열 = "persona, department, clearance, query, clause_code, chunk_id, allowed"
+_조회_열 = _삽입_열 + ", ts"
 
 
 def _행에서(row) -> AccessRecord:
@@ -22,6 +23,7 @@ def _행에서(row) -> AccessRecord:
         clause_code=row[4],
         chunk_id=row[5],
         allowed=row[6],
+        ts=row[7],
     )
 
 
@@ -35,7 +37,7 @@ class PgAccessLog:
         try:
             with self.conn.cursor() as cur:
                 cur.executemany(
-                    f"INSERT INTO access_records ({_열}) VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                    f"INSERT INTO access_records ({_삽입_열}) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                     [
                         (
                             r.persona,
@@ -58,7 +60,7 @@ class PgAccessLog:
     def recent(self, limit: int) -> list[AccessRecord]:
         with self.conn.cursor() as cur:
             cur.execute(
-                f"SELECT {_열} FROM access_records ORDER BY ts DESC, id DESC LIMIT %s",
+                f"SELECT {_조회_열} FROM access_records ORDER BY ts DESC, id DESC LIMIT %s",
                 (limit,),
             )
             return [_행에서(r) for r in cur.fetchall()]
@@ -66,7 +68,7 @@ class PgAccessLog:
     def violations(self, limit: int) -> list[AccessRecord]:
         with self.conn.cursor() as cur:
             cur.execute(
-                f"SELECT {_열} FROM access_records WHERE allowed = FALSE "
+                f"SELECT {_조회_열} FROM access_records WHERE allowed = FALSE "
                 "ORDER BY ts DESC, id DESC LIMIT %s",
                 (limit,),
             )

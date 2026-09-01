@@ -1,5 +1,7 @@
 """읽기 엔드포인트 — 문서 · 계정 · 열람 이력. DB 도 LLM 도 없이 스텁으로 검사한다."""
 
+from datetime import datetime, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -46,7 +48,7 @@ class 스텁카탈로그:
         ]
 
 
-def _기록(persona="박인사", allowed=True, chunk_id=1):
+def _기록(persona="박인사", allowed=True, chunk_id=1, ts=None):
     return AccessRecord(
         persona=persona,
         department="인사팀",
@@ -55,6 +57,7 @@ def _기록(persona="박인사", allowed=True, chunk_id=1):
         clause_code="2.6.1",
         chunk_id=chunk_id,
         allowed=allowed,
+        ts=ts,
     )
 
 
@@ -154,3 +157,32 @@ def test_access_log_응답에_본문_키가_없다(client):
     for 기록 in 본문:
         assert "text" not in 기록
         assert "doc_title" not in 기록
+
+
+def test_access_log가_ts를_돌려준다(monkeypatch):
+    """읽기 경로가 시간을 실제로 실어 나르는지 확인한다.
+
+    DB 어댑터가 ts 를 SELECT 에서 빠뜨리거나, main.py 의 _기록으로 가
+    r.ts 를 View 에 옮기지 않으면 이 값이 조용히 사라진다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+
+    def 에이전트_공장():
+        raise AssertionError("이 테스트는 /ask 를 부르지 않는다")
+
+    시각 = datetime(2026, 9, 1, 3, 0, 0, tzinfo=timezone.utc)
+    기록들 = [_기록(chunk_id=1, ts=시각)]
+    client = TestClient(
+        build_app(
+            에이전트_공장,
+            스텁주체저장소(),
+            lambda: True,
+            열람기록=스텁열람기록(기록들),
+            카탈로그=스텁카탈로그(),
+        )
+    )
+
+    r = client.get("/access-log", headers=헤더)
+    assert r.status_code == 200
+    본문 = r.json()
+    assert datetime.fromisoformat(본문[0]["ts"].replace("Z", "+00:00")) == 시각
