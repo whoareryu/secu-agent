@@ -164,9 +164,15 @@ W2 의 최종 리뷰가 정확히 이 지점을 지적했다 — **`principal` �
 
 이것이 `core/agent/policy.py` 의 `enforce` 와 짝을 이룬다. 스키마 은닉이 사칭을 막고, `enforce` 가 출력에 권한 밖 항목이 섞였는지 검사한다.
 
-### 6.2 호출 상한
+### 6.2 호출 상한 — 둘이 필요하다
 
-상위 문서 §7.2 의 `MAX_ITERATIONS = 8` 을 `ToolCallLimitMiddleware(run_limit=8, exit_behavior="continue")` 로 건다. 근거는 §7.1 에 적는다.
+상위 문서 §7.2 의 `MAX_ITERATIONS = 8` 을 `ToolCallLimitMiddleware(run_limit=8, exit_behavior="continue")` 로 건다. `exit_behavior` 세 값 중 "넘으면 중단하고 그때까지의 결과로 답한다"에 맞는 것은 `continue` 뿐이다 — `error` 는 예외를 던지고, `end` 는 결과가 아니라 왜 멈췄는지를 답한다.
+
+**그런데 `continue` 는 종료를 보장하지 않는다.** 초과한 도구를 차단할 뿐 그래프를 끝내지 않아서, 도구를 계속 요청하는 모델은 모델 호출만 반복한다. 상한을 두는 이유가 "비용과 지연이 무한정 늘어난다"인데 **비용은 모델 호출 쪽에서 난다** — 도구 상한만으로는 그것이 전혀 묶이지 않는다. 구현 중에 실측으로 확인했다: 재귀 상한 9999 에 걸려 `GraphRecursionError` 로 죽는다.
+
+그래서 `ModelCallLimitMiddleware(run_limit=12, exit_behavior="end")` 를 함께 건다. 정상 경로는 도구 8회 + 최종 답변 1회 = 9회라 12 는 여유가 있으면서 폭주를 묶는다.
+
+호출 횟수를 묶어도 **한 번의 작업량**이 안 묶이면 비용은 그쪽으로 샌다. `k` 는 모델이 정하는 값이고 `hybrid.search` 가 후보를 그 5배로 잡으므로, `core/agent/tools.py` 가 `MAX_K = 20` 으로 깎는다. 스키마 제약이 아니라 클램프인 이유: 스키마는 모델이 *선언하는* 값만 제약하고, 클램프는 무엇이 들어오든 모든 호출자를 보호한다.
 
 ---
 

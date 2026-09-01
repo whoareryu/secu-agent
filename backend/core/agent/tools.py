@@ -8,7 +8,7 @@ adapters/agent/runner.py 와 분리한 것은 스타일이 아니다. LangChain 
 로직이 @tool 래퍼 안에 있으면 단위 테스트할 방법이 없어진다.
 """
 
-from core.agent.policy import enforce
+from core.agent.policy import MAX_K, enforce
 from core.ports import ChunkSearch, Embedder
 from core.retrieve.hybrid import search
 from core.types import PolicyHit, Principal
@@ -34,7 +34,11 @@ def search_policy(
     embedder 와 searcher 를 인자로 받는 이유: core 는 어댑터를 만들 수
     없다. 어댑터 쪽이 이 둘을 묶어 LLM 에게는 (query, k) 만 보이는 도구로
     감싼다.
+
+    k 는 MAX_K 로 깎는다 — 호출자가 LLM 일 수 있어 그 값을 믿지 않는다.
     """
+    # 모델이 준 값을 믿지 않는다. 호출 횟수 상한과 짝을 이루는 작업량 상한이다.
+    k = max(1, min(k, MAX_K))
     ids = search(query, principal, embedder, searcher, k=k)
     hits = searcher.load_hits(ids, principal)
     return enforce(hits, principal)
