@@ -13,6 +13,7 @@ import os
 
 import psycopg
 import pytest
+from psycopg.conninfo import conninfo_to_dict
 
 from adapters.db.connection import DEFAULT_DSN, apply_schema
 
@@ -24,8 +25,23 @@ def _데이터베이스_이름(dsn: str) -> str:
 
     문자열 전체를 비교하면 안 된다 — 사용자나 포트만 달라도 다른 DSN 이
     되지만 가리키는 데이터베이스는 같을 수 있다.
+
+    직접 문자열을 자르지 않고 psycopg 의 파서를 쓴다. libpq 는 URI 형식
+    (postgresql://…/이름)과 키워드 형식(dbname=이름 host=…)을 둘 다 받는데,
+    문자열을 자르는 방식은 후자를 통째로 놓친다 — 그러면 두 DSN 이 같은
+    데이터베이스를 가리켜도 이름이 달라 보여 가드가 조용히 무력해진다.
+
+    이름을 알아낼 수 없으면 터진다. libpq 는 dbname 이 없으면 사용자
+    이름으로 채우는데, 그 규칙을 여기서 흉내내면 틀릴 때 열리는 방향으로
+    틀린다. 모르면 막는다.
     """
-    return dsn.rsplit("/", 1)[-1].split("?")[0]
+    이름 = conninfo_to_dict(dsn).get("dbname")
+    if not 이름:
+        raise RuntimeError(
+            f"DSN 에서 데이터베이스 이름을 읽을 수 없다: {dsn!r}. "
+            "dbname 을 명시한다 — 모르는 채로 통과시키지 않는다."
+        )
+    return str(이름)
 
 
 def 테스트_DSN_검증(test_dsn: str, work_dsn: str) -> None:
