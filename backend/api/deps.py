@@ -13,7 +13,7 @@ from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
 from adapters.db.principal_store import PgPrincipalStore
 from adapters.embedding.e5 import E5Embedder
-from adapters.llm.anthropic import build_model
+from adapters.llm.gemini import build_model
 from api.main import build_app
 
 

@@ -17,7 +17,8 @@ import pytest
 인프라_프레임워크 = (
     "psycopg",
     "sqlalchemy",
-    "anthropic",
+    "langchain_google_genai",
+    "google",
     "fastapi",
     "langchain",
     "langgraph",

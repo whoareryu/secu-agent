@@ -6,7 +6,7 @@
 
 **Architecture:** 도구의 실제 로직은 `core/agent/tools.py` 에 순수 파이썬으로 있고 LangChain 을 모른다. `adapters/agent/runner.py` 가 그것을 `@tool` 로 감싸되 **`principal` 을 도구 스키마에서 뺀다** — 런타임 컨텍스트로 주입한다. FastAPI 가 얇은 HTTP 계층이고, Next.js 가 BFF 로서 브라우저와 백엔드 사이에 선다. 백엔드는 Cloudflare Container, DB 는 Neon, 프론트는 Vercel.
 
-**Tech Stack:** Python 3.12, langchain 1.3, langgraph 1.2, langchain-anthropic 1.7, anthropic SDK 1.2, FastAPI, uvicorn, Next.js(App Router), Auth.js, Docker, Wrangler 4
+**Tech Stack:** Python 3.12, langchain 1.3, langgraph 1.2, langchain-google-genai 4.3, FastAPI, uvicorn, Next.js(App Router), Auth.js, Docker, Wrangler 4
 
 **Spec:** `docs/superpowers/specs/2026-09-01-w3-deployment-design.md` (배포·인증·API·UI)
 **상위 Spec:** `docs/superpowers/specs/2026-08-31-secu-agent-design.md` (도메인·검색·권한)
@@ -17,11 +17,11 @@
 
 - Python 3.12 이상. 가상환경은 `backend/.venv`, 실행은 `.venv/bin/python`, 작업 디렉토리는 `backend/`.
 - **`core/` 는 바깥 계층(`adapters`·`api`·`pipeline`·`eval`)을 import 하지 않는다.**
-- **`core/` 는 인프라·프레임워크(`psycopg`·`sqlalchemy`·`anthropic`·`fastapi`·`langchain`·`langgraph`·`sentence_transformers`·`torch`·`transformers`·`pypdf`·`yaml`)를 import 하지 않는다.** `backend/tests/test_boundaries.py` 가 강제한다.
+- **`core/` 는 인프라·프레임워크(`psycopg`·`sqlalchemy`·`langchain_google_genai`·`google`·`fastapi`·`langchain`·`langgraph`·`sentence_transformers`·`torch`·`transformers`·`pypdf`·`yaml`)를 import 하지 않는다.** `backend/tests/test_boundaries.py` 가 강제한다.
 - 경계 인터페이스는 `core/ports.py` 가 소유한다. `adapters/` 가 구현한다.
 - 임베딩 차원은 `core/types.EMBEDDING_DIM`(384)이 단일 출처다. 모델은 `intfloat/multilingual-e5-small`.
 - e5 는 `query:` / `passage:` 접두어를 요구한다.
-- 생성 모델은 `claude-opus-5` 다. 모델 ID 에 날짜 접미사를 붙이지 않는다.
+- 생성 모델은 `gemini-3.7-flash` 다. 모델 ID 에 날짜 접미사를 붙이지 않는다.
 - 테스트 함수 이름은 한국어로 쓴다.
 - 커밋 메시지는 한국어, 평서형(`~했다`).
 - 마커: `db`(DB 필요) · `model`(임베딩 모델 로드) · `llm`(실제 LLM 호출) 은 기본 스위트에서 제외된다.
@@ -31,7 +31,7 @@
 
 ## 계획을 쓰기 전에 실물로 확인한 것
 
-상위 spec §10 이 "LangChain 1.x API 를 기억으로 쓰면 막힌다"를 최상위 리스크로 지목했으므로 임시 환경(`langchain 1.3.18` · `langgraph 1.2.11` · `langchain-anthropic 1.7.0` · `anthropic 1.2.0`)에 설치해 직접 읽었다. **여섯 개가 계획을 바꿨다.**
+상위 spec §10 이 "LangChain 1.x API 를 기억으로 쓰면 막힌다"를 최상위 리스크로 지목했으므로 임시 환경(`langchain 1.3.18` · `langgraph 1.2.11` · `langchain-google-genai 4.3.7`)에 설치해 직접 읽었다. **여섯 개가 계획을 바꿨다.**
 
 **① `create_react_agent` 는 deprecated 다.** `from langchain.agents import create_agent` 이 현재 API 다. 실제 파라미터: `model` · `tools` · `system_prompt` · `middleware` · `response_format` · `state_schema` · `context_schema` · `checkpointer` · `store` · `interrupt_before` · `interrupt_after` · `debug` · `name` · `cache` · `transformers`.
 
@@ -57,7 +57,7 @@ tool_call_schema properties → ['k', 'query']      ← principal 없음
 
 **⑦ Cloudflare Containers 설정 형태** — `containers[]`(`class_name`·`image`·`max_instances`·`instance_type`) + `durable_objects.bindings` + `migrations`(**`new_sqlite_classes`**, `new_classes` 가 아니다). Worker 는 `Container` 를 상속한 클래스에 `defaultPort`·`sleepAfter`·`envVars` 를 두고 `env.BINDING.getByName(...)` 으로 라우팅한다. 이미지 상한 20GB, 인스턴스 최대 4 vCPU · 12 GiB, **Workers Paid $5/월 필요.**
 
-**⑧ 이 환경에는 Anthropic 자격증명이 없다.** `ANTHROPIC_API_KEY` 미설정, `ant` CLI 없음. Task 2 의 `llm` 마커 테스트와 배포는 사람이 키를 발급해 넣어야 돈다 — 계획이 그 단계를 명시한다.
+**⑧ 이 환경에는 Gemini 자격증명이 없다.** `GOOGLE_API_KEY` 미설정, `ant` CLI 없음. Task 2 의 `llm` 마커 테스트와 배포는 사람이 키를 발급해 넣어야 돈다 — 계획이 그 단계를 명시한다.
 
 ---
 
@@ -85,7 +85,7 @@ backend/
   adapters/
     llm/
       __init__.py
-      anthropic.py        ChatAnthropic 구성 — 모델 ID·max_tokens 한 곳
+      gemini.py           ChatGoogleGenerativeAI 구성 — 모델 ID·max_output_tokens 한 곳
     agent/
       __init__.py
       context.py          AgentContext — principal 을 나르는 런타임 컨텍스트
@@ -148,10 +148,9 @@ docs/
 
 ```toml
 dependencies = [
-    "anthropic>=1.2",
     "fastapi>=0.115",
     "langchain>=1.3",
-    "langchain-anthropic>=1.7",
+    "langchain-google-genai>=4.3",
     "langgraph>=1.2",
     "psycopg[binary]>=3.2",
     "pypdf>=5.1",
@@ -164,10 +163,9 @@ dependencies = [
 `backend/requirements.txt` 를 아래로 바꾼다.
 
 ```
-anthropic>=1.2
 fastapi>=0.115
 langchain>=1.3
-langchain-anthropic>=1.7
+langchain-google-genai>=4.3
 langgraph>=1.2
 psycopg[binary]>=3.2
 pypdf>=5.1
@@ -193,7 +191,7 @@ cd /Users/ryujun/Documents/secu-agent/backend
 uv pip install --python .venv/bin/python -e . --group dev
 .venv/bin/python -c "
 from importlib.metadata import version
-for p in ('langchain','langgraph','langchain-anthropic','anthropic','fastapi','uvicorn','httpx'):
+for p in ('langchain','langgraph','langchain-google-genai','fastapi','uvicorn','httpx'):
     print(p, version(p))"
 ```
 
@@ -410,7 +408,7 @@ enforce 를 빼면 권한 밖 항목 테스트가 실패하는 것을 확인하�
 ### Task 2: 에이전트 런너 — `principal` 을 스키마에서 뺀다
 
 **Files:**
-- Create: `backend/adapters/llm/__init__.py`, `backend/adapters/llm/anthropic.py`
+- Create: `backend/adapters/llm/__init__.py`, `backend/adapters/llm/gemini.py`
 - Create: `backend/adapters/agent/__init__.py`, `backend/adapters/agent/context.py`, `backend/adapters/agent/runner.py`
 - Create: `backend/tests/fake_chat.py`, `backend/tests/test_agent_runner.py`
 - Modify: `backend/pyproject.toml` (마커)
@@ -421,7 +419,7 @@ enforce 를 빼면 권한 밖 항목 테스트가 실패하는 것을 확인하�
   - `adapters.agent.context.AgentContext(principal: Principal, collected: list[PolicyHit])`
   - `adapters.agent.runner.build_tools(embedder, searcher) -> list`
   - `adapters.agent.runner.build_agent(embedder, searcher, model) -> CompiledStateGraph`
-  - `adapters.llm.anthropic.build_model(api_key: str | None = None) -> ChatAnthropic` · `MODEL_ID = "claude-opus-5"`
+  - `adapters.llm.gemini.build_model(api_key: str | None = None) -> ChatGoogleGenerativeAI` · `MODEL_ID = "gemini-3.7-flash"`
   - `tests.fake_chat.대본모델(대본: list[AIMessage])`
 
 **이 태스크가 W3 의 보안 결정을 담는다.** W2 최종 리뷰가 *"`principal` 이 필수 인자인 것은 **누락**을 불가능하게 하지만 **사칭**은 막지 않는다"* 고 지적했다. 도구 스키마에 `principal` 이 보이면 LLM 이 `clearance: 3` 을 써넣을 수 있고, **그 사고는 조용하다** — 에이전트는 여전히 답을 내고 스위트는 초록이다. 스키마를 직접 들여다보는 테스트가 아니면 잡히지 않는다.
@@ -787,31 +785,39 @@ def build_agent(embedder: Embedder, searcher: ChunkSearch, model: BaseChatModel)
 
 - [ ] **Step 7: 모델 어댑터를 구현한다**
 
-`backend/adapters/llm/anthropic.py`:
+`backend/adapters/llm/gemini.py`:
 
 ```python
-"""Anthropic 모델 구성. 모델 ID 가 이 파일에만 있다.
+"""Gemini 모델 구성. 모델 ID 가 이 파일에만 있다.
 
-thinking 을 지정하지 않는다 — Claude Opus 5 는 생략하면 adaptive 로 돈다.
-검증할 수 없는 인자를 넣지 않는다.
+프로바이더를 바꾸는 변경이 이 파일 하나로 끝나는 것이 adapters 격리의
+목적이다 — adapters/agent/runner.py 는 BaseChatModel 만 알고, core/ 는
+LLM 이 있다는 사실조차 모른다.
+
+환경변수가 GOOGLE_API_KEY 인 이유: langchain-google-genai 는 GOOGLE_API_KEY 와
+GEMINI_API_KEY 를 모두 읽지만 GOOGLE_API_KEY 를 권장하고, 둘 다 설정되면
+그것을 쓰면서 경고를 낸다. 하나만 쓴다.
 """
 
 import os
 
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-# 날짜 접미사를 붙이지 않는다. 이 문자열 그대로가 완전한 모델 ID 다.
-MODEL_ID = "claude-opus-5"
-MAX_TOKENS = 4096
+# 공식 문서가 "복잡한 코딩, 에이전트 워크플로, 신뢰할 수 있는 다단계 실행" 용으로
+# 명시한 모델이다. 이 프로젝트는 도구를 부르는 에이전트다.
+MODEL_ID = "gemini-3.7-flash"
+MAX_OUTPUT_TOKENS = 4096
 
 
-def build_model(api_key: str | None = None) -> ChatAnthropic:
-    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+def build_model(api_key: str | None = None) -> ChatGoogleGenerativeAI:
+    key = api_key or os.environ.get("GOOGLE_API_KEY")
     if not key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY 가 없다. 환경변수로 주거나 build_model(api_key=...) 로 넘긴다."
+            "GOOGLE_API_KEY 가 없다. 환경변수로 주거나 build_model(api_key=...) 로 넘긴다."
         )
-    return ChatAnthropic(model=MODEL_ID, max_tokens=MAX_TOKENS, api_key=key)
+    return ChatGoogleGenerativeAI(
+        model=MODEL_ID, max_output_tokens=MAX_OUTPUT_TOKENS, api_key=key
+    )
 ```
 
 - [ ] **Step 8: 통과를 확인한다**
@@ -843,7 +849,7 @@ spec §8 의 테스트 표가 `adapters/agent/runner.py` 에 실제 LLM 호출 �
 ```python
 @pytest.mark.llm
 def test_실제_모델이_도구를_부르고_한국어로_답한다():
-    """실제 Anthropic 호출. ANTHROPIC_API_KEY 가 필요하다.
+    """실제 Gemini 호출. GOOGLE_API_KEY 가 필요하다.
 
         .venv/bin/python -m pytest -m llm -v
 
@@ -852,10 +858,10 @@ def test_실제_모델이_도구를_부르고_한국어로_답한다():
     """
     import os
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY 가 없다")
+    if not os.environ.get("GOOGLE_API_KEY"):
+        pytest.skip("GOOGLE_API_KEY 가 없다")
 
-    from adapters.llm.anthropic import build_model
+    from adapters.llm.gemini import build_model
 
     검색기 = 스텁검색기([_hit(1, "2.5.4")])
     ctx = AgentContext(principal=사원)
@@ -1381,7 +1387,7 @@ from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
 from adapters.db.principal_store import PgPrincipalStore
 from adapters.embedding.e5 import E5Embedder
-from adapters.llm.anthropic import build_model
+from adapters.llm.gemini import build_model
 from api.main import build_app
 
 
@@ -1548,7 +1554,7 @@ Expected: 빌드 성공. 크기를 기록한다 — Cloudflare 상한은 20GB �
     environment:
       SECUAGENT_DSN: postgresql://secuagent:secuagent@db:5432/secuagent
       BACKEND_SHARED_SECRET: 로컬개발용시크릿
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
     ports:
       - "8080:8080"
 ```
@@ -1565,14 +1571,14 @@ curl -s localhost:8080/healthz
 ```
 Expected: `{"status":"ok","db":true,"model":"ready"}`
 
-- [ ] **Step 6: 👤 사람이 하는 단계 — Anthropic 키를 넣는다**
+- [ ] **Step 6: 👤 사람이 하는 단계 — Gemini 키를 넣는다**
 
-이 환경에는 `ANTHROPIC_API_KEY` 가 없다(실측). `/ask` 를 실제로 부르려면 키가 필요하다.
+이 환경에는 `GOOGLE_API_KEY` 가 없다(실측). `/ask` 를 실제로 부르려면 키가 필요하다.
 
-`https://platform.claude.com` 에서 키를 발급해 저장소 루트에 `.env` 를 만든다(`.gitignore` 에 이미 `.env` 가 있다):
+`https://aistudio.google.com/apikey` 에서 키를 발급해 저장소 루트에 `.env` 를 만든다(`.gitignore` 에 이미 `.env` 가 있다):
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
 ```
 
 키가 없으면 이 태스크의 Step 7 만 건너뛰고 나머지는 진행한다.
@@ -2095,7 +2101,7 @@ Task 7·8 이 이 값들을 쓴다.
 | 이름 | 어디서 | 어디에 쓰나 |
 |---|---|---|
 | `SECUAGENT_DSN` | Neon | Cloudflare 시크릿 |
-| `ANTHROPIC_API_KEY` | platform.claude.com | Cloudflare 시크릿 |
+| `GOOGLE_API_KEY` | aistudio.google.com | Cloudflare 시크릿 |
 | `BACKEND_SHARED_SECRET` | `openssl rand -base64 32` 로 새로 만든다 | Cloudflare 시크릿 + Vercel 환경변수 (**같은 값**) |
 | `AUTH_SECRET` | `openssl rand -base64 32` | Vercel 환경변수 |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | 기존 OAuth 클라이언트 | Vercel 환경변수 |
@@ -2208,7 +2214,7 @@ interface Env {
 cd /Users/ryujun/Documents/secu-agent/infra
 npx wrangler login
 npx wrangler secret put SECUAGENT_DSN
-npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put GOOGLE_API_KEY
 npx wrangler secret put BACKEND_SHARED_SECRET
 ```
 
@@ -2358,7 +2364,7 @@ Cloudflare Container (FastAPI · e5 · LangGraph)
    │
 Neon (PostgreSQL 16 + pgvector)
    │
-Anthropic API (claude-opus-5)
+Gemini API (gemini-3.7-flash)
 ```
 
 브라우저는 백엔드 주소도 공유 시크릿도 받지 않습니다. Next.js Route Handler 가

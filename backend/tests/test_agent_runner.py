@@ -207,7 +207,7 @@ def test_도구를_끝없이_시도해도_종료된다():
 
 @pytest.mark.llm
 def test_실제_모델이_도구를_부르고_한국어로_답한다():
-    """실제 Anthropic 호출. ANTHROPIC_API_KEY 가 필요하다.
+    """실제 Gemini 호출. GOOGLE_API_KEY 가 필요하다.
 
         .venv/bin/python -m pytest -m llm -v
 
@@ -216,10 +216,10 @@ def test_실제_모델이_도구를_부르고_한국어로_답한다():
     """
     import os
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        pytest.skip("ANTHROPIC_API_KEY 가 없다")
+    if not os.environ.get("GOOGLE_API_KEY"):
+        pytest.skip("GOOGLE_API_KEY 가 없다")
 
-    from adapters.llm.anthropic import build_model
+    from adapters.llm.gemini import build_model
 
     검색기 = 스텁검색기([_hit(1, "2.5.4")])
     ctx = AgentContext(principal=사원)

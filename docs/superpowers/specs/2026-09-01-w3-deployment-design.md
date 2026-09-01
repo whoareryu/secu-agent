@@ -37,14 +37,14 @@ Cloudflare Container — FastAPI + e5 + LangGraph 에이전트 (Dockerfile)
    │ psycopg (TCP)
 Neon — PostgreSQL 16 + pgvector   (스키마는 W1 것 그대로)
    │
-Anthropic API — claude-opus-5
+Gemini API — gemini-3.7-flash
 ```
 
 **Container 를 쓰는 이유.** 백엔드 이미지는 torch 와 임베딩 모델을 포함해 약 3GB 다. Workers 런타임은 이것을 돌릴 수 없다. Cloudflare Containers 는 Dockerfile 이면 무엇이든 받고 이미지 상한이 20GB 라 여유가 크다(실측 확인). Container 는 정상 리눅스 샌드박스이므로 `psycopg` 가 외부 Postgres 에 그대로 붙는다 — Hyperdrive 는 Workers 용 가속기라 여기서는 쓰지 않는다.
 
 **Postgres 가 외부인 이유.** Cloudflare 에는 1st-party Postgres 가 없다. 프로젝트의 핵심 논증이 SQL 사전 필터링(`WHERE` 가 `ORDER BY` 보다 먼저)이므로 pgvector 를 포기할 수 없고, 따라서 관리형 Postgres 를 외부에서 가져온다.
 
-**비용.** Workers Paid $5/월(Containers 전제) · Neon 무료 티어 · Vercel Hobby 무료 · Anthropic 종량.
+**비용.** Workers Paid $5/월(Containers 전제) · Neon 무료 티어 · Vercel Hobby 무료 · Gemini 종량.
 
 ### 2.1 감수하는 것: cold start
 
@@ -180,7 +180,7 @@ W2 의 최종 리뷰가 정확히 이 지점을 지적했다 — **`principal` �
 
 상위 문서 §10 이 "LangChain 1.x API 를 기억으로 쓰면 막힌다"를 최상위 리스크로 지목했으므로, 임시 환경에 실제로 설치해 시그니처를 읽었다. **둘이 기억과 달랐다.**
 
-| | 기억으로 쓰면 | 실제 (langchain 1.3.18 · langgraph 1.2.11 · langchain-anthropic 1.7.0) |
+| | 기억으로 쓰면 | 실제 (langchain 1.3.18 · langgraph 1.2.11 · langchain-google-genai 4.3.7) |
 |---|---|---|
 | 에이전트 생성 | `create_react_agent` (`langgraph.prebuilt`) | **deprecated.** `from langchain.agents import create_agent` |
 | 반복 상한 | `recursion_limit` 인자 | `create_agent` 에 그런 인자가 없다. `ToolCallLimitMiddleware` 가 도구 호출 상한이다 |

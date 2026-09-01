@@ -73,7 +73,7 @@ backend/
     parsing/     PDF · DOCX · MD → Chunk
     db/          psycopg + pgvector
     embedding/   multilingual-e5-small
-    llm/         Anthropic SDK
+    llm/         Gemini SDK
     agent/       LangChain / LangGraph 런너
   pipeline/    문서 · 로그 적재
   api/         FastAPI — 얇은 HTTP 계층
@@ -105,7 +105,7 @@ adapters/agent/runner.py  LangGraph 로 AgentRunner 구현 — core 의 도구�
 
 ```
 바깥 계층        adapters · api · pipeline · eval
-인프라·프레임워크  psycopg · sqlalchemy · anthropic · fastapi
+인프라·프레임워크  psycopg · sqlalchemy · langchain_google_genai · google · fastapi
                 langchain · langgraph · sentence_transformers · torch
 ```
 
@@ -114,7 +114,7 @@ adapters/agent/runner.py  LangGraph 로 AgentRunner 구현 — core 의 도구�
 | 구분 | 선택 | 근거 |
 |---|---|---|
 | 임베딩 | `intfloat/multilingual-e5-small` (384차원, max_seq 512, 449MB) | **cross-lingual** — 한국어 질의로 한국어 규정과 영문 로그를 동시에 검색 |
-| 생성 LLM | Claude (Anthropic API) | 도구 선택 · 리포트 생성 |
+| 생성 LLM | Gemini (`gemini-3.7-flash`) | 도구 선택 · 리포트 생성. 공식 문서가 에이전트 워크플로와 다단계 실행용으로 명시한 모델 |
 | 에이전트 런타임 | LangChain 1.3 / LangGraph 1.2 | 요구사항 명시. `adapters/` 에 격리 |
 | DB | PostgreSQL 16 + pgvector | HNSW 인덱스 + GIN 전문검색 |
 
