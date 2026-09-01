@@ -57,7 +57,7 @@ tool_call_schema properties → ['k', 'query']      ← principal 없음
 
 **⑦ Cloudflare Containers 설정 형태** — `containers[]`(`class_name`·`image`·`max_instances`·`instance_type`) + `durable_objects.bindings` + `migrations`(**`new_sqlite_classes`**, `new_classes` 가 아니다). Worker 는 `Container` 를 상속한 클래스에 `defaultPort`·`sleepAfter`·`envVars` 를 두고 `env.BINDING.getByName(...)` 으로 라우팅한다. 이미지 상한 20GB, 인스턴스 최대 4 vCPU · 12 GiB, **Workers Paid $5/월 필요.**
 
-**⑧ 이 환경에는 Gemini 자격증명이 없다.** `GOOGLE_API_KEY` 미설정, `ant` CLI 없음. Task 2 의 `llm` 마커 테스트와 배포는 사람이 키를 발급해 넣어야 돈다 — 계획이 그 단계를 명시한다.
+**⑧ 이 환경에는 Gemini 자격증명이 없다.** `GOOGLE_APPLICATION_CREDENTIALS` 미설정, `ant` CLI 없음. Task 2 의 `llm` 마커 테스트와 배포는 사람이 서비스 계정 키를 만들어 넣어야 돈다 — 계획이 그 단계를 명시한다.
 
 ---
 
@@ -790,13 +790,13 @@ def build_agent(embedder: Embedder, searcher: ChunkSearch, model: BaseChatModel)
 ```python
 """Gemini 모델 구성. 모델 ID 가 이 파일에만 있다.
 
-프로바이더를 바꾸는 변경이 이 파일 하나로 끝나는 것이 adapters 격리의
-목적이다 — adapters/agent/runner.py 는 BaseChatModel 만 알고, core/ 는
-LLM 이 있다는 사실조차 모른다.
+**Vertex(Agent Platform) 백엔드를 쓴다.** AI Studio 의 Gemini API 경로가 아니다.
+이유는 요금이다 — Google Cloud 무료 체험판 크레딧이 AI Studio Gemini API 는
+커버하지 않고 Agent Platform 은 커버한다.
 
-환경변수가 GOOGLE_API_KEY 인 이유: langchain-google-genai 는 GOOGLE_API_KEY 와
-GEMINI_API_KEY 를 모두 읽지만 GOOGLE_API_KEY 를 권장하고, 둘 다 설정되면
-그것을 쓰면서 경고를 낸다. 하나만 쓴다.
+자격증명은 ADC(Application Default Credentials)로 받는다. 이 경로는 API 키를
+받지 않는다 — 실측: api_key 인자를 주면 무시하고 ADC 를 찾다가 실패한다.
+서비스 계정 JSON 의 경로를 GOOGLE_APPLICATION_CREDENTIALS 로 준다.
 """
 
 import os
@@ -808,15 +808,22 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 MODEL_ID = "gemini-3.7-flash"
 MAX_OUTPUT_TOKENS = 4096
 
+# 실측으로 동작을 확인한 리전. 바꾸려면 실제로 호출해보고 바꾼다.
+DEFAULT_LOCATION = "global"
 
-def build_model(api_key: str | None = None) -> ChatGoogleGenerativeAI:
-    key = api_key or os.environ.get("GOOGLE_API_KEY")
-    if not key:
+
+def build_model(project: str | None = None, location: str | None = None) -> ChatGoogleGenerativeAI:
+    proj = project or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if not proj:
         raise RuntimeError(
-            "GOOGLE_API_KEY 가 없다. 환경변수로 주거나 build_model(api_key=...) 로 넘긴다."
+            "GOOGLE_CLOUD_PROJECT 가 없다. 환경변수로 주거나 build_model(project=...) 로 넘긴다."
         )
     return ChatGoogleGenerativeAI(
-        model=MODEL_ID, max_output_tokens=MAX_OUTPUT_TOKENS, api_key=key
+        model=MODEL_ID,
+        max_output_tokens=MAX_OUTPUT_TOKENS,
+        project=proj,
+        location=location or os.environ.get("GOOGLE_CLOUD_LOCATION", DEFAULT_LOCATION),
+        vertexai=True,
     )
 ```
 
@@ -842,24 +849,27 @@ Expected: **`test_principal_이_도구_스키마에_없다` 가 FAIL** — `모�
 
 - [ ] **Step 9-b: 실제 LLM 을 부르는 테스트를 쓴다 (기본 제외)**
 
-spec §8 의 테스트 표가 `adapters/agent/runner.py` 에 실제 LLM 호출 테스트를 요구한다. 이 환경에는 키가 없으므로(실물 확인 ⑧) **쓰되 돌리지는 않는다.** `llm` 마커가 기본 스위트에서 제외한다.
+spec §8 의 테스트 표가 `adapters/agent/runner.py` 에 실제 LLM 호출 테스트를 요구한다. 이 환경에는 자격증명이 없으므로(실물 확인 ⑧) **쓰되 돌리지는 않는다.** `llm` 마커가 기본 스위트에서 제외한다.
 
 `backend/tests/test_agent_runner.py` 끝에 더한다:
 
 ```python
 @pytest.mark.llm
 def test_실제_모델이_도구를_부르고_한국어로_답한다():
-    """실제 Gemini 호출. GOOGLE_API_KEY 가 필요하다.
+    """실제 Gemini 호출. GOOGLE_APPLICATION_CREDENTIALS 와 GOOGLE_CLOUD_PROJECT 가 필요하다.
 
         .venv/bin/python -m pytest -m llm -v
 
     대본 모델로는 확인할 수 없는 것을 본다 — 진짜 모델이 이 도구 설명과
     시스템 프롬프트를 보고 실제로 도구를 부르는가.
+    Vertex(Agent Platform) 경로다. 서비스 계정 자격증명이 필요하다.
     """
     import os
 
-    if not os.environ.get("GOOGLE_API_KEY"):
-        pytest.skip("GOOGLE_API_KEY 가 없다")
+    if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        pytest.skip("GOOGLE_APPLICATION_CREDENTIALS 가 없다")
+    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        pytest.skip("GOOGLE_CLOUD_PROJECT 가 없다")
 
     from adapters.llm.gemini import build_model
 
@@ -870,7 +880,10 @@ def test_실제_모델이_도구를_부르고_한국어로_답한다():
         context=ctx,
     )
     assert ctx.collected, "실제 모델이 도구를 부르지 않았다 — 도구 설명이나 시스템 프롬프트를 손봐야 한다"
-    assert res["messages"][-1].content.strip(), "답변이 비었다"
+    # .content 가 아니라 .text 다. Vertex 응답의 content 는 리스트(thinking +
+    # text 파트)라 .strip() 이 AttributeError 를 낸다 — api/main.py 가 같은
+    # 이유로 .text 를 쓴다.
+    assert res["messages"][-1].text.strip(), "답변이 비었다"
 ```
 
 - [ ] **Step 10: 경계 테스트를 확인한다**
@@ -1554,7 +1567,13 @@ Expected: 빌드 성공. 크기를 기록한다 — Cloudflare 상한은 20GB �
     environment:
       SECUAGENT_DSN: postgresql://secuagent:secuagent@db:5432/secuagent
       BACKEND_SHARED_SECRET: 로컬개발용시크릿
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      # 컨테이너 안의 경로다. 아래 volumes 가 읽기 전용으로 마운트한다.
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-sa.json
+    volumes:
+      # 서비스 계정 JSON. 이미지에 굽지 않는다 — 이미지는 레지스트리에 올라간다.
+      - ./gcp-sa.json:/run/secrets/gcp-sa.json:ro
     ports:
       - "8080:8080"
 ```
@@ -1571,17 +1590,19 @@ curl -s localhost:8080/healthz
 ```
 Expected: `{"status":"ok","db":true,"model":"ready"}`
 
-- [ ] **Step 6: 👤 사람이 하는 단계 — Gemini 키를 넣는다**
+- [ ] **Step 6: 👤 사람이 하는 단계 — Gemini 자격증명을 넣는다**
 
-이 환경에는 `GOOGLE_API_KEY` 가 없다(실측). `/ask` 를 실제로 부르려면 키가 필요하다.
+이 환경에는 서비스 계정 자격증명이 없다(실측). `/ask` 를 실제로 부르려면 Vertex(Agent Platform) 자격증명이 필요하다.
 
-`https://aistudio.google.com/apikey` 에서 키를 발급해 저장소 루트에 `.env` 를 만든다(`.gitignore` 에 이미 `.env` 가 있다):
+Cloud Console 의 IAM → 서비스 계정에서 키를 만들어 저장소 루트에 `gcp-sa.json` 으로 둔다(`.gitignore` 에 이미 `*-sa.json` 이 있다). 저장소 루트에 `.env` 를 만들고(`.gitignore` 에 이미 `.env` 가 있다) 아래를 채운다:
 
 ```
-GOOGLE_API_KEY=...
+GOOGLE_APPLICATION_CREDENTIALS=./gcp-sa.json
+GOOGLE_CLOUD_PROJECT=...
+GOOGLE_CLOUD_LOCATION=global
 ```
 
-키가 없으면 이 태스크의 Step 7 만 건너뛰고 나머지는 진행한다.
+자격증명이 없으면 이 태스크의 Step 7 만 건너뛰고 나머지는 진행한다.
 
 - [ ] **Step 7: 실제 질의를 한 번 던진다**
 

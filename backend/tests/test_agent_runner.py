@@ -237,4 +237,7 @@ def test_실제_모델이_도구를_부르고_한국어로_답한다():
     assert ctx.collected, (
         "실제 모델이 도구를 부르지 않았다 — 도구 설명이나 시스템 프롬프트를 손봐야 한다"
     )
-    assert res["messages"][-1].content.strip(), "답변이 비었다"
+    # .content 가 아니라 .text 다. Vertex 응답의 content 는 리스트(thinking +
+    # text 파트)라 .strip() 이 AttributeError 를 낸다 — api/main.py 가 같은
+    # 이유로 .text 를 쓴다.
+    assert res["messages"][-1].text.strip(), "답변이 비었다"
