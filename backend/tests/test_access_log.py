@@ -4,29 +4,22 @@ docker compose up -d
 .venv/bin/python -m pytest -m db tests/test_access_log.py -v
 """
 
-import os
-
 import pytest
 
 from adapters.db.access_log import PgAccessLog
-from adapters.db.connection import apply_schema, connect
 from core.ports import AccessLog
 from core.types import AccessRecord
 
 pytestmark = pytest.mark.db
 
-DSN = os.environ.get("SECUAGENT_DSN", "postgresql://secuagent:secuagent@localhost:5433/secuagent")
-
 
 @pytest.fixture
-def log():
-    conn = connect(DSN)
-    apply_schema(conn)
+def log(db연결):
+    conn = db연결
     with conn.cursor() as cur:
         cur.execute("TRUNCATE access_records RESTART IDENTITY")
     conn.commit()
     yield PgAccessLog(conn)
-    conn.close()
 
 
 def _rec(chunk_id=1, allowed=True, code="2.6.1", persona="김개발"):

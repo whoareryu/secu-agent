@@ -28,13 +28,17 @@ testpaths = ["tests"]
 # 실행하려면: pytest -m llm
 # DB 테스트는 컨테이너가 없는 환경(CI, 남의 체크아웃)에서 실패하므로 제외한다.
 # 실행하려면: pytest -m db
+# corpus 테스트는 작업 데이터베이스(secuagent)에 붙는다 — 절대 쓰지 않고
+# 읽기만 한다(작업DB_읽기전용 픽스처, Postgres 가 강제). 컨테이너가 없는
+# 환경에서는 실패하므로 db 와 같은 이유로 기본 제외한다.
 markers = [
     "llm: 실제 LLM API 를 호출하는 테스트 (기본 제외)",
     "db: 실제 데이터베이스가 필요한 테스트 (기본 제외)",
+    "corpus: 작업 데이터베이스를 읽기 전용으로 검사하는 테스트 (기본 제외)",
     "model: 실제 임베딩 모델을 로드하는 테스트 (기본 제외, 로드에 ~30초)",
     "slow: 반복 측정처럼 느린 테스트. -m 'not slow' 로 제외할 수 있다",
 ]
-addopts = "-m 'not llm and not db and not model'"
+addopts = "-m 'not llm and not db and not model and not corpus'"
 
 [tool.ruff]
 line-length = 100

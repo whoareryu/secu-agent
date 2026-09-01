@@ -4,12 +4,9 @@ docker compose up -d
 .venv/bin/python -m pytest -m db -v
 """
 
-import os
-
 import pytest
 
 from adapters.db.chunk_search import _벡터_SQL, PgChunkSearch
-from adapters.db.connection import apply_schema, connect
 from adapters.db.document_store import PgDocumentStore
 from core.ports import ChunkSearch
 from core.retrieve.hybrid import search
@@ -17,7 +14,6 @@ from core.types import EMBEDDING_DIM, Chunk, Clause, Document, PolicyHit, Princi
 
 pytestmark = pytest.mark.db
 
-DSN = os.environ.get("SECUAGENT_DSN", "postgresql://secuagent:secuagent@localhost:5433/secuagent")
 사원 = Principal(department="개발팀", clearance=1)
 
 # [0.1]*N 과 [0.9]*N 은 스칼라배라 vector_cosine_ops 아래서 프로브와 코사인
@@ -43,9 +39,8 @@ def _텍스트로_id(conn, 부분문자열: str) -> int:
 
 
 @pytest.fixture
-def db():
-    conn = connect(DSN)
-    apply_schema(conn)
+def db(db연결):
+    conn = db연결
     with conn.cursor() as cur:
         cur.execute("TRUNCATE documents RESTART IDENTITY CASCADE")
     conn.commit()
@@ -126,7 +121,6 @@ def db():
     )
 
     yield conn, PgChunkSearch(conn)
-    conn.close()
 
 
 def test_구현이_포트를_만족한다(db):

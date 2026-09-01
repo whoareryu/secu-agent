@@ -167,9 +167,18 @@ uv sync                       # 또는: pip install -r requirements.txt -r requi
 DB·임베딩 모델이 필요한 테스트는 기본 스위트에서 제외됩니다:
 
 ```bash
-# DB 테스트
+# DB 테스트 — 작업 데이터베이스(secuagent)가 아니라 별도의 secuagent_test 를
+# 씁니다. db 테스트는 TRUNCATE 로 시작하므로 작업 코퍼스에 대고 돌리면
+# 안 됩니다. SECUAGENT_TEST_DSN 으로 위치를 바꿀 수 있고, 없으면
+# secuagent_test 를 자동으로 만들어 씁니다.
 docker compose up -d
 cd backend && .venv/bin/python -m pytest -m db -v
+
+# 코퍼스 테스트 — 작업 데이터베이스(secuagent)를 읽기 전용 연결로 검사합니다.
+# 실제 문서·계정 코퍼스가 우리가 아는 그것인지 확인하는 용도라 별도
+# 데이터베이스로 옮길 수 없습니다. 읽기 전용은 Postgres 세션 특성으로
+# 강제되어 이 연결로는 쓰기가 애초에 실행되지 않습니다.
+cd backend && .venv/bin/python -m pytest -m corpus -v
 
 # 임베딩 모델 테스트 (첫 로드에 ~30초)
 cd backend && .venv/bin/python -m pytest -m model -v

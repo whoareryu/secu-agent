@@ -5,30 +5,23 @@
     .venv/bin/python -m pytest -m db -v
 """
 
-import os
-
 import psycopg
 import pytest
 
-from adapters.db.connection import apply_schema, connect
 from adapters.db.document_store import PgDocumentStore
 from core.ports import DocumentStore
 from core.types import EMBEDDING_DIM, Chunk, Clause, Document, Principal
 
 pytestmark = pytest.mark.db
 
-DSN = os.environ.get("SECUAGENT_DSN", "postgresql://secuagent:secuagent@localhost:5433/secuagent")
-
 
 @pytest.fixture
-def store():
-    conn = connect(DSN)
-    apply_schema(conn)
+def store(db연결):
+    conn = db연결
     with conn.cursor() as cur:
         cur.execute("TRUNCATE documents RESTART IDENTITY CASCADE")
     conn.commit()
     yield PgDocumentStore(conn)
-    conn.close()
 
 
 def _문서(path="data/raw/a.pdf", clearance=1, depts=()) -> Document:

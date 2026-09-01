@@ -11,7 +11,6 @@ ISMS-P 와 사내 규정이 사라진다. 평가 하네스를 돌리기 전에 �
     .venv/bin/python -m pipeline.cli ingest-dir ../data/policies
 """
 
-import os
 import random
 import statistics
 import time
@@ -19,13 +18,10 @@ import time
 import pytest
 
 from adapters.db.chunk_search import _벡터_SQL, PgChunkSearch
-from adapters.db.connection import apply_schema, connect
 from core.agent.policy import AccessViolation, enforce
 from core.types import EMBEDDING_DIM, Principal
 
 pytestmark = pytest.mark.db
-
-DSN = os.environ.get("SECUAGENT_DSN", "postgresql://secuagent:secuagent@localhost:5433/secuagent")
 
 사원 = Principal(department="개발팀", clearance=1)
 팀장 = Principal(department="개발팀", clearance=2)
@@ -54,10 +50,9 @@ def _벡터(앞쪽: bool, rng: random.Random) -> str:
 
 
 @pytest.fixture(scope="module")
-def 코퍼스():
+def 코퍼스(db연결):
     """공개 2,000 + 기밀 2,000 청크. executemany 로 약 4초 걸린다."""
-    conn = connect(DSN)
-    apply_schema(conn)
+    conn = db연결
     with conn.cursor() as cur:
         cur.execute("TRUNCATE documents RESTART IDENTITY CASCADE")
 
@@ -94,7 +89,6 @@ def 코퍼스():
         )
     conn.commit()
     yield conn, PgChunkSearch(conn)
-    conn.close()
 
 
 def _검색(searcher, q, principal, k=10):

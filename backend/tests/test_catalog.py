@@ -1,23 +1,17 @@
 """문서·계정 목록 어댑터. 읽기 전용이라 코퍼스를 파괴하지 않는다."""
 
-import os
-
+import psycopg
 import pytest
 
 from adapters.db.catalog import PgDocumentCatalog
-from adapters.db.connection import connect
 from core.ports import DocumentCatalog
 
-pytestmark = pytest.mark.db
-
-DSN = os.environ.get("SECUAGENT_DSN", "postgresql://secuagent:secuagent@localhost:5433/secuagent")
+pytestmark = pytest.mark.corpus
 
 
 @pytest.fixture
-def catalog():
-    conn = connect(DSN)
-    yield PgDocumentCatalog(conn)
-    conn.close()
+def catalog(작업DB_읽기전용):
+    yield PgDocumentCatalog(작업DB_읽기전용)
 
 
 def test_구현이_포트를_만족한다(catalog):
@@ -58,3 +52,10 @@ def test_목록에_본문이_없다(catalog):
     필드 = {f.name for f in dataclasses.fields(DocumentRow)}
     for 금지 in ("text", "body", "content", "chunks"):
         assert 금지 not in 필드
+
+
+def test_작업DB_연결로는_쓸_수_없다(작업DB_읽기전용):
+    with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+        with 작업DB_읽기전용.cursor() as cur:
+            cur.execute("CREATE TEMP TABLE 쓰기시도 (x int)")
+    작업DB_읽기전용.rollback()
