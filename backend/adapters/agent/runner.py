@@ -49,6 +49,7 @@ def build_tools(embedder: Embedder, searcher: ChunkSearch) -> list:
             k: 가져올 조항 수. 기본 10.
         """
         ctx = runtime.context
+        ctx.tool_calls += 1
         hits = core_tools.search_policy(query, ctx.principal, embedder, searcher, k=k)
         ctx.collected.extend(hits)
 

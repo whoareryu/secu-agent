@@ -8,7 +8,12 @@ export async function POST(req: Request) {
     return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
   }
 
-  const { query, persona } = await req.json();
+  let query, persona;
+  try {
+    ({ query, persona } = await req.json());
+  } catch {
+    return Response.json({ error: "잘못된 요청 본문입니다" }, { status: 400 });
+  }
 
   const upstream = await fetch(`${process.env.BACKEND_URL}/ask`, {
     method: "POST",

@@ -34,7 +34,7 @@ AI 도구로 코드를 빠르게 생성합니다. **모든 라인을 눈으로 �
 
 ```
 바깥 계층      adapters · api · pipeline · eval
-인프라·프레임워크  psycopg · sqlalchemy · anthropic · fastapi
+인프라·프레임워크  psycopg · sqlalchemy · langchain_google_genai · google · fastapi
               langchain · langgraph · sentence_transformers
               torch · transformers · pypdf
 ```

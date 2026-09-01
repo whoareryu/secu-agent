@@ -124,6 +124,34 @@ def test_healthz_는_시크릿_없이도_열린다(client):
     assert set(r.json()) >= {"status", "db", "model"}
 
 
+def test_리스트_모양_content_도_답변으로_직렬화된다(monkeypatch):
+    """Gemini 는 agentic 호출에서 thinking/text 파트가 담긴 리스트를 낸다.
+
+    .content 를 그대로 쓰면 str 로 선언된 필드에서 검증이 실패해 500 이 된다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+    검색기 = 스텁검색기([_hit()])
+    저장소 = 스텁주체저장소({"박인사": Principal("인사팀", 2)})
+
+    def 에이전트_공장():
+        모델 = 대본모델(
+            대본=[
+                AIMessage(
+                    content=[
+                        {"type": "thinking", "thinking": "규정을 찾아보자"},
+                        {"type": "text", "text": "규정 2.6.1 을 참고한다."},
+                    ]
+                )
+            ]
+        )
+        return build_agent(고정임베더(), 검색기, 모델)
+
+    c = TestClient(build_app(에이전트_공장, 저장소))
+    r = c.post("/ask", json={"query": "질문", "persona": "박인사"}, headers=헤더)
+    assert r.status_code == 200
+    assert r.json()["answer"] == "규정 2.6.1 을 참고한다."
+
+
 def test_healthz_는_DB_가_죽으면_degraded_다(monkeypatch):
     """bool(store) 로 검사하면 DB 가 죽어도 ok 가 나온다 — 그러면 헬스체크가
     cold start 와 깨진 배포를 구분하지 못해 존재 이유가 사라진다."""
@@ -137,7 +165,26 @@ def test_healthz_는_DB_가_죽으면_degraded_다(monkeypatch):
     def 에이전트_공장():
         raise AssertionError("healthz 는 에이전트를 만들지 않는다")
 
-    c = TestClient(build_app(에이전트_공장, 죽은저장소()))
+    c = TestClient(build_app(에이전트_공장, 죽은저장소(), lambda: True))
     본문 = c.get("/healthz").json()
     assert 본문["db"] is False
     assert 본문["status"] == "degraded"
+
+
+def test_healthz_모델_준비_여부는_콜백을_따른다(monkeypatch):
+    """SECUAGENT_MODEL_READY 는 import 시점에 고정되는 상수였다 — 실제로는
+    임베더가 아직 로드되지 않았어도 매 응답이 ready 를 말했다. 이제는
+    호출자가 넘긴 콜백을 그대로 따른다 — 자원이 생기기 전엔 loading,
+    생긴 뒤엔 ready 로 바뀐다."""
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+    저장소 = 스텁주체저장소({"박인사": Principal("인사팀", 2)})
+
+    def 에이전트_공장():
+        raise AssertionError("healthz 는 에이전트를 만들지 않는다")
+
+    준비됨 = False
+    c = TestClient(build_app(에이전트_공장, 저장소, lambda: 준비됨))
+
+    assert c.get("/healthz").json()["model"] == "loading"
+    준비됨 = True
+    assert c.get("/healthz").json()["model"] == "ready"

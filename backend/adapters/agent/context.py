@@ -18,3 +18,7 @@ from core.types import PolicyHit, Principal
 class AgentContext:
     principal: Principal
     collected: list[PolicyHit] = field(default_factory=list)
+    # 도구가 실제로 실행된 횟수. ToolMessage 개수를 세면 상한에 막힌 호출도
+    # 잡힌다 — 차단된 호출도 ToolMessage 를 만들기 때문이다. 이건 도구 본문이
+    # 실행될 때만 늘어난다.
+    tool_calls: int = 0

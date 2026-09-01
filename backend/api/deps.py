@@ -20,20 +20,34 @@ from api.main import build_app
 @lru_cache(maxsize=1)
 def _자원():
     conn = connect(os.environ.get("SECUAGENT_DSN"))
+    # 읽기 전용 경로가 대부분인데 autocommit 이 꺼져 있으면 매 쿼리가
+    # idle-in-transaction 을 남긴다. 관리형 Postgres 는 그런 연결을 끊고,
+    # 여기에는 재연결 로직이 없다.
+    conn.autocommit = True
     embedder = E5Embedder()
-    os.environ["SECUAGENT_MODEL_READY"] = "ready"
     return conn, embedder
 
 
 def create_app():
-    conn, embedder = _자원()
-    searcher = PgChunkSearch(conn)
-    저장소 = PgPrincipalStore(conn)
+    # _자원() 을 여기서 부르지 않는다 — DB 가 기동 시점에 죽어 있으면 import 가
+    # 실패해 uvicorn 이 아예 뜨지 못하고, /healthz 조차 응답할 수 없게 된다.
+    # 각 클로저가 처음 쓰일 때 자원을 resolve 한다.
+    def 저장소():
+        conn, _ = _자원()
+        return PgPrincipalStore(conn)
 
     def 에이전트_공장():
-        return build_agent(embedder, searcher, build_model())
+        conn, embedder = _자원()
+        return build_agent(embedder, PgChunkSearch(conn), build_model())
 
-    return build_app(에이전트_공장, 저장소)
+    class _지연주체저장소:
+        def find(self, name):
+            return 저장소().find(name)
+
+    def 모델_준비됨() -> bool:
+        return _자원.cache_info().currsize > 0
+
+    return build_app(에이전트_공장, _지연주체저장소(), 모델_준비됨)
 
 
 app = create_app()

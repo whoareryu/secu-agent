@@ -7,8 +7,6 @@ langchain_core 의 GenericFakeChatModel 을 쓸 수 없다 — bind_tools 를
 필요한 것은 bind_tools 와 _generate 둘뿐이다.
 """
 
-from typing import Any
-
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
@@ -19,15 +17,12 @@ class 대본모델(BaseChatModel):
 
     대본: list[AIMessage] = []
     호출수: int = 0
-    본_도구: list[Any] = []
 
     @property
     def _llm_type(self) -> str:
         return "대본모델"
 
     def bind_tools(self, tools, **kwargs):
-        # 어떤 도구가 모델에게 전달되는지 기록한다 — 스키마 검사가 이걸 본다.
-        self.본_도구 = list(tools)
         return self
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs) -> ChatResult:

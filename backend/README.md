@@ -23,7 +23,7 @@ adapters/    바깥. core 를 안다
   db/          psycopg
   source/      원천 데이터셋 파서
   embedding/   sentence-transformers
-  llm/         Anthropic SDK
+  llm/         Gemini SDK
 pipeline/    오프라인 배치 — adapters 를 조립해 실행
 api/         FastAPI — 얇은 HTTP 계층
 eval/        평가 하네스 — ports 스텁으로 테스트

@@ -198,11 +198,15 @@ def test_도구를_끝없이_시도해도_종료된다():
     # .id 로 병합해 한 턴으로 접히고, 폭주를 재현하지 못한다.
     모델 = 대본모델(대본=[_도구_호출() for _ in range(50)])
 
-    # 예외 없이 끝나는 것 자체가 이 테스트의 단언이다.
+    # 예외 없이 끝나는 것 자체가 이 테스트의 암묵적 단언이다.
     build_agent(고정임베더(), 검색기, 모델).invoke(
         {"messages": [{"role": "user", "content": "질문"}]},
         context=AgentContext(principal=사원),
     )
+
+    from core.agent.policy import MAX_MODEL_CALLS
+
+    assert 모델.호출수 == MAX_MODEL_CALLS, f"모델을 {모델.호출수}회 불렀다 — 상한이 지켜지지 않았다"
 
 
 @pytest.mark.llm

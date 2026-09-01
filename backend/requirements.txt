@@ -1,5 +1,4 @@
-# pyproject.toml 이 단일 출처다. 이 파일은 아래 명령으로 재생성한다:
-#   uv pip compile pyproject.toml -o requirements.txt
+# pyproject.toml 이 단일 출처다. 이 파일은 손으로 쓴 것이라 버전이 고정돼 있지 않다.
 
 fastapi>=0.115
 langchain>=1.3

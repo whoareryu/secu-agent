@@ -36,7 +36,7 @@ backend/
     parsing/     PDF · DOCX · MD → Chunk
     db/          psycopg + pgvector
     embedding/   multilingual-e5-small
-    llm/         Anthropic SDK
+    llm/         Gemini SDK
     agent/       LangChain / LangGraph 런너
   pipeline/    문서 · 로그 적재
   api/         FastAPI

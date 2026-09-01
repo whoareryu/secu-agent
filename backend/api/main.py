@@ -4,7 +4,6 @@
 에이전트를 부르고, 결과를 직렬화한다.
 """
 
-import os
 from collections.abc import Callable
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -15,7 +14,11 @@ from api.security import 시크릿_검사
 from core.ports import PrincipalStore
 
 
-def build_app(에이전트_공장: Callable[[], object], 주체저장소: PrincipalStore) -> FastAPI:
+def build_app(
+    에이전트_공장: Callable[[], object],
+    주체저장소: PrincipalStore,
+    모델_준비됨: Callable[[], bool] = lambda: True,
+) -> FastAPI:
     """앱을 조립한다. 의존성을 인자로 받아 테스트가 스텁을 넣을 수 있다."""
     app = FastAPI(title="secu-agent")
 
@@ -35,7 +38,7 @@ def build_app(에이전트_공장: Callable[[], object], 주체저장소: Princi
         return {
             "status": "ok" if db_ok else "degraded",
             "db": db_ok,
-            "model": os.environ.get("SECUAGENT_MODEL_READY", "unknown"),
+            "model": "ready" if 모델_준비됨() else "loading",
         }
 
     @app.post("/ask", response_model=AskResponse, dependencies=[Depends(시크릿_검사)])
@@ -49,9 +52,12 @@ def build_app(에이전트_공장: Callable[[], object], 주체저장소: Princi
         결과 = 에이전트_공장().invoke(
             {"messages": [{"role": "user", "content": req.query}]}, context=ctx
         )
-        도구_호출수 = sum(1 for m in 결과["messages"] if m.__class__.__name__ == "ToolMessage")
         return AskResponse(
-            answer=결과["messages"][-1].content,
+            # .content 가 아니라 .text 다. Gemini 는 agentic 호출에서 리스트 모양
+            # content(thinking + text 파트)를 내고, 그것이 str 로 선언된 필드에
+            # 들어가면 검증이 실패해 500 이 된다. .text 는 텍스트 파트만 뽑고
+            # 문자열 content 는 그대로 통과시킨다.
+            answer=결과["messages"][-1].text,
             hits=[
                 PolicyHitView(
                     chunk_id=h.chunk_id,
@@ -66,7 +72,9 @@ def build_app(에이전트_공장: Callable[[], object], 주체저장소: Princi
                 department=principal.department,
                 clearance=principal.clearance,
             ),
-            tool_calls=도구_호출수,
+            # ToolMessage 개수를 세면 상한에 막힌 호출도 잡혀 실제보다 많이
+            # 보고된다. ctx.tool_calls 는 도구 본문이 실제로 실행됐을 때만 는다.
+            tool_calls=ctx.tool_calls,
         )
 
     return app
