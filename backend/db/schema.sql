@@ -80,3 +80,24 @@ CREATE TABLE IF NOT EXISTS principals (
     department TEXT NOT NULL,
     clearance  INT  NOT NULL
 );
+
+-- 열람 기록. 관리자 대시보드가 이것을 읽는다.
+--
+-- **본문과 문서 제목을 담지 않는다.** core/agent/policy.py 의 AccessViolation 이
+-- 메시지에 chunk_id 만 담는 것과 같은 원칙이다 — 기록이 우회 경로가 되면 안 된다.
+-- 제목을 빼는 이유: 제목만으로도 존재가 드러난다. "임원 성과급 산정 기준" 이
+-- 로그에 있으면 그 문서의 존재가 확인된다.
+CREATE TABLE IF NOT EXISTS access_records (
+    id          BIGSERIAL PRIMARY KEY,
+    ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    persona     TEXT NOT NULL,
+    department  TEXT NOT NULL,
+    clearance   INT  NOT NULL,
+    query       TEXT NOT NULL,
+    clause_code TEXT,
+    chunk_id    BIGINT NOT NULL,
+    allowed     BOOLEAN NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS access_records_ts_idx ON access_records (ts DESC);
+CREATE INDEX IF NOT EXISTS access_records_allowed_idx ON access_records (allowed);

@@ -41,6 +41,21 @@ class 스텁주체저장소:
         return self.목록.get(name)
 
 
+class 스텁열람기록:
+    def __init__(self):
+        self.기록 = []
+
+    def record(self, rows):
+        self.기록.extend(rows)
+        return len(rows)
+
+    def recent(self, limit):
+        return list(reversed(self.기록))[:limit]
+
+    def violations(self, limit):
+        return [r for r in reversed(self.기록) if not r.allowed][:limit]
+
+
 def _hit(chunk_id=1, code="2.6.1"):
     return PolicyHit(
         chunk_id=chunk_id,
@@ -188,3 +203,74 @@ def test_healthz_모델_준비_여부는_콜백을_따른다(monkeypatch):
     assert c.get("/healthz").json()["model"] == "loading"
     준비됨 = True
     assert c.get("/healthz").json()["model"] == "ready"
+
+
+def test_질의가_열람_기록을_남긴다(monkeypatch):
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+    기록 = 스텁열람기록()
+    검색기 = 스텁검색기([_hit(1, "2.6.1")])
+    저장소 = 스텁주체저장소({"박인사": Principal("인사팀", 2)})
+
+    def 공장():
+        모델 = 대본모델(
+            대본=[
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "search_policy",
+                            "args": {"query": "질의"},
+                            "id": "c1",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
+                AIMessage(content="답변"),
+            ]
+        )
+        return build_agent(고정임베더(), 검색기, 모델)
+
+    c = TestClient(build_app(공장, 저장소, lambda: True, 기록))
+    c.post("/ask", json={"query": "네트워크 접근", "persona": "박인사"}, headers=헤더)
+
+    assert 기록.기록, "기록이 남지 않았다"
+    r = 기록.기록[0]
+    assert r.persona == "박인사" and r.clearance == 2
+    assert r.clause_code == "2.6.1" and r.allowed is True
+
+
+def test_기록에_본문이_담기지_않는다():
+    """AccessRecord 에 본문 필드가 있으면 언젠가 채워진다."""
+    import dataclasses
+
+    from core.types import AccessRecord
+
+    필드 = {f.name for f in dataclasses.fields(AccessRecord)}
+    for 금지 in ("text", "doc_title", "title", "body"):
+        assert 금지 not in 필드, f"AccessRecord 에 {금지} 가 있다"
+
+
+def test_기록이_실패해도_응답은_정상이다(monkeypatch):
+    """기록은 곁가지다. 그것 때문에 질의가 실패하면 안 된다."""
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+
+    class 터지는기록:
+        def record(self, rows):
+            raise RuntimeError("DB 연결 끊김")
+
+        def recent(self, limit):
+            return []
+
+        def violations(self, limit):
+            return []
+
+    검색기 = 스텁검색기([_hit(1)])
+    저장소 = 스텁주체저장소({"박인사": Principal("인사팀", 2)})
+
+    def 공장():
+        모델 = 대본모델(대본=[AIMessage(content="답변")])
+        return build_agent(고정임베더(), 검색기, 모델)
+
+    c = TestClient(build_app(공장, 저장소, lambda: True, 터지는기록()))
+    r = c.post("/ask", json={"query": "질의", "persona": "박인사"}, headers=헤더)
+    assert r.status_code == 200

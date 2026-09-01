@@ -15,7 +15,7 @@ isinstance 는 메서드 존재만 보고 시그니처는 보지 않는다 — �
 from collections.abc import Sequence
 from typing import Literal, Protocol, runtime_checkable
 
-from core.types import Chunk, Clause, Document, PolicyHit, Principal
+from core.types import AccessRecord, Chunk, Clause, Document, PolicyHit, Principal
 
 Vector = list[float]
 
@@ -98,4 +98,22 @@ class PrincipalStore(Protocol):
         department·clearance 를 직접 보내지 않는 이유가 이것이다 —
         보내게 하면 그 값이 곧 사칭 경로다.
         """
+        ...
+
+
+@runtime_checkable
+class AccessLog(Protocol):
+    def record(self, rows: Sequence[AccessRecord]) -> int:
+        """열람 기록을 저장하고 저장한 수를 돌려준다.
+
+        기록 실패가 요청을 실패시키면 안 된다 — 호출자가 예외를 삼킨다.
+        """
+        ...
+
+    def recent(self, limit: int) -> list[AccessRecord]:
+        """최근 열람 기록. 시각 내림차순."""
+        ...
+
+    def violations(self, limit: int) -> list[AccessRecord]:
+        """allowed=False 인 기록만. 권한 밖 요청 알림에 쓴다."""
         ...

@@ -9,6 +9,7 @@ import os
 from functools import lru_cache
 
 from adapters.agent.runner import build_agent
+from adapters.db.access_log import PgAccessLog
 from adapters.db.chunk_search import PgChunkSearch
 from adapters.db.connection import connect
 from adapters.db.principal_store import PgPrincipalStore
@@ -44,10 +45,23 @@ def create_app():
         def find(self, name):
             return 저장소().find(name)
 
+    class _지연열람기록:
+        def record(self, rows):
+            conn, _ = _자원()
+            return PgAccessLog(conn).record(rows)
+
+        def recent(self, limit):
+            conn, _ = _자원()
+            return PgAccessLog(conn).recent(limit)
+
+        def violations(self, limit):
+            conn, _ = _자원()
+            return PgAccessLog(conn).violations(limit)
+
     def 모델_준비됨() -> bool:
         return _자원.cache_info().currsize > 0
 
-    return build_app(에이전트_공장, _지연주체저장소(), 모델_준비됨)
+    return build_app(에이전트_공장, _지연주체저장소(), 모델_준비됨, 열람기록=_지연열람기록())
 
 
 app = create_app()

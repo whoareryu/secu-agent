@@ -83,3 +83,20 @@ class PolicyHit:
     clause_code: str | None
     required_clearance: int
     allowed_departments: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AccessRecord:
+    """열람 기록 한 줄. 관리자 대시보드가 읽는다.
+
+    text 도 doc_title 도 없다. 기록이 문서 본문이나 제목을 담으면 그 테이블이
+    곧 권한 우회 경로가 된다 — 제목만으로도 존재가 드러난다.
+    """
+
+    persona: str
+    department: str
+    clearance: int
+    query: str
+    clause_code: str | None
+    chunk_id: int
+    allowed: bool

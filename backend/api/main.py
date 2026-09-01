@@ -11,13 +11,15 @@ from fastapi import Depends, FastAPI, HTTPException
 from adapters.agent.context import AgentContext
 from api.schemas import AskRequest, AskResponse, PersonaView, PolicyHitView
 from api.security import 시크릿_검사
-from core.ports import PrincipalStore
+from core.ports import AccessLog, PrincipalStore
+from core.types import AccessRecord
 
 
 def build_app(
     에이전트_공장: Callable[[], object],
     주체저장소: PrincipalStore,
     모델_준비됨: Callable[[], bool] = lambda: True,
+    열람기록: AccessLog | None = None,
 ) -> FastAPI:
     """앱을 조립한다. 의존성을 인자로 받아 테스트가 스텁을 넣을 수 있다."""
     app = FastAPI(title="secu-agent")
@@ -49,9 +51,56 @@ def build_app(
             raise HTTPException(status_code=400, detail="알 수 없는 페르소나")
 
         ctx = AgentContext(principal=principal)
-        결과 = 에이전트_공장().invoke(
-            {"messages": [{"role": "user", "content": req.query}]}, context=ctx
-        )
+
+        from core.agent.policy import AccessViolation
+
+        try:
+            결과 = 에이전트_공장().invoke(
+                {"messages": [{"role": "user", "content": req.query}]}, context=ctx
+            )
+        except AccessViolation as e:
+            # 사전 필터링이 깨졌다는 뜻이다. 기록하고 502 를 낸다 —
+            # 사용자에게는 이유를 말하지 않는다.
+            if 열람기록 is not None:
+                try:
+                    열람기록.record(
+                        [
+                            AccessRecord(
+                                persona=req.persona,
+                                department=principal.department,
+                                clearance=principal.clearance,
+                                query=req.query,
+                                clause_code=None,
+                                chunk_id=cid,
+                                allowed=False,
+                            )
+                            for cid in _위반_chunk_id(e)
+                        ]
+                    )
+                except Exception:
+                    pass
+            raise HTTPException(status_code=502, detail="요청을 처리하지 못했다") from None
+
+        if 열람기록 is not None:
+            # 기록 실패가 요청을 죽이면 안 된다. 곁가지다.
+            try:
+                열람기록.record(
+                    [
+                        AccessRecord(
+                            persona=req.persona,
+                            department=principal.department,
+                            clearance=principal.clearance,
+                            query=req.query,
+                            clause_code=h.clause_code,
+                            chunk_id=h.chunk_id,
+                            allowed=True,
+                        )
+                        for h in ctx.collected
+                    ]
+                )
+            except Exception:
+                pass
+
         return AskResponse(
             # .content 가 아니라 .text 다. Gemini 는 agentic 호출에서 리스트 모양
             # content(thinking + text 파트)를 내고, 그것이 str 로 선언된 필드에
@@ -78,3 +127,17 @@ def build_app(
         )
 
     return app
+
+
+def _위반_chunk_id(e: Exception) -> list[int]:
+    """AccessViolation 메시지에서 chunk_id 만 뽑는다.
+
+    메시지는 f"권한 밖 청크가 도구 출력에 섞였다: [1, 2] …" 형태다.
+    파싱이 실패해도 기록은 남겨야 하므로 빈 리스트로 물러선다.
+    """
+    import re
+
+    m = re.search(r"\[([\d,\s]*)\]", str(e))
+    if not m or not m.group(1).strip():
+        return []
+    return [int(x) for x in m.group(1).split(",") if x.strip()]
