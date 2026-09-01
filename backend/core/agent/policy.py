@@ -12,6 +12,11 @@ from collections.abc import Sequence
 from core.access.visibility import visible
 from core.types import PolicyHit, Principal
 
+# 도구 호출 상한. 넘으면 그 도구만 막고 모델은 그때까지의 결과로 답한다.
+# 상한이 없으면 에이전트가 도구를 반복 호출하며 비용과 지연이 무한정 늘어난다.
+# 8 은 "규정 검색 → 재검색" 을 여러 바퀴 돌 수 있는 여유다(상위 spec 7.2).
+MAX_TOOL_CALLS = 8
+
 
 class AccessViolation(Exception):
     """도구 출력에 권한 밖 항목이 있다. 사전 필터링이 깨졌다는 뜻이다."""
