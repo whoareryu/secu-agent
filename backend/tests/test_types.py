@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from core.ports import ChunkSearch, DocumentStore, Embedder
+from core.ports import ChunkSearch, DocumentStore, Embedder, PrincipalStore
 from core.types import EMBEDDING_DIM, Chunk, Clause, Document, PolicyHit, Principal
 
 
@@ -106,9 +106,14 @@ def test_포트를_스텁이_만족한다():
         def load_hits(self, ids, principal):
             return []
 
+    class 주체저장소:
+        def find(self, name):
+            return None
+
     assert isinstance(임베더(), Embedder)
     assert isinstance(저장소(), DocumentStore)
     assert isinstance(검색기(), ChunkSearch)
+    assert isinstance(주체저장소(), PrincipalStore)
 
 
 def test_포트를_만족하지_않으면_False_다():

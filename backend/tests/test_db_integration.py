@@ -13,7 +13,7 @@ import pytest
 from adapters.db.connection import apply_schema, connect
 from adapters.db.document_store import PgDocumentStore
 from core.ports import DocumentStore
-from core.types import EMBEDDING_DIM, Chunk, Clause, Document
+from core.types import EMBEDDING_DIM, Chunk, Clause, Document, Principal
 
 pytestmark = pytest.mark.db
 
@@ -221,3 +221,21 @@ def test_같은_이름의_계정을_두_번_넣으면_갱신된다(store):
         개수, 등급 = cur.fetchone()
     store.conn.commit()
     assert (개수, 등급) == (1, 3)
+
+
+def test_주체를_이름으로_찾는다(store):
+    from adapters.db.principal_store import PgPrincipalStore
+    from core.ports import PrincipalStore
+
+    with store.conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO principals (name, department, clearance) VALUES (%s, %s, %s) "
+            "ON CONFLICT (name) DO UPDATE SET clearance = EXCLUDED.clearance",
+            ("박인사", "인사팀", 2),
+        )
+    store.conn.commit()
+
+    저장소 = PgPrincipalStore(store.conn)
+    assert isinstance(저장소, PrincipalStore)
+    assert 저장소.find("박인사") == Principal(department="인사팀", clearance=2)
+    assert 저장소.find("없는사람") is None

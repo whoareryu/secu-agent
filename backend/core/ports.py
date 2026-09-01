@@ -87,3 +87,15 @@ class ChunkSearch(Protocol):
         검색 쪽에만 두면 id 를 아는 호출자가 이 경로로 본문을 가져간다.
         """
         ...
+
+
+@runtime_checkable
+class PrincipalStore(Protocol):
+    def find(self, name: str) -> Principal | None:
+        """이름으로 주체를 찾는다. 없으면 None.
+
+        API 가 페르소나 이름을 Principal 로 바꿀 때 쓴다. 클라이언트가
+        department·clearance 를 직접 보내지 않는 이유가 이것이다 —
+        보내게 하면 그 값이 곧 사칭 경로다.
+        """
+        ...
