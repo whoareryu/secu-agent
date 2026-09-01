@@ -22,14 +22,15 @@ def log(db연결):
     yield PgAccessLog(conn)
 
 
-def _rec(chunk_id=1, allowed=True, code="2.6.1", persona="김개발"):
+def _rec(resource_id=1, allowed=True, code="2.6.1", persona="김개발", kind="chunk"):
     return AccessRecord(
         persona=persona,
         department="개발팀",
         clearance=1,
         query="네트워크 접근 통제",
         clause_code=code,
-        chunk_id=chunk_id,
+        resource_kind=kind,
+        resource_id=resource_id,
         allowed=allowed,
     )
 
@@ -41,7 +42,7 @@ def test_구현이_포트를_만족한다(log):
 def test_기록하고_다시_읽는다(log):
     assert log.record([_rec(1), _rec(2)]) == 2
     읽은 = log.recent(10)
-    assert {r.chunk_id for r in 읽은} == {1, 2}
+    assert {r.resource_id for r in 읽은} == {1, 2}
 
 
 def test_빈_목록은_아무것도_하지_않는다(log):
@@ -52,14 +53,30 @@ def test_빈_목록은_아무것도_하지_않는다(log):
 def test_최근_것이_먼저_온다(log):
     log.record([_rec(1)])
     log.record([_rec(2)])
-    assert log.recent(10)[0].chunk_id == 2
+    assert log.recent(10)[0].resource_id == 2
 
 
 def test_위반만_따로_읽는다(log):
     log.record([_rec(1, allowed=True), _rec(2, allowed=False)])
     위반 = log.violations(10)
-    assert [r.chunk_id for r in 위반] == [2]
+    assert [r.resource_id for r in 위반] == [2]
     assert all(r.allowed is False for r in 위반)
+
+
+def test_같은_id_의_청크_기록과_로그_기록이_구별된다(log):
+    """resource_kind 가 컬럼으로 살아 있는지 어댑터 왕복으로 확인한다.
+
+    청크 id 와 로그 이벤트 id 는 겹친다(청크 1..338, 로그 이벤트 1..33).
+    종류가 저장되지 않으면 두 행이 같은 것으로 읽히고, 관리자 화면이 로그
+    이벤트 id 를 청크로 푼다.
+    """
+    log.record([_rec(7, kind="chunk"), _rec(7, kind="log_event", allowed=False)])
+    읽은 = log.recent(10)
+    assert {(r.resource_kind, r.resource_id) for r in 읽은} == {
+        ("chunk", 7),
+        ("log_event", 7),
+    }
+    assert [r.resource_kind for r in log.violations(10)] == ["log_event"]
 
 
 def test_기록에_본문_컬럼이_없다(log):

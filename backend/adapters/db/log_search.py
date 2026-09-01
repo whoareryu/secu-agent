@@ -23,6 +23,10 @@ _열 = """
 
 # 권한 조건이 ORDER BY 보다 먼저다. 이 문장을 모듈 상수로 두는 이유는 문서
 # 쪽과 같다 — 테스트가 실제로 실행되는 문장을 검사할 수 있어야 한다.
+#
+# NULLS LAST 를 붙인 이유: log_events.ts 는 nullable 이고 DESC 의 기본은
+# NULLS FIRST 다. 시각을 모르는 행이 모든 결과의 첫 줄에 오면 "최근" 이
+# 거짓이 된다.
 _조회_SQL = f"""
     SELECT {_열}
     FROM log_events e
@@ -30,7 +34,7 @@ _조회_SQL = f"""
     WHERE {권한_WHERE("h")}
       AND (%(event_type)s::text IS NULL OR e.event_type = %(event_type)s)
       AND (%(since)s::timestamptz IS NULL OR e.ts >= %(since)s)
-    ORDER BY e.ts DESC, e.id DESC
+    ORDER BY e.ts DESC NULLS LAST, e.id DESC
     LIMIT %(limit)s
 """
 

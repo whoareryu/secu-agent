@@ -44,10 +44,14 @@ export default function AdminSummary() {
     return <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>불러오는 중…</p>;
   }
 
-  // 질의 수: 고유 (query, persona, 시각) 조합 수. 열람된 서류: 고유 chunk_id
-  // 수. 확인 필요 알림은 차단된 요청과 같다 — 확인 상태를 저장하는 곳이 없다.
+  // 질의 수: 고유 (query, persona, 시각) 조합 수. 열람된 서류: 고유 청크 수 —
+  // 기록에는 로그 이벤트 열람도 섞이므로 종류로 먼저 거른다. 거르지 않으면
+  // 겹치는 id 때문에 "서류" 수가 로그 건수와 뒤섞인다.
+  // 확인 필요 알림은 차단된 요청과 같다 — 확인 상태를 저장하는 곳이 없다.
   const queryCount = new Set(records.map((r) => `${r.query}|${r.persona}|${r.ts}`)).size;
-  const chunkCount = new Set(records.map((r) => r.chunk_id)).size;
+  const chunkCount = new Set(
+    records.filter((r) => r.resource_kind === "chunk").map((r) => r.resource_id),
+  ).size;
   const blockedCount = violations.length;
   const needsReview = violations.length;
 
@@ -63,7 +67,7 @@ export default function AdminSummary() {
   const tiles: { label: string; value: number; note: string; accent?: boolean }[] = [
     { label: "질의 수", value: queryCount, note: 표본(기록_잘림, "기록 전체") },
     { label: "열람된 서류", value: chunkCount, note: 표본(기록_잘림, "조항 단위 열람 건수") },
-    { label: "차단된 요청", value: blockedCount, note: 표본(위반_잘림, "권한 밖 문서 요청") },
+    { label: "차단된 요청", value: blockedCount, note: 표본(위반_잘림, "권한 밖 열람 요청") },
     {
       label: "확인 필요 알림",
       value: needsReview,

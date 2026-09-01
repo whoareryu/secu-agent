@@ -178,7 +178,10 @@ def main() -> int:
                     name=h["name"],
                     department=h["department"],
                     required_clearance=h["required_clearance"],
-                    allowed_departments=tuple(h.get("allowed_departments") or ()),
+                    # .get 을 쓰지 않는다. 키를 빠뜨리거나 오타를 내면 빈 튜플이
+                    # 되고, 빈 튜플은 전사 공개다 — 오타가 조용히 여는 방향으로
+                    # 작동한다. 형제 키들과 같이 직접 인덱싱해 KeyError 로 터진다.
+                    allowed_departments=tuple(h["allowed_departments"]),
                 )
             )
             print(f"  {h['name']} · {h['department']} · 등급 {h['required_clearance']}")

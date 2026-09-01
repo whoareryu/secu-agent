@@ -14,9 +14,16 @@ export type AccessRecord = {
   clearance: number;
   query: string;
   clause_code: string | null;
-  chunk_id: number;
+  // 열람 대상은 청크이거나 로그 이벤트다. 두 id 공간은 겹치므로 숫자만으로는
+  // 무엇을 가리키는지 알 수 없다 — 종류를 함께 받아 함께 보여준다.
+  resource_kind: "chunk" | "log_event";
+  resource_id: number;
   allowed: boolean;
 };
+
+export function formatResource(r: Pick<AccessRecord, "resource_kind" | "resource_id">): string {
+  return `${r.resource_kind === "log_event" ? "로그 이벤트" : "청크"} ${r.resource_id}`;
+}
 
 export function formatTs(ts: string): string {
   const d = new Date(ts);
@@ -130,7 +137,7 @@ export default function AccessTable() {
             </tr>
           ) : (
             rows.map((r, i) => (
-              <tr key={`${r.ts}-${r.chunk_id}-${i}`}>
+              <tr key={`${r.ts}-${r.resource_kind}-${r.resource_id}-${i}`}>
                 <td style={{ fontSize: 12.5, color: "var(--color-neutral-600)", whiteSpace: "nowrap" }}>
                   {formatTs(r.ts)}
                 </td>
@@ -142,7 +149,7 @@ export default function AccessTable() {
                 <td>
                   <span className="tag tag-neutral">{r.clause_code ?? "—"}</span>
                   <div style={{ fontSize: 11, color: "var(--color-neutral-600)", marginTop: 2 }}>
-                    chunk {r.chunk_id}
+                    {formatResource(r)}
                   </div>
                 </td>
                 <td style={{ textAlign: "right" }}>

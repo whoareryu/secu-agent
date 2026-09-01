@@ -48,14 +48,15 @@ class 스텁카탈로그:
         ]
 
 
-def _기록(persona="박인사", allowed=True, chunk_id=1, ts=None):
+def _기록(persona="박인사", allowed=True, resource_id=1, resource_kind="chunk", ts=None):
     return AccessRecord(
         persona=persona,
         department="인사팀",
         clearance=2,
         query="네트워크 접근",
         clause_code="2.6.1",
-        chunk_id=chunk_id,
+        resource_kind=resource_kind,
+        resource_id=resource_id,
         allowed=allowed,
         ts=ts,
     )
@@ -82,7 +83,7 @@ def client(monkeypatch):
     def 에이전트_공장():
         raise AssertionError("이 테스트들은 /ask 를 부르지 않는다")
 
-    기록들 = [_기록(allowed=True, chunk_id=1), _기록(allowed=False, chunk_id=2)]
+    기록들 = [_기록(allowed=True, resource_id=1), _기록(allowed=False, resource_id=2)]
     return TestClient(
         build_app(
             에이전트_공장,
@@ -171,7 +172,7 @@ def test_access_log가_ts를_돌려준다(monkeypatch):
         raise AssertionError("이 테스트는 /ask 를 부르지 않는다")
 
     시각 = datetime(2026, 9, 1, 3, 0, 0, tzinfo=UTC)
-    기록들 = [_기록(chunk_id=1, ts=시각)]
+    기록들 = [_기록(resource_id=1, ts=시각)]
     client = TestClient(
         build_app(
             에이전트_공장,

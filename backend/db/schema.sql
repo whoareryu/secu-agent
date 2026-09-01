@@ -102,20 +102,44 @@ CREATE TABLE IF NOT EXISTS principals (
 -- 열람 기록. 관리자 대시보드가 이것을 읽는다.
 --
 -- **본문과 문서 제목을 담지 않는다.** core/agent/policy.py 의 AccessViolation 이
--- 메시지에 chunk_id 만 담는 것과 같은 원칙이다 — 기록이 우회 경로가 되면 안 된다.
+-- 메시지에 id 만 담는 것과 같은 원칙이다 — 기록이 우회 경로가 되면 안 된다.
 -- 제목을 빼는 이유: 제목만으로도 존재가 드러난다. "임원 성과급 산정 기준" 이
 -- 로그에 있으면 그 문서의 존재가 확인된다.
+--
+-- 열람 대상이 청크만이 아니므로 (resource_kind, resource_id) 두 컬럼이 대상을
+-- 말한다. id 만 담으면 청크 id(1..338)와 로그 이벤트 id(1..33)가 겹쳐 구별되지
+-- 않는다. resource_kind 에 DEFAULT 를 두지 않는다 — 종류를 빠뜨린 INSERT 가
+-- 조용히 청크가 되면 안 된다.
 CREATE TABLE IF NOT EXISTS access_records (
-    id          BIGSERIAL PRIMARY KEY,
-    ts          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    persona     TEXT NOT NULL,
-    department  TEXT NOT NULL,
-    clearance   INT  NOT NULL,
-    query       TEXT NOT NULL,
-    clause_code TEXT,
-    chunk_id    BIGINT NOT NULL,
-    allowed     BOOLEAN NOT NULL
+    id            BIGSERIAL PRIMARY KEY,
+    ts            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    persona       TEXT NOT NULL,
+    department    TEXT NOT NULL,
+    clearance     INT  NOT NULL,
+    query         TEXT NOT NULL,
+    clause_code   TEXT,
+    resource_kind TEXT NOT NULL CHECK (resource_kind IN ('chunk', 'log_event')),
+    resource_id   BIGINT NOT NULL,
+    allowed       BOOLEAN NOT NULL
 );
+
+-- 이미 chunk_id 로 만들어진 테이블을 위 모양으로 옮긴다. 두 번 돌려도 안전하다 —
+-- 두 번째에는 chunk_id 가 없어 undefined_column 이 나고 그것을 삼킨다.
+DO $$
+BEGIN
+    ALTER TABLE access_records RENAME COLUMN chunk_id TO resource_id;
+EXCEPTION
+    WHEN undefined_column THEN NULL;
+END $$;
+
+-- 기존 행은 전부 청크 기록이다 — 그때는 로그 경로가 없었다. DEFAULT 는 그
+-- 백필을 위해서만 필요하므로 채운 뒤 곧바로 뗀다. 남겨두면 새로 만든 DB 와
+-- 마이그레이션된 DB 의 컬럼 모양이 갈리고, 종류를 빠뜨린 INSERT 가 한쪽에서만
+-- 조용히 통과한다.
+ALTER TABLE access_records
+    ADD COLUMN IF NOT EXISTS resource_kind TEXT NOT NULL DEFAULT 'chunk'
+    CHECK (resource_kind IN ('chunk', 'log_event'));
+ALTER TABLE access_records ALTER COLUMN resource_kind DROP DEFAULT;
 
 CREATE INDEX IF NOT EXISTS access_records_ts_idx ON access_records (ts DESC);
 CREATE INDEX IF NOT EXISTS access_records_allowed_idx ON access_records (allowed);

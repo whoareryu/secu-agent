@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Blueprint from "./Blueprint";
-import { formatTs, type AccessRecord } from "./AccessTable";
+import { formatResource, formatTs, type AccessRecord } from "./AccessTable";
 import { LOG_LIMIT } from "@/lib/types";
 
 // GET /api/access-log?violations=1 — AccessViolation 이 실제로 발생했을 때만
@@ -68,7 +68,7 @@ export default function AlertTable() {
               </tr>
             ) : (
               records.map((r, i) => (
-                <tr key={`${r.ts}-${r.chunk_id}-${i}`}>
+                <tr key={`${r.ts}-${r.resource_kind}-${r.resource_id}-${i}`}>
                   <td style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>{formatTs(r.ts)}</td>
                   <td style={{ fontSize: 14.5 }}>
                     {r.persona}
@@ -78,7 +78,7 @@ export default function AlertTable() {
                     </span>
                   </td>
                   <td style={{ fontSize: 13 }}>
-                    chunk {r.chunk_id}
+                    {formatResource(r)}
                     {r.clause_code ? ` · ${r.clause_code}` : ""}
                   </td>
                   <td style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>{r.query}</td>

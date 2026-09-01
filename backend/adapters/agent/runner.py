@@ -91,7 +91,7 @@ def build_tools(embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSear
 
         Args:
             event_type: auth_failure · session_open · session_close ·
-                privilege_use · other 중 하나. 비우면 전부.
+                privilege_use · access_denied · other 중 하나. 비우면 전부.
             since: ISO 8601 시각. 이 시각 이후만. 비우면 전부.
             limit: 가져올 이벤트 수. 기본 20.
         """
@@ -104,8 +104,9 @@ def build_tools(embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSear
             try:
                 시각 = datetime.fromisoformat(since)
             except ValueError:
-                # 모델이 형식을 틀리는 일은 흔하다. 요청을 죽이지 말고
-                # 필터 없이 진행한다 — 그 사실을 응답에 적는다.
+                # 모델이 형식을 틀리는 일은 흔하다. 요청을 죽이지 말고 고쳐 쓰는
+                # 법을 알려준다 — 필터 없이 진행하지 않는다. 틀린 since 를 버리고
+                # 조회하면 모델이 요청한 것보다 넓은 범위가 돌아온다.
                 return "since 를 ISO 8601 시각으로 다시 준다. 예: 2026-09-01T00:00:00"
 
         events = core_tools.query_logs(
@@ -114,8 +115,12 @@ def build_tools(embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSear
         if not events:
             return 로그_결과_없음
 
+        # ts 는 nullable 이다 — 파서를 거치지 않고 들어온 행은 시각이 없을 수
+        # 있고, 그때 포맷 문자열은 TypeError 로 터진다. 없으면 없다고 적는다.
         return "\n".join(
-            f"{e.ts:%Y-%m-%d %H:%M:%S} [{e.host}] {e.event_type} {e.raw}" for e in events
+            f"{f'{e.ts:%Y-%m-%d %H:%M:%S}' if e.ts else '시각 미상'} "
+            f"[{e.host}] {e.event_type} {e.raw}"
+            for e in events
         )
 
     return [search_policy, query_logs]

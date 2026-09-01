@@ -29,7 +29,23 @@ MAX_K = 20
 
 
 class AccessViolation(Exception):
-    """도구 출력에 권한 밖 항목이 있다. 사전 필터링이 깨졌다는 뜻이다."""
+    """도구 출력에 권한 밖 항목이 있다. 사전 필터링이 깨졌다는 뜻이다.
+
+    **어떤 종류의 항목인지를 구조로 들고 다닌다.** 기록하는 쪽이 메시지
+    문자열에서 id 를 파내면 그 id 가 청크인지 로그 이벤트인지 알 수 없다 —
+    두 id 공간은 실제로 겹친다(청크 1..338, 로그 이벤트 1..33). 겹친 값이
+    청크로 기록되면 관리자 화면이 무관한 문서를 띄운다.
+
+    메시지에 담기는 것은 여전히 **id 뿐이다**. 본문도 호스트 이름도 문서
+    제목도 담지 않는다 — 막으려고 만든 장치가 통로가 되면 안 된다.
+    kind 와 ids 에 기본값을 주지 않는다. 빠뜨린 생성이 조용히 "청크" 가
+    되면 지금 고치는 결함이 그대로 돌아온다.
+    """
+
+    def __init__(self, 메시지: str, kind: str, ids: Sequence[int]) -> None:
+        super().__init__(메시지)
+        self.kind = kind  # "chunk" | "log_event"
+        self.ids = list(ids)
 
 
 def enforce(hits: Sequence[PolicyHit], p: Principal) -> list[PolicyHit]:
@@ -47,7 +63,9 @@ def enforce(hits: Sequence[PolicyHit], p: Principal) -> list[PolicyHit]:
     if 위반:
         raise AccessViolation(
             f"권한 밖 청크가 도구 출력에 섞였다: {위반} "
-            f"(부서 {p.department} · 등급 {p.clearance}) — 사전 필터링이 깨졌다"
+            f"(부서 {p.department} · 등급 {p.clearance}) — 사전 필터링이 깨졌다",
+            kind="chunk",
+            ids=위반,
         )
     return list(hits)
 
@@ -80,7 +98,10 @@ def enforce_events(events: Sequence[LogEvent], p: Principal) -> list[LogEvent]:
     새는_것 = [e for e in events
               if not visible(e.required_clearance, e.allowed_departments, p)]
     if 새는_것:
+        위반 = [e.id for e in 새는_것]
         raise AccessViolation(
-            f"권한 밖 이벤트가 도구 출력에 있다: {[e.id for e in 새는_것]}"
+            f"권한 밖 이벤트가 도구 출력에 있다: {위반}",
+            kind="log_event",
+            ids=위반,
         )
     return list(events)

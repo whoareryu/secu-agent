@@ -71,6 +71,9 @@ def build_app(
         except AccessViolation as e:
             # 사전 필터링이 깨졌다는 뜻이다. 기록하고 502 를 낸다 —
             # 사용자에게는 이유를 말하지 않는다.
+            #
+            # 종류와 id 는 예외가 구조로 들고 온다. 메시지를 정규식으로 파면
+            # 청크 id 와 로그 이벤트 id 가 같은 모양이라 구별되지 않는다.
             if 열람기록 is not None:
                 try:
                     열람기록.record(
@@ -81,10 +84,11 @@ def build_app(
                                 clearance=principal.clearance,
                                 query=req.query,
                                 clause_code=None,
-                                chunk_id=cid,
+                                resource_kind=e.kind,
+                                resource_id=rid,
                                 allowed=False,
                             )
-                            for cid in _위반_chunk_id(e)
+                            for rid in e.ids
                         ]
                     )
                 except Exception:
@@ -102,7 +106,8 @@ def build_app(
                             clearance=principal.clearance,
                             query=req.query,
                             clause_code=h.clause_code,
-                            chunk_id=h.chunk_id,
+                            resource_kind="chunk",
+                            resource_id=h.chunk_id,
                             allowed=True,
                         )
                         for h in ctx.collected
@@ -194,21 +199,8 @@ def _기록으로(r: AccessRecord) -> AccessRecordView:
         clearance=r.clearance,
         query=r.query,
         clause_code=r.clause_code,
-        chunk_id=r.chunk_id,
+        resource_kind=r.resource_kind,
+        resource_id=r.resource_id,
         allowed=r.allowed,
         ts=r.ts,
     )
-
-
-def _위반_chunk_id(e: Exception) -> list[int]:
-    """AccessViolation 메시지에서 chunk_id 만 뽑는다.
-
-    메시지는 f"권한 밖 청크가 도구 출력에 섞였다: [1, 2] …" 형태다.
-    파싱이 실패해도 기록은 남겨야 하므로 빈 리스트로 물러선다.
-    """
-    import re
-
-    m = re.search(r"\[([\d,\s]*)\]", str(e))
-    if not m or not m.group(1).strip():
-        return []
-    return [int(x) for x in m.group(1).split(",") if x.strip()]

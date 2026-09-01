@@ -60,6 +60,9 @@ class AccessRecordView(BaseModel):
     clearance: int
     query: str
     clause_code: str | None
-    chunk_id: int
+    # 열람 대상. 종류가 없으면 화면이 로그 이벤트 id 를 청크로 푼다 —
+    # 두 id 공간이 겹친다.
+    resource_kind: str
+    resource_id: int
     allowed: bool
     ts: datetime | None = None

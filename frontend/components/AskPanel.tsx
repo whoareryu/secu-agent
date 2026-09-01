@@ -206,7 +206,7 @@ export default function AskPanel({
           </div>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
             Route Handler 가 Cloudflare 컨테이너 호출에 실패했습니다. 어떤 페르소나가 존재하는지, 어떤 문서가
-            있는지는 오류 메시지에 담기지 않습니다 — 예외 본문이 누출 경로가 되지 않도록 chunk_id 외에는 싣지
+            있는지는 오류 메시지에 담기지 않습니다 — 예외 본문이 누출 경로가 되지 않도록 식별자 외에는 싣지
             않습니다.
           </p>
           <div style={{ display: "flex", gap: 8 }}>

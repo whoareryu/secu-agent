@@ -172,7 +172,9 @@ def test_권한_밖_이벤트가_섞여_있으면_예외가_난다():
 
     class 새는검색기:
         def query(self, principal, event_type, since, limit):
-            return [_이벤트(id=77, required_clearance=3)]
+            # raw 에 실제 내용을 담는다. 빈 문자열이면 아래 not in 단언이
+            # 참·거짓과 무관하게 통과한다 — 스스로 통과하는 단언이 된다.
+            return [_이벤트(id=77, required_clearance=3, raw="유령 계정 접속")]
 
     with pytest.raises(AccessViolation) as e:
         query_logs(Principal(department="개발팀", clearance=1), 새는검색기(), limit=10)

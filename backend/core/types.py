@@ -154,6 +154,11 @@ class AccessRecord:
     text 도 doc_title 도 없다. 기록이 문서 본문이나 제목을 담으면 그 테이블이
     곧 권한 우회 경로가 된다 — 제목만으로도 존재가 드러난다.
 
+    열람 대상은 청크이거나 로그 이벤트다. resource_kind 없이 id 만 담으면
+    두 id 공간이 겹쳐(청크 1..338, 로그 이벤트 1..33) 로그 위반이 무관한
+    문서 청크로 읽힌다. **resource_kind 에 기본값을 주지 않는다** — 종류를
+    빠뜨린 생성이 조용히 "청크" 가 되면 그 결함이 그대로 돌아온다.
+
     ts 가 선택인 이유: DB 가 DEFAULT now() 로 채운다. 쓰기 경로는 값을 주지
     않고, 읽기 경로만 채워서 돌려준다.
     """
@@ -163,6 +168,7 @@ class AccessRecord:
     clearance: int
     query: str
     clause_code: str | None
-    chunk_id: int
+    resource_kind: str  # "chunk" | "log_event"
+    resource_id: int
     allowed: bool
     ts: datetime | None = None

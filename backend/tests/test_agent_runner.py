@@ -188,6 +188,38 @@ def test_결과가_없어도_권한을_이유로_말하지_않는다():
         assert 금지 not in 본문, f"결과 없음 메시지가 '{금지}' 를 말한다: {본문}"
 
 
+def test_시각이_없는_이벤트도_도구가_터지지_않는다():
+    """log_events.ts 는 nullable 이다.
+
+    포맷 문자열은 None 에 TypeError 를 낸다 — 수동 SQL 로 들어온 한 줄이
+    도구 전체를 죽인다. 없으면 없다고 적고 나머지는 그대로 보여준다.
+    """
+    from core.types import LogEvent
+
+    시각없음 = LogEvent(
+        id=1, ts=None, host="dev-web-01", process="sshd", event_type="auth_failure",
+        principal_name="devuser", raw="Failed password", severity=None,
+        required_clearance=1, allowed_departments=(),
+    )
+    모델 = 대본모델(
+        대본=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "query_logs", "args": {}, "id": "L1", "type": "tool_call"}],
+            ),
+            AIMessage(content="답변"),
+        ]
+    )
+    ctx = AgentContext(principal=사원)
+    res = build_agent(
+        고정임베더(), _검색기(), 모델, _스텁로그검색기([시각없음])
+    ).invoke({"messages": [{"role": "user", "content": "인증 실패"}]}, context=ctx)
+
+    본문 = [m for m in res["messages"] if m.__class__.__name__ == "ToolMessage"][0].content
+    assert "dev-web-01" in 본문 and "auth_failure" in 본문
+    assert "시각 미상" in 본문, f"시각이 없는 줄을 표시하지 못했다: {본문}"
+
+
 # ────────────────────── 상한 ──────────────────────
 
 
