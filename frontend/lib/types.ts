@@ -26,6 +26,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { id: "ask", ko: "질의", en: "Ask", badge: "/ask", href: "/ask", adminOnly: false },
+  { id: "how", ko: "동작 원리", en: "How it works", badge: "", href: "/how", adminOnly: false },
   { id: "docs", ko: "문서 · 권한", en: "Documents", badge: "", href: "/documents", adminOnly: false },
   { id: "principals", ko: "계정", en: "Principals", badge: "", href: "/principals", adminOnly: false },
   { id: "logs", ko: "감사 로그", en: "Audit log", badge: "W4", href: "/logs", adminOnly: false },
