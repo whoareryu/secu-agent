@@ -1,8 +1,11 @@
 """데모 비교 API 라우터.
 
-`demo` 를 import 하는 유일한 파일이다 — tests/test_demo_isolation.py 가
-집합 동일성으로 강제한다. main.py 는 이 라우터를 모른 채 조립만 하고,
-api/deps.py 가 실제 conn·embedder 를 쥔 채 여기서 라우터를 만들어 주입한다.
+`demo` 패키지를 import 하는 유일한 파일이다 — tests/test_demo_isolation.py 가
+집합 동일성으로 강제한다. 그 목록에는 이 파일과 api/deps.py 둘이 올라 있다:
+`from api.demo import compare` 도 순진한 경로에 한 홉이라, 이 파일을 아는
+조립 지점까지 같이 세어야 울타리가 실제 도달 거리를 재게 된다.
+main.py 는 이 라우터를 모른 채 조립만 하고, api/deps.py 가 실제 conn·embedder
+를 쥔 채 여기서 라우터를 만들어 주입한다.
 
 세션·관리자 검사는 BFF(Vercel Route Handler) 쪽에서 한다. 여기서는
 다른 엔드포인트와 같은 공유 시크릿만 본다.
