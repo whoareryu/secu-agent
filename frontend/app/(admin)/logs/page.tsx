@@ -21,6 +21,17 @@ type LogEvent = {
 // 모순되지 않는다 — 직원 면은 한 사람이 되어보는 곳이고 여기는 장치를
 // 들여다보는 곳이라 도구가 다르다(app/(explain)/documents/page.tsx 의
 // 선택기와 같은 이유).
+//
+// 아래 설명이 "권한 밖 호스트의 행은 조인에서부터 빠집니다" 였는데 JOIN 과
+// WHERE 를 뒤바꾼 말이었다. JOIN 이 떨어뜨리는 것은 `hosts` 에 **등록되지
+// 않은** 호스트의 행이고(backend/tests/test_log_leakage.py 의
+// test_등록되지_않은_호스트의_이벤트는_아무에게도_보이지_않는다), 등록됐지만
+// 권한 밖인 호스트의 행은 조인을 통과한 뒤 WHERE 가 거른다. 라이브 실측
+// (2026-09-03, GET /log-events limit=200): hr-app-01 은 등록돼 있어 박인사에게
+// 6건 나오지만 김개발에게는 0건이다 — 그 배제는 WHERE 의 일이다.
+// 대신 더 강하고 참인 주장으로 바꾼다: 권한 조건이 ORDER BY·LIMIT 보다
+// 먼저다. 그것이 test_권한_밖_이벤트가_최근이어도_허용_이벤트가_잘리지_않는다
+// 와 test_limit_상한이_있어도_권한이_먼저다 가 실제로 못 박는 사실이다.
 export default function LogsPage() {
   const [계정, set계정] = useState<Principal[]>([]);
   const [계정오류, set계정오류] = useState<string | null>(null);
@@ -81,8 +92,12 @@ export default function LogsPage() {
         주체를 바꾸면 보이는 이벤트가 달라집니다. 다만 이건 그 주체의 로그가 아니라{" "}
         <strong>그 주체가 볼 수 있는 호스트의 로그</strong>입니다 — 권한은 호스트 단위로 걸리므로, 같은
         호스트 안에는 다른 사람이 남긴 기록도 함께 섞여 있을 수 있습니다. 이 화면의 실제 강제는{" "}
-        <code>log_search.py</code> 의 SQL JOIN 이 합니다 — 권한 밖 호스트의 행은 조인에서부터 빠집니다
-        (검사가 아니라 구조로 닫힙니다). 그 SQL 이 쓰는 <code>permission_sql.py</code> 의{" "}
+        <code>log_search.py</code> 의 SQL 한 문장이 합니다 — 권한 조건이 <code>ORDER BY</code> ·{" "}
+        <code>LIMIT</code> 보다 <strong>먼저</strong> 적용됩니다. 최근 것부터 잘라낸 뒤에 거르는 것이
+        아니라, 볼 수 있는 이벤트 안에서만 최근 것을 셉니다. 같은 문장의 <code>JOIN</code> 은 그 판정에
+        쓸 호스트의 권한 컬럼을 끌어옵니다 — 등록되지 않은 호스트의 행은 여기서 떨어지고, 등록됐지만
+        권한 밖인 호스트의 행은 조인을 통과한 뒤 <code>WHERE</code> 가 걸러냅니다. 그 SQL 이 쓰는{" "}
+        <code>permission_sql.py</code> 의{" "}
         <code>권한_WHERE()</code> 는 문서 검색(<code>chunk_search.py</code>)과 공유하는 함수이고,{" "}
         <code>core/access/visibility.py</code> 의 <code>visible()</code> 은 그 판정의 파이썬 쪽 문서화된
         사본입니다 — 같은 규칙이 문서와 로그 양쪽을 다스립니다.
