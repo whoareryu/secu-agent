@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { check } from "@/lib/rate-limit";
+import { PERSONA_COOKIE } from "@/lib/persona";
 
 // 브라우저가 닿는 유일한 엔드포인트다. 백엔드 주소도 시크릿도
 // 브라우저에 내려가지 않는다.
@@ -9,11 +11,20 @@ export async function POST(req: Request) {
     return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
   }
 
-  let query, persona;
+  let query;
   try {
-    ({ query, persona } = await req.json());
+    ({ query } = await req.json());
   } catch {
     return Response.json({ error: "잘못된 요청 본문입니다" }, { status: 400 });
+  }
+
+  // 페르소나는 본문이 아니라 쿠키에서 읽는다. 본문으로 받으면 화면이
+  // 보여주는 사람과 질의하는 사람이 갈릴 수 있다 — 헤더에는 김개발이
+  // 떠 있는데 최임원으로 묻는 요청을 만들 수 있게 된다.
+  const jar = await cookies();
+  const persona = jar.get(PERSONA_COOKIE)?.value;
+  if (!persona) {
+    return Response.json({ error: "직원을 먼저 선택해 주세요" }, { status: 400 });
   }
 
   // 본문을 파싱한 뒤, 백엔드를 부르기 전에 상한을 검사한다. 순서가 둘 다

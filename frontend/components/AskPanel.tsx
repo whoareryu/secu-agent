@@ -2,26 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Blueprint from "./Blueprint";
-import PersonaSegment, { type Principal } from "./PersonaSegment";
 import Answer, { type AskResult } from "./Answer";
 
 type Status = "idle" | "loading" | "done" | "error";
 type ErrorKind = "401" | "429" | "other";
 
 export default function AskPanel({
-  personas,
-  personasError,
   query,
   onQueryChange,
-  persona,
-  onPersonaChange,
 }: {
-  personas: Principal[] | null;
-  personasError: string | null;
   query: string;
   onQueryChange: (v: string) => void;
-  persona: string;
-  onPersonaChange: (v: string) => void;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<AskResult | null>(null);
@@ -44,14 +35,14 @@ export default function AskPanel({
   }, [status]);
 
   async function ask() {
-    if (!query.trim() || !persona) return;
+    if (!query.trim()) return;
     setStatus("loading");
     const start = performance.now();
     try {
       const r = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, persona }),
+        body: JSON.stringify({ query }),
       });
       const ms = performance.now() - start;
       if (!r.ok) {
@@ -84,19 +75,13 @@ export default function AskPanel({
       <Blueprint className="card" style={{ padding: 22, gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="card-kicker">Persona · 시연 계정</div>
+            <div className="card-kicker">질의</div>
             {remaining !== null && <span className="tag tag-outline">남은 질의 {remaining}회</span>}
           </div>
-          <span style={{ fontSize: 11.5, color: "var(--color-neutral-600)" }}>POST /ask · persona 이름만 전송</span>
+          <span style={{ fontSize: 11.5, color: "var(--color-neutral-600)" }}>
+            POST /api/ask · 본문은 query 뿐 — 페르소나는 쿠키에서 읽습니다
+          </span>
         </div>
-
-        {personasError ? (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--color-accent-700)" }}>{personasError}</p>
-        ) : !personas ? (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--color-neutral-600)" }}>페르소나 불러오는 중…</p>
-        ) : (
-          <PersonaSegment personas={personas} value={persona} onChange={onPersonaChange} />
-        )}
 
         <form onSubmit={submit} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
@@ -114,14 +99,13 @@ export default function AskPanel({
             type="submit"
             className="btn btn-primary"
             style={{ height: 42, minWidth: 104 }}
-            disabled={status === "loading" || !persona}
+            disabled={status === "loading"}
           >
             {status === "loading" ? "질의 중…" : "질의 / Ask"}
           </button>
         </form>
         <div style={{ fontSize: 12, color: "var(--color-neutral-600)", lineHeight: 1.5 }}>
-          부서·등급은 시연을 위해 선택하는 값이지만, 선택된 값이 실제 권한 필터(사전 필터링 WHERE 절)를 그대로
-          탑니다.
+          허브에서 고른 부서·등급이 실제 권한 필터(사전 필터링 WHERE 절)를 그대로 탑니다.
         </div>
       </Blueprint>
 
