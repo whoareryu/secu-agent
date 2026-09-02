@@ -80,10 +80,12 @@ export default function LogsPage() {
       <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: "var(--color-neutral-700)" }}>
         주체를 바꾸면 보이는 이벤트가 달라집니다. 다만 이건 그 주체의 로그가 아니라{" "}
         <strong>그 주체가 볼 수 있는 호스트의 로그</strong>입니다 — 권한은 호스트 단위로 걸리므로, 같은
-        호스트 안에는 다른 사람이 남긴 기록도 함께 섞여 있을 수 있습니다. 문서에 걸린 것과{" "}
-        <strong>같은 판정 함수</strong>가 로그에도 걸립니다 — <code>core/access/visibility.py</code> 의{" "}
-        <code>visible()</code> 하나입니다(<code>core/agent/policy.py</code> 가 문서 결과와 로그 결과 양쪽에
-        같은 함수로 재검증합니다).
+        호스트 안에는 다른 사람이 남긴 기록도 함께 섞여 있을 수 있습니다. 이 화면의 실제 강제는{" "}
+        <code>log_search.py</code> 의 SQL JOIN 이 합니다 — 권한 밖 호스트의 행은 조인에서부터 빠집니다
+        (검사가 아니라 구조로 닫힙니다). 그 SQL 이 쓰는 <code>permission_sql.py</code> 의{" "}
+        <code>권한_WHERE()</code> 는 문서 검색(<code>chunk_search.py</code>)과 공유하는 함수이고,{" "}
+        <code>core/access/visibility.py</code> 의 <code>visible()</code> 은 그 판정의 파이썬 쪽 문서화된
+        사본입니다 — 같은 규칙이 문서와 로그 양쪽을 다스립니다.
       </p>
       {계정오류 ? (
         <p style={{ fontSize: 13, color: "var(--color-accent-700)" }}>{계정오류}</p>
