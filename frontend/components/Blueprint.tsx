@@ -1,13 +1,14 @@
-export default function Blueprint({
-  as: Tag = "div",
+export default function Blueprint<T extends React.ElementType = "div">({
+  as,
   className = "",
   children,
   ...rest
 }: {
-  as?: React.ElementType;
+  as?: T;
   className?: string;
   children: React.ReactNode;
-} & React.HTMLAttributes<HTMLElement>) {
+} & Omit<React.ComponentPropsWithoutRef<T>, "as" | "className" | "children">) {
+  const Tag = (as ?? "div") as React.ElementType;
   return (
     <Tag className={`blueprint ${className}`.trim()} {...rest}>
       <i className="corner tl" />
