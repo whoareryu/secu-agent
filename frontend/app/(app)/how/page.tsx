@@ -7,7 +7,7 @@ import LeakCompare from "@/components/LeakCompare";
 // 빠뜨리면 컴파일이 막힌다.
 //
 // 패널 ②③은 Task 6 이 2단계 누출과 기록 스키마로 채웠다. 패널 ④는 W4a
-// 로그 적재 이후 Task 7 이 채운다. 지금은 이 저장소에서 실제로 확인한
+// 로그 적재 이후 Task 7 이 채웠다. 지금은 이 저장소에서 실제로 확인한
 // 만큼만 적는다.
 export default function HowPage() {
   return (
@@ -105,6 +105,76 @@ export default function HowPage() {
           이름을 맞춘 이유는 <code>core/access/visibility.py</code> 의 <code>visible()</code> 하나를 문서와
           로그가 그대로 공유하기 위해서입니다 — 판정 함수가 두 벌이면 그 어긋남은 조용히 결과만 줄이고
           에러를 내지 않습니다.
+        </p>
+        <table className="table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>문서</th>
+              <th>로그</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>관측되는 값</td>
+              <td>결과 k개 (고정)</td>
+              <td>이벤트 개수 (가변)</td>
+            </tr>
+            <tr>
+              <td>위험</td>
+              <td>개수 차이로 존재 노출</td>
+              <td>부분 집계를 전체로 오해</td>
+            </tr>
+            <tr>
+              <td>장치</td>
+              <td>사전 필터링 + 고정 k</td>
+              <td>사전 필터링 + 무조건적 범위 고지</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+          로그 쪽 장치는 <code>core/agent/policy.py</code> 의 <code>로그_범위_고지</code> 문구입니다 — 숨겨진
+          이벤트가 1000건이든 0건이든 같은 문구가 붙어, 관측값이 숨은 데이터 유무에 따라 변하지 않습니다.
+          문서 쪽처럼 개수를 숨기는 것이 아니라 부분 집계라는 사실 자체를 알리는 장치입니다 — 관측되는 값의
+          성질이 다르기 때문에 장치의 모양도 다릅니다.
+        </p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+          <code>visible()</code> 을 부르는 비테스트 호출부는 <code>core/agent/policy.py</code> 안에 둘입니다 —
+          62행이 청크 히트 재검증, 98행이 로그 이벤트 재검증입니다. 같은 함수가 서로 다른 두 타입을 재검증하는
+          것이 이 패널의 주장입니다.
+        </p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+          권한 SQL 조각도 한 곳에서 옵니다 — <code>adapters/db/permission_sql.py</code> 의{" "}
+          <code>권한_WHERE(alias)</code> 하나입니다. 이를 import 하는 파일은 문서 검색(
+          <code>chunk_search.py</code>), 로그 검색(<code>log_search.py</code>), 그리고{" "}
+          <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>) 셋뿐입니다 —{" "}
+          <code>grep -rn &quot;권한_WHERE&quot; backend --include=&quot;*.py&quot;</code> 로 확인할 수 있습니다.{" "}
+          <code>backend/tests/test_permission_sql.py</code> 의{" "}
+          <code>test_chunk_search_가_이_조각을_쓴다</code> 가 <code>chunk_search</code> 의 사본이 이 조각과
+          여전히 같은지를 단언합니다.
+        </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            lineHeight: 1.65,
+            color: "var(--color-neutral-700)",
+            borderLeft: "2px solid var(--color-accent-400)",
+            paddingLeft: 10,
+          }}
+        >
+          가장 좋은 사실: 위 패널(①)의 새는 데모 경로도 <strong>같은 권한 조각</strong>을 씁니다. 그 경로가 새는
+          이유는 규칙이 달라서가 아니라, <code>naive_search.py</code> 에서는 이 조각이 상위 k개를 먼저 뽑는{" "}
+          <code>ORDER BY</code> · <code>LIMIT</code> 서브쿼리 <strong>바깥</strong>에 놓여 사후 필터가 되기
+          때문입니다 — 사전 필터링 버전(<code>chunk_search.py</code>)은 같은 조각을 서브쿼리 <strong>안</strong>
+          에 둡니다.
+        </p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-600)" }}>
+          한 곳인 것은 이 <strong>SQL 조각</strong>이지 권한 <strong>규칙</strong> 자체가 아닙니다.{" "}
+          <code>permission_sql.py</code> 의 모듈 독스트링이 스스로 적어두듯, 같은 규칙이 SQL(사전 필터링) ·{" "}
+          <code>core/access/visibility.py</code>(재검증) · <code>frontend/components/DocumentTable.tsx</code>
+          (화면 설명) 세 계층에 의도적으로 산다 — 각자 다른 일을 하기 때문입니다. 문제가 되는 것은 같은
+          계층 안에서 사본이 늘어나는 것입니다.
         </p>
       </EvidencePanel>
     </div>
