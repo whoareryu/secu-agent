@@ -27,7 +27,12 @@ import pytest
 # `demo.compare.compare`** 다. 최상위 이름만 남기면 `from api.demo import
 # compare` 가 {"api"} 로 읽혀 이 울타리를 그냥 지나가고, 그러면 어느 파일이든
 # 한 줄로 순진한 경로를 부르면서 검사기는 초록으로 남는다.
-_오염된_이름 = ("demo", "api.demo")
+#
+# `api.deps` 도 같은 이유로 오염된 이름이다 — api/deps.py 가 모듈 수준에서
+# `from api.demo import build_demo_router` 를 하므로 `api.deps.build_demo_router`
+# 는 곧 `api.demo.build_demo_router` 다. 지금 api.deps 를 import 하는 파일이
+# 없어 대가는 0이다.
+_오염된_이름 = ("demo", "api.demo", "api.deps")
 
 # demo 에 한 홉으로 닿아도 되는 api/ 파일. 목록이 리뷰에 보이는 것이 이
 # 테스트의 목적이다.

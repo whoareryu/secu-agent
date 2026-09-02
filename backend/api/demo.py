@@ -1,6 +1,6 @@
 """데모 비교 API 라우터.
 
-`demo` 패키지를 import 하는 유일한 파일이다 — tests/test_demo_isolation.py 가
+`demo` 패키지를 직접 import 하는 유일한 파일이다 — tests/test_demo_isolation.py 가
 집합 동일성으로 강제한다. 그 목록에는 이 파일과 api/deps.py 둘이 올라 있다:
 `from api.demo import compare` 도 순진한 경로에 한 홉이라, 이 파일을 아는
 조립 지점까지 같이 세어야 울타리가 실제 도달 거리를 재게 된다.
