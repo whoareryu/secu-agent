@@ -70,6 +70,11 @@ def create_app():
             conn, _ = _자원()
             return PgDocumentCatalog(conn).principals()
 
+    class _지연로그검색:
+        def query(self, principal, event_type, since, limit):
+            conn, _ = _자원()
+            return PgLogSearch(conn).query(principal, event_type, since, limit)
+
     def 모델_준비됨() -> bool:
         return _자원.cache_info().currsize > 0
 
@@ -85,6 +90,7 @@ def create_app():
         열람기록=_지연열람기록(),
         카탈로그=_지연카탈로그(),
         데모_라우터=데모_라우터,
+        로그검색=_지연로그검색(),
     )
 
 

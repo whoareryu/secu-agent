@@ -68,6 +68,15 @@ class AccessRecordView(BaseModel):
     ts: datetime | None = None
 
 
+class LogEventView(BaseModel):
+    id: int
+    ts: datetime | None
+    host: str
+    process: str | None
+    event_type: str
+    raw: str
+
+
 class CompareRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     # k 에 le 를 걸지 않는다. 걸면 큰 값이 422 로 막혀버려 "받아서 깎는다"가

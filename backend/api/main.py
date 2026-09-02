@@ -5,6 +5,7 @@
 """
 
 from collections.abc import Callable
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 
@@ -14,13 +15,14 @@ from api.schemas import (
     AskRequest,
     AskResponse,
     DocumentView,
+    LogEventView,
     PersonaView,
     PolicyHitView,
     PrincipalView,
 )
 from api.security import 시크릿_검사
 from core.agent.policy import 로그_범위_고지
-from core.ports import AccessLog, DocumentCatalog, PrincipalStore
+from core.ports import AccessLog, DocumentCatalog, LogSearch, PrincipalStore
 from core.types import AccessRecord
 
 
@@ -31,6 +33,7 @@ def build_app(
     열람기록: AccessLog | None = None,
     카탈로그: DocumentCatalog | None = None,
     데모_라우터: APIRouter | None = None,
+    로그검색: LogSearch | None = None,
 ) -> FastAPI:
     """앱을 조립한다. 의존성을 인자로 받아 테스트가 스텁을 넣을 수 있다."""
     app = FastAPI(title="secu-agent")
@@ -189,6 +192,33 @@ def build_app(
         if 열람기록 is None:
             raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
         return [_기록으로(r) for r in 열람기록.violations(limit)]
+
+    @app.get("/log-events", dependencies=[Depends(시크릿_검사)])
+    def log_events(
+        persona: str,
+        event_type: str | None = None,
+        since: datetime | None = None,
+        limit: int = Query(default=50, ge=1, le=200),
+    ) -> list[LogEventView]:
+        """**주체 없이 부를 수 없다.** persona 가 필수 쿼리 인자인 이유가
+        그것이다 — 기본값을 주면 그 기본값이 곧 권한 우회 경로가 된다.
+        """
+        if 로그검색 is None:
+            raise HTTPException(status_code=503, detail="로그 검색 준비되지 않음")
+        principal = 주체저장소.find(persona)
+        if principal is None:
+            raise HTTPException(status_code=400, detail="알 수 없는 페르소나")
+        return [
+            LogEventView(
+                id=e.id,
+                ts=e.ts,
+                host=e.host,
+                process=e.process,
+                event_type=e.event_type,
+                raw=e.raw,
+            )
+            for e in 로그검색.query(principal, event_type, since, limit)
+        ]
 
     if 데모_라우터 is not None:
         # main.py 는 demo 를 모른다 — 라우터는 api/demo.py 가 만들어 주입한다.
