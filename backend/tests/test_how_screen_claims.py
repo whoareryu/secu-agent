@@ -38,11 +38,11 @@ _비테스트 = ("core", "adapters", "api", "pipeline", "eval", "demo")
 }
 
 # 화면 문장: "사본을 따로 두는 것은 chunk_search.py 뿐입니다 — 40행이 …
-# log_search.py:34 · naive_search.py:34 · compare.py:28 은 …"
+# log_search.py:34 · naive_search.py:40 · compare.py:28 은 …"
 권한_조각_호출_위치 = {
     ("adapters/db/chunk_search.py", 40),
     ("adapters/db/log_search.py", 34),
-    ("demo/naive_search.py", 34),
+    ("demo/naive_search.py", 40),
     ("demo/compare.py", 28),
 }
 

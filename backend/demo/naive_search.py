@@ -10,7 +10,8 @@
 연결**이고, 그것을 tests/test_demo_isolation.py 가 집합 동일성으로 강제한다.
 
 adapters/db/chunk_search.py 의 by_vector 와 나란히 놓고 읽으면 차이가
-한 줄이다 — WHERE 가 ORDER BY 앞에 있는가 뒤에 있는가.
+한 줄이다 — WHERE 가 ORDER BY 앞에 있는가 뒤에 있는가. 바깥 ORDER BY 는
+안쪽 순위를 되살릴 뿐 필터 위치를 옮기지 않는다.
 """
 
 import psycopg
@@ -22,16 +23,22 @@ Vector = list[float]
 
 # 권한 조건이 **바깥**에 있다. 안쪽 서브쿼리는 전체 청크에서 상위 k개를
 # 뽑는다 — 그 k개가 전부 권한 밖이면 필터 뒤에 0건이 남는다.
+#
+# 바깥 ORDER BY t.dist 가 있는 이유: JOIN 은 안쪽 서브쿼리가 고른 순서를
+# 보존한다고 보장하지 않는다(Postgres 는 조인 출력 순서를 규정하지 않는다
+# — 실측: enable_mergejoin 만 켜도 순서가 뒤섞인다). dist 를 밖으로 들고
+# 나와 다시 정렬해야 화면 칩 순서가 매 호출 동일해진다.
 _순진한_SQL = f"""
     SELECT t.id
     FROM (
-        SELECT c.id, c.document_id
+        SELECT c.id, c.document_id, c.embedding <=> %(qvec)s AS dist
         FROM chunks c
         ORDER BY c.embedding <=> %(qvec)s
         LIMIT %(k)s
     ) t
     JOIN documents d ON d.id = t.document_id
     WHERE {권한_WHERE("d")}
+    ORDER BY t.dist
 """
 
 
