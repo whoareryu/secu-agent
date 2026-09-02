@@ -117,7 +117,7 @@ export default function HowPage() {
           <tbody>
             <tr>
               <td>관측되는 값</td>
-              <td>결과 k개 (고정)</td>
+              <td>결과 개수 (k 가 상한)</td>
               <td>이벤트 개수 (가변)</td>
             </tr>
             <tr>
@@ -141,24 +141,27 @@ export default function HowPage() {
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           <code>visible()</code> 을 부르는 비테스트 호출부는 <code>core/agent/policy.py</code> 안에 둘입니다 —
           62행이 청크 히트 재검증, 98행이 로그 이벤트 재검증입니다. 같은 함수가 서로 다른 두 타입을 재검증하는
-          것이 이 패널의 주장입니다.
+          것이 이 패널의 주장입니다. 이 둘도{" "}
+          <code>backend/tests/test_how_screen_claims.py</code> 가 집합 동일성으로 고정합니다.
         </p>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           권한 SQL 조각도 한 곳에서 옵니다 — <code>adapters/db/permission_sql.py</code> 의{" "}
-          <code>권한_WHERE(alias)</code> 하나입니다. 이를 직접 import 하는 파일은 넷입니다 — 문서 검색(
+          <code>권한_WHERE(alias)</code> 하나입니다. 이를 직접 import 하는 파일은 다섯입니다 — 문서 검색(
           <code>chunk_search.py</code>), 로그 검색(<code>log_search.py</code>),{" "}
-          <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>), 그리고{" "}
-          <code>backend/tests/test_permission_sql.py</code> 입니다 —{" "}
+          <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>), 위 패널 ①의 조항 코드
+          조회(<code>demo/compare.py</code>), 그리고 <code>backend/tests/test_permission_sql.py</code> 입니다 —{" "}
           <code>
             grep -rn &quot;from adapters.db.permission_sql import 권한_WHERE&quot; backend --include=&quot;*.py&quot;
           </code>{" "}
-          를 돌리면 이 네 줄이 그대로 나옵니다. 이 셋 중 사본을 따로 두는 것은{" "}
+          를 돌리면 이 다섯 줄이 그대로 나옵니다. 비테스트 넷 중 사본을 따로 두는 것은{" "}
           <code>chunk_search.py</code> 뿐입니다 — 40행이{" "}
           <code>_권한_WHERE = 권한_WHERE(&quot;d&quot;)</code> 로 모듈 상수에 저장해 둡니다.{" "}
-          <code>log_search.py</code>:34 와 <code>naive_search.py</code>:33 은 반환값을 호출부 문자열에 바로
-          끼워 넣을 뿐 저장해두는 사본이 없습니다. 넷째 파일의{" "}
+          <code>log_search.py</code>:34 · <code>naive_search.py</code>:34 · <code>compare.py</code>:28 은 반환값을
+          호출부 문자열에 바로 끼워 넣을 뿐 저장해두는 사본이 없습니다. 다섯째 파일의{" "}
           <code>test_chunk_search_가_이_조각을_쓴다</code> 가 그 저장된 사본이 원본과 여전히 같은지를
-          단언합니다 — 사본이 없는 나머지 둘은 애초에 어긋날 자리가 없습니다.
+          단언합니다 — 사본이 없는 나머지 셋은 애초에 어긋날 자리가 없습니다. 이 목록과 행 번호는{" "}
+          <code>backend/tests/test_how_screen_claims.py</code> 가 집합 동일성으로 고정합니다 — 여섯째 파일이
+          생기면 이 문장이 조용히 거짓이 되는 대신 테스트가 먼저 터집니다.
         </p>
         <p
           style={{
