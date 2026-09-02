@@ -13,7 +13,9 @@ from pathlib import Path
 import pytest
 
 안쪽_계층 = ["core", "adapters", "pipeline", "eval"]
-데모를_아는_파일 = set()
+# api/demo.py 를 만드는 커밋에서 채운다(Task 3) — Task 1 시점에는 그 파일이
+# 없어 비워뒀다. 목록이 리뷰에 보이는 것이 이 테스트의 목적이다.
+데모를_아는_파일 = {"api/demo.py"}
 
 
 def _import_이름들(py: Path) -> set[str]:

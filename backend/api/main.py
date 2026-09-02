@@ -6,7 +6,7 @@
 
 from collections.abc import Callable
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 
 from adapters.agent.context import AgentContext
 from api.schemas import (
@@ -30,6 +30,7 @@ def build_app(
     모델_준비됨: Callable[[], bool] = lambda: True,
     열람기록: AccessLog | None = None,
     카탈로그: DocumentCatalog | None = None,
+    데모_라우터: APIRouter | None = None,
 ) -> FastAPI:
     """앱을 조립한다. 의존성을 인자로 받아 테스트가 스텁을 넣을 수 있다."""
     app = FastAPI(title="secu-agent")
@@ -188,6 +189,10 @@ def build_app(
         if 열람기록 is None:
             raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
         return [_기록으로(r) for r in 열람기록.violations(limit)]
+
+    if 데모_라우터 is not None:
+        # main.py 는 demo 를 모른다 — 라우터는 api/demo.py 가 만들어 주입한다.
+        app.include_router(데모_라우터)
 
     return app
 

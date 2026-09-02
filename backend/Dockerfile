@@ -20,6 +20,7 @@ COPY core/ ./core/
 COPY adapters/ ./adapters/
 COPY pipeline/ ./pipeline/
 COPY api/ ./api/
+COPY demo/ ./demo/
 COPY db/ ./db/
 
 EXPOSE 8080

@@ -17,6 +17,7 @@ from adapters.db.log_search import PgLogSearch
 from adapters.db.principal_store import PgPrincipalStore
 from adapters.embedding.e5 import E5Embedder
 from adapters.llm.gemini import build_model
+from api.demo import build_demo_router
 from api.main import build_app
 
 
@@ -72,12 +73,18 @@ def create_app():
     def 모델_준비됨() -> bool:
         return _자원.cache_info().currsize > 0
 
+    주체저장소 = _지연주체저장소()
+    # build_demo_router 는 여기서 _자원() 을 부르지 않는다 — 라우터를
+    # 조립할 뿐이고, conn·embedder 는 요청이 들어올 때 resolve된다.
+    데모_라우터 = build_demo_router(_자원, 주체저장소)
+
     return build_app(
         에이전트_공장,
-        _지연주체저장소(),
+        주체저장소,
         모델_준비됨,
         열람기록=_지연열람기록(),
         카탈로그=_지연카탈로그(),
+        데모_라우터=데모_라우터,
     )
 
 

@@ -66,3 +66,30 @@ class AccessRecordView(BaseModel):
     resource_id: int
     allowed: bool
     ts: datetime | None = None
+
+
+class CompareRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    # k 에 le 를 걸지 않는다. 걸면 큰 값이 422 로 막혀버려 "받아서 깎는다"가
+    # 아니라 "거부한다"가 되고, 브라우저가 보내는 값을 못 믿는다는 전제와
+    # 어긋난다. 상한은 demo/compare.py 의 MAX_DEMO_K clamp 가 건다.
+    k: int
+
+
+class DemoPathResult(BaseModel):
+    count: int
+    clause_codes: list[str]
+
+
+class DemoPersonaView(BaseModel):
+    name: str
+    department: str
+    clearance: int
+    prefiltered: DemoPathResult
+    naive: DemoPathResult
+
+
+class CompareResponse(BaseModel):
+    query: str
+    k: int
+    personas: list[DemoPersonaView]
