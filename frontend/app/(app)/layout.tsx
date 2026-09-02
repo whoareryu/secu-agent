@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOutAction } from "@/auth";
 import { roleFor } from "@/lib/session";
+import { NAV_ITEMS } from "@/lib/types";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 
@@ -25,7 +26,7 @@ export default async function AppShellLayout({ children }: { children: React.Rea
     >
       <Sidebar role={role} />
       <main style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <Header email={session.user.email} role={role} signOutAction={signOutAction} />
+        <Header email={session.user.email} role={role} signOutAction={signOutAction} items={NAV_ITEMS} />
         <div style={{ padding: "28px 40px 56px" }}>{children}</div>
       </main>
     </div>

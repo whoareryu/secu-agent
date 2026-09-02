@@ -1,25 +1,30 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "@/lib/types";
+import type { NavItem } from "@/lib/types";
 import type { Role } from "@/lib/session";
 
 // signOutAction 은 서버 액션(frontend/auth.ts)이라 클라이언트 컴포넌트가
 // 직접 import 할 수 없다 — 이 컴포넌트를 렌더하는 서버 컴포넌트가 prop 으로
 // 내려준다.
+//
+// items 를 prop 으로 받는다 — NAV_ITEMS 를 여기서 직접 import 하면 면마다
+// 다른 항목 배열(lib/surface.ts 의 navFor)을 쓸 수 없다. NAV_ITEMS 자체는
+// Task 7 에서 사라진다.
 export default function Header({
   email,
   role,
   signOutAction,
+  items,
 }: {
   email: string;
   role: Role;
   signOutAction: () => Promise<void>;
+  items: NavItem[];
 }) {
   const pathname = usePathname();
   const current =
-    NAV_ITEMS.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href))) ??
-    NAV_ITEMS[0];
+    items.find((item) => (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href))) ?? items[0];
 
   return (
     <header
