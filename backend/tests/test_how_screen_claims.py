@@ -103,6 +103,13 @@ def _권한_WHERE_를_import_하는가(node: ast.AST) -> bool:
     보면, `from adapters.db import permission_sql` 뒤 `permission_sql.
     권한_WHERE("d")` 로 부르는 파일을 놓친다 — import 하고 직접 호출하는데도
     목록에 안 잡힌다(test_demo_isolation.py 의 I1 과 같은 유형).
+
+    받아들인 구멍: `from adapters import db` 뒤 `db.permission_sql.
+    권한_WHERE(alias)` 처럼 한 홉 더 들어간 형태는 여기서도 놓친다 — 이
+    간접 참조 트리는 끝이 없어 전부 잡으려 하지 않는다. 이 형태를 실제로
+    써도 `test_권한_조각_호출_위치가_그대로다`(아래, `_호출_행` 이 이미
+    속성 호출을 본다)는 새 호출 위치를 잡아 리뷰어를 끌어들인다 — 그
+    테스트가 실질적인 마지막 방어선이다.
     """
     if isinstance(node, ast.ImportFrom):
         if node.module == "adapters.db.permission_sql":
