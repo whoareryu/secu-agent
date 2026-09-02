@@ -67,18 +67,52 @@ def _호출_행(py: Path, 이름: str) -> set[int]:
 
     문자열 검색이 아니라 AST 를 쓴다 — 주석과 독스트링에 함수 이름을 적어둔
     파일이 여럿이라(core/types.py 등) 문자열로 세면 호출부가 아닌 것을 센다.
+
+    맨 이름 호출(`권한_WHERE(...)`)뿐 아니라 `모듈.이름(...)` 형태의 속성
+    호출(`permission_sql.권한_WHERE(...)`, `visibility.visible(...)`)도 잡는다
+    — test_demo_isolation.py 의 I1 과 같은 유형의 구멍이었다: 이름만 보면
+    직접 부르는데도 조용히 안 잡힌다.
     """
-    return {
-        n.func.lineno
-        for n in ast.walk(_트리(py))
-        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == 이름
-    }
+    행: set[int] = set()
+    for n in ast.walk(_트리(py)):
+        if not isinstance(n, ast.Call):
+            continue
+        func = n.func
+        if isinstance(func, ast.Name) and func.id == 이름:
+            행.add(func.lineno)
+        elif isinstance(func, ast.Attribute) and func.attr == 이름:
+            행.add(func.lineno)
+    return 행
 
 
 def test_검사할_파일이_있다():
     """0개면 아래 테스트들이 공허하게 통과한다."""
     assert _파일들(*_전체)
     assert _파일들(*_비테스트)
+    # 화면 자체가 없으면 아래 테스트들이 존재하지 않는 경로를 가리킨 채
+    # 전부 통과한다 — 실패 메시지 안에서만 쓰이던 경로라 존재 단언이 없었다.
+    # 화면 은 저장소 루트 기준 경로다 — 다른 _파일들 인자들과 달리 backend/
+    # 밖을 가리키므로 한 단계 올라가서 본다(테스트는 backend/ 를 cwd 로 돈다).
+    assert Path("..", 화면).exists()
+
+
+def _권한_WHERE_를_import_하는가(node: ast.AST) -> bool:
+    """`권한_WHERE` 에 한 홉으로 닿는 import 형태 셋을 잡는다.
+
+    이름 직접 import(`from adapters.db.permission_sql import 권한_WHERE`)만
+    보면, `from adapters.db import permission_sql` 뒤 `permission_sql.
+    권한_WHERE("d")` 로 부르는 파일을 놓친다 — import 하고 직접 호출하는데도
+    목록에 안 잡힌다(test_demo_isolation.py 의 I1 과 같은 유형).
+    """
+    if isinstance(node, ast.ImportFrom):
+        if node.module == "adapters.db.permission_sql":
+            return any(a.name == "권한_WHERE" for a in node.names)
+        if node.module == "adapters.db":
+            return any(a.name == "permission_sql" for a in node.names)
+        return False
+    if isinstance(node, ast.Import):
+        return any(a.name == "adapters.db.permission_sql" for a in node.names)
+    return False
 
 
 def test_권한_조각을_import_하는_파일_목록이_그대로다():
@@ -86,15 +120,12 @@ def test_권한_조각을_import_하는_파일_목록이_그대로다():
 
     다섯째 importer 가 생기면 화면의 "다섯입니다" 가 조용히 거짓이 된다.
     """
-    실제 = set()
-    for py in _파일들(*_전체):
-        for node in ast.walk(_트리(py)):
-            if (
-                isinstance(node, ast.ImportFrom)
-                and node.module == "adapters.db.permission_sql"
-                and any(a.name == "권한_WHERE" for a in node.names)
-            ):
-                실제.add(str(py))
+    실제 = {
+        str(py)
+        for py in _파일들(*_전체)
+        for node in ast.walk(_트리(py))
+        if _권한_WHERE_를_import_하는가(node)
+    }
     assert 실제 == 권한_조각을_import_하는_파일, (
         f"권한_WHERE 를 import 하는 파일이 바뀌었다.\n"
         f"기대: {sorted(권한_조각을_import_하는_파일)}\n실제: {sorted(실제)}\n"
