@@ -61,12 +61,16 @@ FastAPI, psycopg 3, node:test
 **Files:**
 - Create: `frontend/lib/persona.ts`, `frontend/lib/persona.test.ts`
 - Create: `frontend/lib/surface.ts`, `frontend/lib/surface.test.ts`
+- Create: `frontend/lib/visibility.ts`, `frontend/lib/visibility.test.ts`
+- Modify: `frontend/components/DocumentTable.tsx` (`visible`·`Document` 를 재수출만)
+- Modify: `frontend/app/(app)/documents/page.tsx` (import 경로)
 
 **Interfaces:**
 - Produces: `PERSONA_COOKIE: string`, `personaFrom(raw: string | undefined, known: string[]): string | null`
 - Produces: `type Surface = "employee" | "explain" | "admin"`,
   `navFor(surface: Surface): NavItem[]`,
   `guard(input: {surface: Surface; hasPersona: boolean; role: Role}): "ok" | "to-hub" | "to-login"`
+- Produces: `type Document`, `visible(d: Document, p: Principal): boolean` — **서버에서 호출 가능한 자리로 옮긴 것**
 
 - [ ] **Step 1: `persona.ts` 의 실패하는 테스트를 쓴다**
 
@@ -240,18 +244,106 @@ export function guard(input: {
 Run: `cd frontend && npm test`
 Expected: PASS 12건 (기존 11 + 새 7 = 18건 중 이 파일 7건)
 
-- [ ] **Step 9: 변이로 무는지 확인한다**
+- [ ] **Step 9: `visible()` 을 서버에서 부를 수 있는 자리로 옮긴다**
+
+Task 5 의 `/my/documents` 는 **서버 컴포넌트**인데 `visible()` 이 지금
+`components/DocumentTable.tsx` 에 있고 그 파일 1행이 `"use client"` 다.
+클라이언트 모듈의 export 는 서버 컴포넌트에서 클라이언트 참조가 되므로
+**서버에서 호출할 수 없다.** 옮기지 않으면 Task 5 가 런타임에 깨진다.
+
+`frontend/lib/visibility.ts` 를 만들고 `DocumentTable.tsx` 에서 잘라온다:
+
+```ts
+import type { Principal } from "../components/PersonaSegment.tsx";
+
+// GET /documents 가 돌려주는 형태 그대로 — 권한 필터 없이 전부.
+export type Document = {
+  id: number;
+  title: string;
+  doc_type: string;
+  required_clearance: number;
+  allowed_departments: string[];
+  source_path: string;
+  chunk_count: number;
+};
+
+// backend/core/access/visibility.py 의 규칙과 같아야 한다 — SQL(chunk_search.
+// _권한_WHERE) · 파이썬(visibility.py)에 이은 세 번째 사본. 허용 부서가
+// 비어 있으면 전사 공개다("아무도 못 본다"가 아니다).
+//
+// `lib/` 에 있는 이유가 둘이다. 서버 컴포넌트가 불러야 하고(클라이언트
+// 모듈에 두면 못 부른다), 세 번째 사본인데 여기 오기 전까지 테스트가
+// 하나도 없었다 — npm test 는 lib/ 만 본다.
+export function visible(d: Document, p: Principal): boolean {
+  return (
+    d.required_clearance <= p.clearance &&
+    (d.allowed_departments.length === 0 || d.allowed_departments.includes(p.department))
+  );
+}
+```
+
+`DocumentTable.tsx` 는 정의를 지우고 재수출만 남긴다 — 기존 import 경로가
+깨지지 않게:
+
+```ts
+export { visible, type Document } from "@/lib/visibility";
+```
+
+테스트 `frontend/lib/visibility.test.ts`:
+
+```ts
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { visible, type Document } from "./visibility.ts";
+
+// 권한 규칙의 세 번째 사본이다 — SQL 과 파이썬에 이은. 앞의 둘은
+// test_permission_sql.py 와 test_visibility.py 가 지키는데 이것만
+// 무방비였다. 어긋나면 화면이 조용히 틀린 목록을 보여준다.
+
+const 문서 = (등급: number, 부서: string[]): Document => ({
+  id: 1, title: "t", doc_type: "md", required_clearance: 등급,
+  allowed_departments: 부서, source_path: "p", chunk_count: 1,
+});
+const 사원 = { name: "김개발", department: "개발팀", clearance: 1 };
+const 임원 = { name: "최임원", department: "경영지원팀", clearance: 3 };
+
+test("등급이 모자라면 안 보인다", () => {
+  assert.equal(visible(문서(3, []), 사원), false);
+});
+
+test("등급이 충분하면 보인다", () => {
+  assert.equal(visible(문서(1, []), 사원), true);
+  assert.equal(visible(문서(3, []), 임원), true);
+});
+
+test("허용 부서가 비면 전사 공개다", () => {
+  // 여기가 뒤집히면 전사 공개 문서가 아무에게도 안 보인다 — 에러가
+  // 아니라 조용한 누락이라 발견이 늦다(W1 실측).
+  assert.equal(visible(문서(1, []), 사원), true);
+  assert.equal(visible(문서(1, []), 임원), true);
+});
+
+test("부서가 다르면 등급이 높아도 안 보인다", () => {
+  // 권한은 사다리가 아니라 격자다 — verification.markdown 항목 ⑧.
+  assert.equal(visible(문서(1, ["개발팀"]), 임원), false);
+  assert.equal(visible(문서(1, ["개발팀"]), 사원), true);
+});
+```
+
+Run: `cd frontend && npm test`
+Expected: PASS 4건 추가
+
+- [ ] **Step 10: 변이로 무는지 확인한다**
 
 `guard` 의 admin 검사를 지우고 `npm test` 를 돌려 "관리자 면은 member 를
 허브로 보낸다" 가 실패하는 것을 확인한 뒤 되돌린다. 출력을 보고서에 적는다.
 
-- [ ] **Step 10: 커밋**
+- [ ] **Step 11: 커밋**
 
 ```bash
-cd frontend && rm -f tsconfig.tsbuildinfo && npx tsc --noEmit && npm test
-cd .. && git add frontend/lib/persona.ts frontend/lib/persona.test.ts \
-  frontend/lib/surface.ts frontend/lib/surface.test.ts
-git commit -m "면 접근 판정과 페르소나 해석을 순수 함수로 뺐다"
+cd frontend && rm -f tsconfig.tsbuildinfo && npx tsc --noEmit && npm test && npm run build
+cd .. && git add frontend/lib frontend/components/DocumentTable.tsx frontend/app
+git commit -m "면 접근 판정과 가시성 규칙을 테스트 가능한 자리로 뺐다"
 ```
 
 ---
@@ -700,7 +792,7 @@ git commit -m "질의 화면에서 페르소나 선택기와 세 계정 비교�
 - Create: `frontend/app/(employee)/my/documents/page.tsx`
 
 **Interfaces:**
-- Consumes: `visible()` (`components/DocumentTable.tsx`), 셸이 보증한 페르소나
+- Consumes: `visible()`·`Document` (`lib/visibility.ts`, Task 1), 셸이 보증한 페르소나
 
 - [ ] **Step 1: 화면을 만든다**
 
@@ -709,7 +801,7 @@ git commit -m "질의 화면에서 페르소나 선택기와 세 계정 비교�
 ```tsx
 import { cookies } from "next/headers";
 import Blueprint from "@/components/Blueprint";
-import { visible, type Document } from "@/components/DocumentTable";
+import { visible, type Document } from "@/lib/visibility";
 import { PERSONA_COOKIE } from "@/lib/persona";
 import type { Principal } from "@/components/PersonaSegment";
 
