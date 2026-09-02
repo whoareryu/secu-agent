@@ -16,7 +16,11 @@ export default async function AdminPage() {
     redirect("/");
   }
   if (roleFor(session.user.email) !== "admin") {
-    redirect("/ask");
+    // 허브(/)로 보낸다. (admin)/layout.tsx 가 같은 사용자를 보내는 곳과
+    // 같아야 한다 — 어긋나면 레이아웃·페이지가 각자 다른 곳으로 튕겨
+    // 착지점이 렌더 순서에 달린다. /ask 는 페르소나 쿠키 뒤에 있어 이
+    // 사용자에게 없을 수도 있고, 그때는 거기서 다시 허브로 튕긴다.
+    redirect("/");
   }
 
   return (

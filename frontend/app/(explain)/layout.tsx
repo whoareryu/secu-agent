@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOutAction } from "@/auth";
 import { roleFor } from "@/lib/session";
-import { navFor } from "@/lib/surface";
+import { guard, navFor } from "@/lib/surface";
 import SurfaceNav from "@/components/SurfaceNav";
 import Header from "@/components/Header";
 
@@ -9,10 +9,14 @@ import Header from "@/components/Header";
 export default async function ExplainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user?.email) redirect("/");
-  // guard 를 부르지 않는다 — 설명 면은 로그인만 되어 있으면 통과이고, 그
-  // 사실이 lib/surface.test.ts 의 "설명 면은 로그인만 되어 있으면 통과한다"
-  // 에 있다.
   const role = roleFor(session.user.email);
+  // 다른 세 면과 같이 guard 를 거친다. explain 분기는 지금 언제나 "ok" 라
+  // 이 줄은 아무도 튕겨내지 않지만, 부르지 않으면 lib/surface.test.ts 의
+  // "설명 면은 로그인만 되어 있으면 통과한다" 가 지키는 코드가 없어져
+  // 레이아웃과 guard 가 조용히 갈릴 수 있다. hasPersona 는 여기서 판정에
+  // 쓰이지 않는다 — guard 가 explain 분기에서 보지 않는다(lib/surface.ts).
+  // (admin)/layout.tsx 도 같은 이유로 false 를 넘긴다.
+  if (guard({ surface: "explain", hasPersona: false, role }) === "to-hub") redirect("/");
   return (
     <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", background: "var(--color-bg)" }}>
       {/* healthz: SurfaceNav.tsx 의 주석 참조 — 설명 면의 세 화면 모두
