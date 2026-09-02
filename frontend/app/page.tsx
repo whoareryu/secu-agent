@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { auth, signInAction } from "@/auth";
 import SignIn from "@/components/SignIn";
 import Hub from "@/components/Hub";
-import { PERSONA_COOKIE } from "@/lib/persona";
+import Blueprint from "@/components/Blueprint";
+import { PERSONA_COOKIE, personaFrom } from "@/lib/persona";
 import type { Principal } from "@/components/PersonaSegment";
 
 // 서버 컴포넌트이므로 BFF 를 거치지 않고 백엔드를 직접 부른다. BFF 라우트가
@@ -23,9 +24,44 @@ export default async function Home() {
     return <SignIn signInAction={signInAction} />;
   }
 
+  // 이 배포는 상시 가동이 아니다(docs/superpowers/plans/2026-09-02-w5-deploy.md
+  // 결정 2) — 백엔드를 켜 둔 맥이 꺼져 있으면 principals() 가 던진다.
+  // 로그인 뒤 처음 보이는 문이 서버 예외를 그대로 뱉게 둘 수 없다 —
+  // app/api/ask, app/api/principals 가 이미 하는 것과 같은 모양으로 잡는다.
+  let personas: Principal[];
+  try {
+    personas = await principals();
+  } catch {
+    return (
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "48px 20px 64px" }}>
+        <Blueprint className="card" style={{ padding: 24, gap: 14, borderColor: "var(--color-accent-700)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="tag tag-outline">502</span>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}>백엔드에 닿지 못했습니다</span>
+          </div>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+            이 배포는 상시 가동이 아니라 필요할 때만 백엔드를 켜 둡니다. 지금
+            꺼져 있어 직원 목록을 가져오지 못했습니다 — 켜지기 전에는
+            새로고침해도 같은 결과입니다.
+          </p>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+            그래도 <a href="/how">이것이 어떻게 동작하는지 보기</a>의 패널
+            대부분(②③④, 측정값·스키마 인용)은 백엔드 없이 그대로 열립니다 —
+            라이브 시연(①)만 지금 비활성입니다.
+          </p>
+        </Blueprint>
+      </div>
+    );
+  }
+
   async function 선택하기(formData: FormData) {
     "use server";
-    const name = String(formData.get("persona") ?? "");
+    const raw = String(formData.get("persona") ?? "");
+    // 폼이 보낸 값을 그대로 믿지 않는다 — personaFrom 이 존재하는 이유가
+    // 이것이다(lib/persona.ts). 목록에 없는 이름이면 쿠키를 심지 않고
+    // 직원 면으로도 보내지 않는다.
+    const name = personaFrom(raw, personas.map((p) => p.name));
+    if (!name) return;
     const jar = await cookies();
     // httpOnly 로 둔다. 클라이언트 자바스크립트가 읽을 이유가 없고,
     // 읽을 수 없으면 이 값이 화면 상태로 새어나가 두 벌이 되는 일도 없다.
@@ -33,5 +69,5 @@ export default async function Home() {
     redirect("/ask");
   }
 
-  return <Hub personas={await principals()} 선택하기={선택하기} />;
+  return <Hub personas={personas} 선택하기={선택하기} />;
 }
