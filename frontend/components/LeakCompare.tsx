@@ -9,16 +9,27 @@ import type { CompareResponse, DemoPersonaView } from "@/lib/types";
 const 기본_질의 = "임원 성과급은 어떤 기준으로 정해지나";
 const K = 10;
 
-// 통제자가 같은 코퍼스·k=10 에서 세 페르소나 모두 10/10 으로 확인해 둔
-// 질의들 — 순진한 경로가 새지 *않는* 예시다. 이 목록이 하는 일은 값을
-// 대신 보여주는 것이 아니라 "눌러보면 갈라지지 않는다"는 것을 가리키는
-// 것뿐이다. 화면의 숫자는 항상 이번 호출의 실제 응답에서 온다.
+// 이 목록의 첫 원소는 위의 기본_질의 — **갈라지는** 쪽이다. 나머지 셋은
+// 순진한 경로가 이번에는 새지 *않는* 예시다. 실측(2026-09-02, 작업 코퍼스,
+// k=10, 사전→사후):
+//   기본_질의            김개발 10→7 · 박인사 10→7 · 최임원 10→10
+//   나머지 세 질의       세 계정 모두 10→10
+// 갈리는 것과 갈리지 않는 것을 한 줄에 섞어 두는 것이 요점이다 — 눌러 보면
+// 어떤 질의는 갈라지고 어떤 질의는 갈라지지 않는다. 이 목록이 하는 일은
+// 값을 대신 보여주는 것이 아니라 눌러볼 자리를 가리키는 것뿐이다.
+// 화면의 숫자는 항상 이번 호출의 실제 응답에서 온다.
 const 예시_질의 = [
   기본_질의,
   "비밀번호는 얼마나 자주 바꿔야 하나",
   "이사회 의사록 열람 절차",
   "네트워크 접근 통제 정책",
 ];
+
+// `required` 는 빈 문자열만 막는다. 공백만 넣고 제출하면 run() 이 조용히 조기
+// 반환하고, 입력창은 한 질의를 보여주는데 아래 숫자들은 **다른 질의**의 것이
+// 그대로 남는다 — 뒷받침 없는 것을 한 줄도 두지 않는다는 이 화면의 규칙을
+// 정면으로 어긴다. 브라우저가 제출 자체를 막게 해서 그 상태가 생기지 않게 한다.
+const 공백만_금지 = ".*\\S.*";
 
 type Status = "idle" | "loading" | "done" | "error";
 type Path = "prefiltered" | "naive";
@@ -46,6 +57,20 @@ export default function LeakCompare() {
   const [result, setResult] = useState<CompareResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [path, setPath] = useState<Path>("prefiltered");
+  const [coldStart, setColdStart] = useState(false);
+
+  // AskPanel.tsx 와 같은 장치를 같은 이유로 둔다 — 컨테이너가 잠들어 있었으면
+  // e5 임베딩 모델을 올리느라 수십 초 걸리고, /demo/compare 도 /ask 와 같은
+  // api/deps.py 의 `_자원()` lru_cache 를 지난다. 이 화면은 클릭을 기다리지
+  // 않고 마운트 즉시 부르므로 그 콜드 스타트를 가장 먼저 맞는 자리다.
+  useEffect(() => {
+    if (status !== "loading") {
+      setColdStart(false);
+      return;
+    }
+    const timer = setTimeout(() => setColdStart(true), 8000);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   async function run(q: string) {
     if (!q.trim()) return;
@@ -101,6 +126,8 @@ export default function LeakCompare() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="질의를 입력하세요"
           required
+          pattern={공백만_금지}
+          title="공백만으로는 비교할 수 없습니다"
           maxLength={500}
           style={{ flex: 1, height: 40, fontSize: 14 }}
         />
@@ -133,9 +160,16 @@ export default function LeakCompare() {
       </div>
 
       {status === "loading" && (
-        <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-neutral-600)" }}>
-          세 계정 × 두 경로, 여섯 번 검색합니다. 임베딩은 한 번만 계산하고 LLM 은 부르지 않습니다.
-        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-neutral-600)" }}>
+            세 계정 × 두 경로, 여섯 번 검색합니다. 임베딩은 한 번만 계산하고 LLM 은 부르지 않습니다.
+          </p>
+          {coldStart && (
+            <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-accent-700)" }}>
+              백엔드가 잠들어 있었다면 임베딩 모델을 올리는 중입니다. 첫 요청만 수십 초 걸립니다.
+            </p>
+          )}
+        </div>
       )}
 
       {status === "error" && (
@@ -182,7 +216,9 @@ export default function LeakCompare() {
 
           {path === "prefiltered" ? (
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-              사전 필터링에서는 개수가 권한 범위의 크기가 아니라 k 에 의해 정해집니다.
+              사전 필터링에서 개수를 정하는 것은 k 입니다 — 볼 수 있는 청크가 k 이상이면 언제나 정확히 k 이고,
+              그보다 적을 때만 그 수만큼입니다. 어느 쪽이든 권한 밖에 무엇이 있는지에 따라서는 변하지 않습니다 —
+              그것이 개수 채널이 막혔다는 뜻입니다.
             </p>
           ) : 모두_동일 ? (
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-accent-700)" }}>
