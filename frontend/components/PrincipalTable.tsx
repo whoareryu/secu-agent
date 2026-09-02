@@ -4,9 +4,12 @@ import Blueprint from "./Blueprint";
 import type { Principal } from "./PersonaSegment";
 
 // GET /api/principals 그대로. 목업에 있던 "직급" 과 "현재 선택" 컬럼은 뺐다 —
-// principals 테이블에 직급 컬럼이 없고, 페르소나 선택은 화면마다 지역 상태라
-// 앱 전역의 "현재 선택" 이라는 값 자체가 존재하지 않는다. 첫 행을 선택된 것처럼
-// 표시하면 없는 값을 지어내는 것이 된다.
+// principals 테이블에 직급 컬럼이 없고, 이 표는 "누가 무엇을 보는가" 를 나란히
+// 놓는 자리이지 지금 누구로 보고 있는지를 묻는 자리가 아니다. W6 이 페르소나를
+// 서버 쿠키로 올려 앱 전역의 "현재 선택" 값 자체는 생겼지만(lib/persona.ts),
+// 그 값을 여기 한 행에 강조하면 이 표가 비교표에서 상태 표시기로 바뀐다.
+// 지금 누구로 보는 중인지는 허브(components/Hub.tsx)와 직원 면 헤더
+// (components/EmployeeHeader.tsx)가 이미 밝힌다.
 export default function PrincipalTable({ principals }: { principals: Principal[] }) {
   return (
     <Blueprint className="card" style={{ padding: 20 }}>

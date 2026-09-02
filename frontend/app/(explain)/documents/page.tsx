@@ -7,7 +7,8 @@ import type { Principal } from "@/components/PersonaSegment";
 // 페르소나 3명은 하드코딩하지 않는다 — GET /api/principals 를 그대로 쓴다.
 // 문서는 GET /api/documents 가 권한 필터 없이 전부 돌려준다: 이 화면은
 // "규칙이 어떻게 적용되는지"를 보여주는 자리이므로 가시성을 페르소나별로
-// 클라이언트가 계산한다(DocumentTable.tsx 의 visible()).
+// 클라이언트가 계산한다(lib/visibility.ts 의 visible() — DocumentTable.tsx 는
+// 기존 import 경로가 깨지지 않게 재수출만 한다).
 //
 // 페르소나 선택기를 지우지 않는다 — /ask(직원 면)는 "내가 그 사람이 되어"
 // 쓰는 자리라 선택기가 없지만, 여기는 "누가 무엇을 보는가"를 비교하는

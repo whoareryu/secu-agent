@@ -8,9 +8,9 @@ import type { Role } from "@/lib/session";
 // 직접 import 할 수 없다 — 이 컴포넌트를 렌더하는 서버 컴포넌트가 prop 으로
 // 내려준다.
 //
-// items 를 prop 으로 받는다 — NAV_ITEMS 를 여기서 직접 import 하면 면마다
-// 다른 항목 배열(lib/surface.ts 의 navFor)을 쓸 수 없다. NAV_ITEMS 자체는
-// Task 7 에서 사라진다.
+// items 를 prop 으로 받는다 — 항목 배열을 여기서 직접 import 하면 면마다
+// 다른 배열(lib/surface.ts 의 navFor)을 쓸 수 없다. 전역 NAV_ITEMS 상수는
+// 그 navFor 로 대체되어 이제 없다.
 export default function Header({
   email,
   role,
