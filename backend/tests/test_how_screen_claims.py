@@ -1,6 +1,6 @@
 """/how 화면이 인쇄한 전수 주장을 고정한다.
 
-`frontend/app/(app)/how/page.tsx` 는 "이 목록이 전부다" 라는 문장을 싣고
+`frontend/app/(explain)/how/page.tsx` 는 "이 목록이 전부다" 라는 문장을 싣고
 있다 — 권한 SQL 조각을 import 하는 파일 목록, `visible()` 을 부르는 비테스트
 호출부 목록. 그런 문장은 코드가 늘어나는 순간 조용히 거짓이 된다. 화면은
 자기가 세는 대상이 늘어난 것을 알 방법이 없다.
@@ -22,7 +22,7 @@
 import ast
 from pathlib import Path
 
-화면 = "frontend/app/(app)/how/page.tsx"
+화면 = "frontend/app/(explain)/how/page.tsx"
 
 # 테스트를 포함한 전 계층. .venv 를 피하려고 디렉터리를 명시한다.
 _전체 = ("core", "adapters", "api", "pipeline", "eval", "demo", "tests")
