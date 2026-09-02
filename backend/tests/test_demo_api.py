@@ -44,6 +44,7 @@ from adapters.db.principal_store import PgPrincipalStore
 from api.demo import build_demo_router
 from api.main import build_app
 from core.types import EMBEDDING_DIM, Principal
+from demo.compare import MAX_DEMO_K, _조항코드
 
 pytestmark = pytest.mark.db
 
@@ -58,7 +59,6 @@ _시크릿 = {"X-Backend-Secret": 시크릿}
 
 공개_문서당_청크 = 30
 기밀_문서당_청크 = 15
-MAX_DEMO_K = 20
 
 
 def _기밀_지터(rng: random.Random) -> str:
@@ -232,8 +232,6 @@ def test_조항코드가_호출자_순서를_따른다(_코퍼스):
     따르는지 본다. clause_id 가 NULL 인 청크("제1조")가 "조항 밖" 으로
     떨어지는 것도 같이 확인한다.
     """
-    from demo.compare import _조항코드
-
     conn = _코퍼스
     with conn.cursor() as cur:
         cur.execute("SELECT cl.code, c.id FROM chunks c JOIN clauses cl ON cl.id = c.clause_id")
@@ -242,7 +240,35 @@ def test_조항코드가_호출자_순서를_따른다(_코퍼스):
         (제1조_id,) = cur.fetchone()
 
     순서 = [코드별_id["1.3"], 코드별_id["1.1"], 제1조_id, 코드별_id["1.2"]]
-    assert _조항코드(conn, 순서) == ["1.3", "1.1", "조항 밖", "1.2"]
+    assert _조항코드(conn, 순서, Principal("개발팀", 1)) == ["1.3", "1.1", "조항 밖", "1.2"]
+
+
+def test_조항코드가_권한_밖_id_를_조용히_뺀다(_코퍼스):
+    """`_조항코드` 가 자기 문장 안에 권한 필터를 갖는지 본다.
+
+    조항 코드는 본문이 아니지만 그 문서가 **존재한다**는 것을 확인해 준다.
+    오늘 두 호출부는 이미 걸러진 id 만 주므로 이 함수가 필터를 잃어도 응답은
+    똑같다 — 그래서 계약을 여기서 직접 못 박는다. 권한 밖 id 는 예외도
+    자리표시자도 없이 목록에서 그냥 빠져야 한다(chunk_search.load_hits 와
+    같은 계약: 접근 불가라는 응답 자체가 존재 확인이 된다).
+
+    등급 3 으로 같은 두 id 를 먼저 넣어본다 — 아니면 "id 가 애초에 없어서
+    빠졌다" 와 구별되지 않아 이 테스트가 공허해진다.
+    """
+    conn = _코퍼스
+    with conn.cursor() as cur:
+        cur.execute("SELECT cl.code, c.id FROM chunks c JOIN clauses cl ON cl.id = c.clause_id")
+        코드별_id = dict(cur.fetchall())
+        cur.execute(
+            "SELECT c.id FROM chunks c JOIN documents d ON d.id = c.document_id"
+            " WHERE d.title = %s ORDER BY c.id LIMIT 1",
+            ("임원 전용 규정",),
+        )
+        (기밀_id,) = cur.fetchone()
+
+    둘 = [코드별_id["1.1"], 기밀_id]
+    assert _조항코드(conn, 둘, Principal("경영지원팀", 3)) == ["1.1", "조항 밖"]
+    assert _조항코드(conn, 둘, Principal("개발팀", 1)) == ["1.1"]
 
 
 def test_응답에_본문이_없다(demo_client):
