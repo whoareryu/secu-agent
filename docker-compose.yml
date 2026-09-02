@@ -16,7 +16,13 @@ services:
       timeout: 3s
       retries: 20
 
-  backend:
+  # 서비스 이름이 곧 네트워크 별칭이다 — Compose 가 자동으로 붙이고 끌 수
+  # 없다. `backend` 로 두면 안 되는 이유: 이 백엔드는 배포 시
+  # docker-compose.tunnel.yml 로 다른 스택의 네트워크에도 참여하는데, 그
+  # 네트워크에 이미 `backend` 라는 별칭을 가진 컨테이너가 있다. 실측: 둘이
+  # 같은 이름을 가지자 DNS 가 두 IP 를 번갈아 주어 남의 서비스가 절반씩
+  # 끊겼다. 이름을 고유하게 두는 것이 그 사고를 구조적으로 막는다.
+  secu-backend:
     build: ./backend
     depends_on:
       db:

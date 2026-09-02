@@ -1,0 +1,39 @@
+# Cloudflare Tunnel 노출용 오버레이. 로컬 개발에는 필요 없다.
+#
+# 백엔드를 새싹 스택이 만든 네트워크에도 참여시켜, 같은 네트워크의
+# whoareryu-cloudflared 가 이름으로 닿게 한다. 터널 라우트는
+# `http://secu-backend:8080` 을 가리킨다.
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.override.yml \
+#     -f docker-compose.tunnel.yml \
+#     up -d
+#
+# override 를 함께 넘겨야 하는 이유: -f 를 명시하면 Compose 가
+# docker-compose.override.yml 을 자동으로 읽지 않는다. 그 파일이 이 머신의
+# 8080 충돌(whoareryu-adminer 가 점유)을 피해 포트를 옮기고 있으므로,
+# 빠뜨리면 기동이 실패한다.
+#
+# **별도 파일인 이유.** 이 네트워크는 이 머신의 새싹 스택이 만든 것이다.
+# docker-compose.yml 에 넣으면 그 스택이 없는 환경(CI, 다른 체크아웃)에서
+# `docker compose up` 이 "network not found" 로 죽는다. 그렇다고
+# docker-compose.override.yml 에 둘 수도 없다 — 그 파일은 .gitignore 에 있어
+# 이 머신 밖으로 나가지 않으므로, 배포 구성이 저장소에 남지 않는다.
+#
+# 별칭을 따로 주지 않는 이유: Compose 가 서비스 이름을 별칭으로 자동
+# 추가하고, docker-compose.yml 의 서비스 이름이 이미 `secu-backend` 다.
+# 그 이름이 고유해야 하는 이유는 그 파일의 주석에 적혀 있다.
+
+services:
+  secu-backend:
+    networks:
+      # 명시하는 순간 암묵적 default 가 사라진다. db 와 같은 네트워크에
+      # 남아 있어야 SECUAGENT_DSN 의 `db:5432` 가 계속 풀린다.
+      default:
+      tunnel:
+
+networks:
+  tunnel:
+    external: true
+    name: cloudwhoareryu_app-network
