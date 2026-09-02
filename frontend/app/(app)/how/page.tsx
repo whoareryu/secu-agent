@@ -147,15 +147,18 @@ export default function HowPage() {
           권한 SQL 조각도 한 곳에서 옵니다 — <code>adapters/db/permission_sql.py</code> 의{" "}
           <code>권한_WHERE(alias)</code> 하나입니다. 이를 직접 import 하는 파일은 넷입니다 — 문서 검색(
           <code>chunk_search.py</code>), 로그 검색(<code>log_search.py</code>),{" "}
-          <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>), 그리고 이 셋이 정말
-          같은 조각을 쓰는지 테스트로 고정하는 <code>backend/tests/test_permission_sql.py</code> 입니다 —{" "}
+          <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>), 그리고{" "}
+          <code>backend/tests/test_permission_sql.py</code> 입니다 —{" "}
           <code>
             grep -rn &quot;from adapters.db.permission_sql import 권한_WHERE&quot; backend --include=&quot;*.py&quot;
           </code>{" "}
-          를 돌리면 이 네 줄이 그대로 나옵니다. 넷째 파일의{" "}
-          <code>test_chunk_search_가_이_조각을_쓴다</code> 가 <code>chunk_search</code> 의 사본이 이 조각과
-          여전히 같은지를 단언합니다 — 소비자 셋이 실제로 같은 것을 쓰는지를 pin 하는 것이 이 넷째 파일의
-          역할입니다.
+          를 돌리면 이 네 줄이 그대로 나옵니다. 이 셋 중 사본을 따로 두는 것은{" "}
+          <code>chunk_search.py</code> 뿐입니다 — 40행이{" "}
+          <code>_권한_WHERE = 권한_WHERE(&quot;d&quot;)</code> 로 모듈 상수에 저장해 둡니다.{" "}
+          <code>log_search.py</code>:34 와 <code>naive_search.py</code>:33 은 반환값을 호출부 문자열에 바로
+          끼워 넣을 뿐 저장해두는 사본이 없습니다. 넷째 파일의{" "}
+          <code>test_chunk_search_가_이_조각을_쓴다</code> 가 그 저장된 사본이 원본과 여전히 같은지를
+          단언합니다 — 사본이 없는 나머지 둘은 애초에 어긋날 자리가 없습니다.
         </p>
         <p
           style={{
