@@ -3,26 +3,11 @@
 import Blueprint from "./Blueprint";
 import type { Principal } from "./PersonaSegment";
 
-// GET /api/documents 가 돌려주는 형태 그대로 — 권한 필터 없이 전부.
-export type Document = {
-  id: number;
-  title: string;
-  doc_type: string;
-  required_clearance: number;
-  allowed_departments: string[];
-  source_path: string;
-  chunk_count: number;
-};
-
-// backend/core/access/visibility.py 의 규칙과 같아야 한다 — SQL(chunk_search.
-// _권한_WHERE) · 파이썬(visibility.py)에 이은 세 번째 사본. 허용 부서가
-// 비어 있으면 전사 공개다("아무도 못 본다"가 아니다).
-export function visible(d: Document, p: Principal): boolean {
-  return (
-    d.required_clearance <= p.clearance &&
-    (d.allowed_departments.length === 0 || d.allowed_departments.includes(p.department))
-  );
-}
+// 정의는 lib/visibility.ts 로 옮겼다 — 서버 컴포넌트가 부를 자리가 필요했고
+// (이 파일은 "use client" 라 서버에서 못 부른다), npm test 가 보는 lib/ 안에
+// 있어야 테스트가 닿는다. 여기서는 기존 import 경로가 깨지지 않게 재수출만.
+import { visible, type Document } from "@/lib/visibility";
+export { visible, type Document };
 
 const visStyleOn: React.CSSProperties = {
   fontSize: 12,
