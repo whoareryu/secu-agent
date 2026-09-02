@@ -5,16 +5,33 @@
 본문이 이 경로로 나가지 않는다는 불변식은 깨지 않는다(보충 spec 결정 18).
 
 시딩은 tests/test_naive_leaks.py 의 좌표 블록 방식을 따른다(난수 단위벡터
-금지 — 384차원에서 cos 0.1 이 나온다). 다만 이 파일은 사전·사후 개수
-차이가 아니라 API 계약(개수·이름·본문 부재)을 본다 — 그래서 페르소나
-셋이 전부 같은 전사공개 문서 하나를 보는 단순한 배치로 충분하다.
+금지 — 384차원에서 cos 0.1 이 나온다). 이 파일은 그 파일과 달리 "개수 차이가
+존재한다"만이 아니라 API 계약(개수·이름·조항 코드·본문 부재) 전부를 봐야
+하므로 문서를 두 개 둔다:
 
-문서당 청크 수는 test_naive_leaks.py 의 논거를 그대로 따른다: 사전
-필터링이 k(=10) 건을 채우려면 그 문서의 청크 수가 최소 k 이상이어야
-한다는 것이 구조적 하한이다(`test_사전_필터링_개수가_k_로_고정된다`).
-그 경계에 바로 붙이지 않고 2배인 20 을 골랐다 — 그 파일과 같은 이유로,
-k 를 조금 올리는 미래 변경에도 이 파일이 구조적으로 깨지지 않을 여유를
-두기 위해서다.
+- 공개 규정(등급1, 전사공개): 세 페르소나가 전부 본다.
+- 임원 전용 규정(등급3): 최임원만 본다. 청크를 질의 축에 딱 붙여 심어서
+  시스템 전체 최근접 상위권을 이 문서가 차지하게 만든다 — 순진한 경로가
+  사후에 그것을 걸러내면서 낮은 등급 페르소나의 naive 개수가 prefiltered
+  보다 줄어드는 것을 실제로 관측 가능하게 만든다. (리뷰 지적 Important 1:
+  이전 버전은 문서가 하나뿐이라 naive 와 prefiltered 가 구조적으로 같은
+  값이 될 수밖에 없었고, 그것을 검사하는 테스트도 없었다.)
+
+공개 문서의 청크 수(30)는 두 하한을 동시에 만족해야 한다: (1) 사전
+필터링이 k(=10) 를 채우려면 페르소나가 보는 풀이 최소 k 이상이어야 한다는
+구조적 하한(test_naive_leaks.py 와 같은 논거, `test_사전_필터링_개수가_k_로_
+고정된다`), (2) k 상한 clamp(=20) 를 실제로 검증하려면 풀이 20 보다
+커야 한다 — 그렇지 않으면 "count <= 20" 이 clamp 가 없어도 코퍼스 크기
+때문에 우연히 참이 된다(리뷰 지적 Minor 3). 두 하한 중 더 큰 쪽(20)에
+10 을 더해 30 을 골랐다 — k 를 조금 올리는 미래 변경에도 이 파일이
+구조적으로 깨지지 않을 여유를 두기 위해서다. 임원 전용 문서의 청크 수
+(15)에는 그런 하한이 없다 — 시스템 전체 최근접 상위 10 을 독점하기에
+충분한 정도면 된다.
+
+조항 코드 3개(1.1·1.2·1.3)를 공개 문서에 실제로 심는다 —
+`demo/compare.py::_조항코드` 의 LEFT JOIN 매핑과 "호출자가 준 id 순서를
+따른다"는 주장을 직접 검증하기 위해서다(리뷰 지적 Important 2). "제1조"
+청크는 clause_id 를 NULL 로 남겨 "조항 밖" 폴백도 같이 덮는다.
 """
 
 import random
@@ -34,17 +51,27 @@ pytestmark = pytest.mark.db
 _시크릿 = {"X-Backend-Secret": 시크릿}
 
 절반 = EMBEDDING_DIM // 2
-# 기밀축을 정확히 가리키는 질의 벡터. "제1조" 청크를 이 값과 정확히
-# 일치시켜 코사인 거리 0 을 만든다 — 다른 청크는 지터가 섞여 있어
-# 이 청크가 항상 상위 k 안에 들어온다(비공허성 가드가 이것을 검사한다).
+# 기밀축을 정확히 가리키는 질의 벡터. "제1조" 청크와 임원 전용 문서의
+# 청크들을 이 축 근처에 심어, 시스템 전체 최근접 상위권이 그쪽으로
+# 쏠리게 만든다(test_naive_leaks.py 와 같은 메커니즘).
 질의_벡터 = [1.0] * 절반 + [0.0] * 절반
 
-문서당_청크 = 20
+공개_문서당_청크 = 30
+기밀_문서당_청크 = 15
+MAX_DEMO_K = 20
 
 
-def _지터_벡터(rng: random.Random) -> str:
+def _기밀_지터(rng: random.Random) -> str:
+    """질의 축 근처. 코사인 거리 ~0~0.1 — 공개 청크보다 압도적으로 가깝다."""
     앞 = [1.0 + rng.uniform(0, 0.1) for _ in range(절반)]
     뒤 = [0.0 for _ in range(절반)]
+    return str(앞 + 뒤)
+
+
+def _공개_지터(rng: random.Random) -> str:
+    """질의 축과 무관한 직교축 근처. 코사인 거리 ~1.0."""
+    앞 = [0.0 for _ in range(절반)]
+    뒤 = [1.0 + rng.uniform(0, 0.1) for _ in range(절반)]
     return str(앞 + 뒤)
 
 
@@ -58,11 +85,9 @@ class _질의_임베더:
 
 @pytest.fixture
 def _코퍼스(db연결):
-    """전사공개 문서 하나에 청크 20개. 세 페르소나 모두 이 문서를 본다.
+    """공개 문서(전사공개, 등급1) + 임원 전용 문서(등급3).
 
-    0번 청크에 "제1조" 를 넣고 질의 벡터와 정확히 일치시킨다 —
-    `test_응답에_본문이_없다` 가 공허하게 통과하지 않으려면 실제로 상위
-    k 에 드는 "제1조" 문장이 코퍼스에 있어야 한다(보충 spec 결정 4).
+    파일 상단 독스트링에 배치 근거를 적었다 — 여기서는 SQL 만 남긴다.
     """
     conn = db연결
     with conn.cursor() as cur:
@@ -75,22 +100,68 @@ def _코퍼스(db연결):
             "VALUES (%s, %s, 'md', %s, %s) RETURNING id",
             ("공개 규정", "demo-pub.md", 1, None),
         )
-        문서_id = cur.fetchone()[0]
+        공개_id = cur.fetchone()[0]
+
+        cur.execute(
+            "INSERT INTO documents (title, source_path, doc_type, "
+            "required_clearance, allowed_departments) "
+            "VALUES (%s, %s, 'md', %s, %s) RETURNING id",
+            ("임원 전용 규정", "demo-sec.md", 3, None),
+        )
+        기밀_id = cur.fetchone()[0]
+
+        # 실제 조항 코드 3개 — _조항코드 가 LEFT JOIN 으로 실제 매핑을
+        # 만든다는 것과, 그 결과가 호출자가 준 id 순서를 따른다는 것을
+        # 검증하려면 진짜 clauses 행이 있어야 한다.
+        조항_id = {}
+        for code in ("1.1", "1.2", "1.3"):
+            cur.execute(
+                "INSERT INTO clauses (document_id, code, title, text) "
+                "VALUES (%s, %s, %s, %s) RETURNING id",
+                (공개_id, code, f"조항 {code}", f"조항 {code} 본문"),
+            )
+            조항_id[code] = cur.fetchone()[0]
 
         삽입 = (
             "INSERT INTO chunks (document_id, clause_id, ordinal, text, embedding, text_tsv) "
-            "VALUES (%s, NULL, %s, %s, %s, to_tsvector('simple', %s))"
+            "VALUES (%s, %s, %s, %s, %s, to_tsvector('simple', %s))"
         )
+
+        # 0번: "제1조", clause_id NULL, 질의 벡터와 정확히 일치(거리 0) —
+        # test_응답에_본문이_없다 가 공허하게 통과하지 않으려면 이 문장이
+        # 실제로 상위 k 에 들어야 한다(test_코퍼스에_검사할_문장이_있다 가드).
         cur.execute(
             삽입,
-            (문서_id, 0, "제1조 비밀번호는 12자 이상이어야 한다", str(질의_벡터), "제1조"),
+            (공개_id, None, 0, "제1조 비밀번호는 12자 이상이어야 한다", str(질의_벡터), "제1조"),
         )
+
         rng = random.Random(11)
+
+        # 1~3번: 실제 조항이 달린 청크. 지터는 공개축 — _조항코드 검증에는
+        # 순위가 필요 없으니 다른 공개 청크와 같은 스타일로 둔다.
+        for i, code in enumerate(("1.1", "1.2", "1.3"), start=1):
+            cur.execute(
+                삽입,
+                (공개_id, 조항_id[code], i, f"조항 {code} 청크", _공개_지터(rng), f"조항{code}"),
+            )
+
+        # 나머지 공개 청크 — clause_id NULL, 채우기용.
         cur.executemany(
             삽입,
             [
-                (문서_id, i, f"공개조항 {i}", _지터_벡터(rng), f"공개조항 {i}")
-                for i in range(1, 문서당_청크)
+                (공개_id, None, i, f"공개조항 {i}", _공개_지터(rng), f"공개조항 {i}")
+                for i in range(4, 공개_문서당_청크)
+            ],
+        )
+
+        # 임원 전용 청크 — 전부 질의 축 근처. 낮은 등급 페르소나는 이
+        # 문서를 아예 못 보므로, 순진한 경로가 이것들을 사후에 걸러내면서
+        # naive 개수가 prefiltered 보다 줄어든다.
+        cur.executemany(
+            삽입,
+            [
+                (기밀_id, None, i, f"기밀조항 {i}", _기밀_지터(rng), f"기밀조항 {i}")
+                for i in range(기밀_문서당_청크)
             ],
         )
 
@@ -152,6 +223,28 @@ def test_코퍼스에_검사할_문장이_있다(_코퍼스):
     assert 제1조_id in 상위
 
 
+def test_조항코드가_호출자_순서를_따른다(_코퍼스):
+    """`_조항코드`(demo/compare.py) 의 순서 보존·NULL 폴백 주장을 직접 본다.
+
+    이 함수가 SQL 결과 자체의 순서(보통 id 오름차순)를 그대로 돌려주면
+    화면의 순위 채널이 뒤집힌다. 호출자가 준 id 순서와 다르게 — 오름차순도
+    아니고 내림차순도 아니게 — 섞어서 넘겨, 구현이 진짜로 호출자 순서를
+    따르는지 본다. clause_id 가 NULL 인 청크("제1조")가 "조항 밖" 으로
+    떨어지는 것도 같이 확인한다.
+    """
+    from demo.compare import _조항코드
+
+    conn = _코퍼스
+    with conn.cursor() as cur:
+        cur.execute("SELECT cl.code, c.id FROM chunks c JOIN clauses cl ON cl.id = c.clause_id")
+        코드별_id = dict(cur.fetchall())
+        cur.execute("SELECT id FROM chunks WHERE text LIKE %s", ("%제1조%",))
+        (제1조_id,) = cur.fetchone()
+
+    순서 = [코드별_id["1.3"], 코드별_id["1.1"], 제1조_id, 코드별_id["1.2"]]
+    assert _조항코드(conn, 순서) == ["1.3", "1.1", "조항 밖", "1.2"]
+
+
 def test_응답에_본문이_없다(demo_client):
     r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
     본문 = r.text
@@ -171,11 +264,43 @@ def test_사전_필터링_개수가_k_로_고정된다(demo_client):
     assert all(p["prefiltered"]["count"] == 10 for p in r.json()["personas"])
 
 
+def test_순진한_경로가_사전_필터링과_달라진다(demo_client):
+    """naive 채널이 prefiltered 를 그대로 복사한 것이 아님을 직접 본다.
+
+    임원 전용 문서의 청크가 질의 축에 딱 붙어 있어 시스템 전체
+    최근접 상위권을 차지한다(코퍼스 배치, 파일 상단 참고). 순진한 경로는
+    그 최근접 상위 k 를 먼저 뽑고 나중에 걸러내므로, 그 문서를 못 보는
+    페르소나는 사후 필터링에서 대부분을 잃는다 — 반면 사전 필터링은
+    애초에 자신이 볼 수 있는 문서 안에서만 검색하므로 항상 k 를 채운다.
+    이 차이가 갈리지 않으면 naive 가 prefiltered 와 같은 함수를 부르고
+    있다는 뜻이다.
+    """
+    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
+    페르소나 = {p["name"]: p for p in r.json()["personas"]}
+
+    최임원 = 페르소나["최임원"]
+    assert 최임원["naive"]["count"] == 최임원["prefiltered"]["count"] == 10
+
+    for 이름 in ("김개발", "박인사"):
+        p = 페르소나[이름]
+        assert p["prefiltered"]["count"] == 10
+        assert p["naive"]["count"] < p["prefiltered"]["count"], (
+            f"{이름}: naive 개수가 prefiltered 와 같다({p['naive']['count']}) — "
+            "순진한 경로가 실제로는 사전 필터링과 같은 함수를 부르고 있을 수 있다."
+        )
+
+
 def test_k_에_상한이_있다(demo_client):
-    """모델이 부르는 경로는 아니지만 브라우저가 부른다 — 값을 믿지 않는다."""
+    """모델이 부르는 경로는 아니지만 브라우저가 부른다 — 값을 믿지 않는다.
+
+    코퍼스가 MAX_DEMO_K(20) 보다 많은 청크를 갖고 있어야 이 단언이 의미가
+    있다 — 그렇지 않으면 clamp 가 없어도 코퍼스 크기 때문에 우연히
+    20 이하가 나온다(리뷰 지적 Minor 3). 공개 문서만 30개라 김개발·박인사도
+    풀이 20 을 넘는다.
+    """
     r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 9999}, headers=_시크릿)
-    assert r.json()["k"] <= 20
-    assert all(p["prefiltered"]["count"] <= 20 for p in r.json()["personas"])
+    assert r.json()["k"] == MAX_DEMO_K
+    assert all(p["prefiltered"]["count"] == MAX_DEMO_K for p in r.json()["personas"])
 
 
 def test_LLM_을_부르지_않는다(demo_client_모델_없음):
