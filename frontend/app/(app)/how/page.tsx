@@ -43,9 +43,10 @@ export default function HowPage() {
 
       <EvidencePanel evidence="schema" kicker="기록이 담지 않는 것" title="access_records 는 본문도 제목도 담지 않는다">
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-          <code>access_records</code> 테이블의 컬럼은 persona, department, clearance, query, clause_code,
-          resource_kind, resource_id, allowed, ts 뿐입니다(backend/db/schema.sql). 청크 본문은 물론 문서
-          제목도 없습니다 — 제목만으로도 문서의 존재가 드러나기 때문입니다. resource_kind 는{" "}
+          <code>access_records</code> 테이블에는 청크 본문도 문서 제목도 담는 컬럼이 없습니다
+          (backend/db/schema.sql) — 담긴 것은 id · ts 같은 식별자와 persona, department, clearance,
+          query, clause_code, resource_kind, resource_id, allowed 같은 신원·판정 값입니다. 제목을 빼는
+          이유는 제목만으로도 문서의 존재가 드러나기 때문입니다. resource_kind 는{" "}
           <code>chunk</code> 또는 <code>log_event</code> 만 허용하는 CHECK 제약이 있고 DEFAULT 가 없어, 종류를
           빠뜨린 INSERT 가 조용히 청크로 기록되는 일을 막습니다.
         </p>
