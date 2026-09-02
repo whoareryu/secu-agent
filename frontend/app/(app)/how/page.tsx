@@ -1,28 +1,18 @@
 import EvidencePanel from "@/components/EvidencePanel";
+import LeakCompare from "@/components/LeakCompare";
 
 // 이 화면은 "어떻게 동작하는가"를 설명이 아니라 실행으로 보여주는 자리다.
 // 그래서 규칙이 하나 더 붙는다 — 뒷받침 없는 문장을 한 줄도 두지 않는다.
 // 네 패널 모두 EvidencePanel 을 거치므로 evidence 와 (measured 면) source 를
 // 빠뜨리면 컴파일이 막힌다.
 //
-// 패널 ①②는 Task 5·6 이 라이브/2단계 인용으로 갈아끼우고, 패널 ④는 W4a
-// 로그 적재 이후 Task 7 이 채운다. 지금은 이 저장소에서 실제로 확인한
-// 만큼만 적는다.
+// 패널 ②는 Task 6 이 2단계 인용으로 갈아끼우고, 패널 ④는 W4a 로그 적재
+// 이후 Task 7 이 채운다. 지금은 이 저장소에서 실제로 확인한 만큼만 적는다.
 export default function HowPage() {
   return (
     <div style={{ maxWidth: 1000, display: "flex", flexDirection: "column", gap: 22 }}>
-      <EvidencePanel
-        evidence="measured"
-        source="backend/tests/test_naive_leaks.py · POST /demo/compare 실측(2026-09-01)"
-        kicker="라이브 누출 시연"
-        title="사전 필터링 대 순진한 사후 필터링"
-      >
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-          같은 질의를 사전 필터링 경로와 순진한(사후 필터링) 경로 양쪽에 돌리면 개수가 갈립니다. 질의
-          &quot;임원 성과급은 어떤 기준으로 정해지나&quot;, k=10 에서 사전 필터링은 김개발·박인사·최임원 모두
-          10/10/10, 순진한 경로는 김개발 7 · 박인사 7 · 최임원 10 입니다. 등급이 낮을수록 순진한 경로에서
-          결과가 줄어드는 것 자체가 &quot;내가 못 보는 곳에 이 질의와 가까운 문서가 있다&quot;는 존재 누출입니다.
-        </p>
+      <EvidencePanel evidence="live" kicker="라이브 누출 시연" title="사전 필터링 대 순진한 사후 필터링">
+        <LeakCompare />
       </EvidencePanel>
 
       <EvidencePanel
