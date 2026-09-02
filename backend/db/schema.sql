@@ -71,7 +71,13 @@ CREATE TABLE IF NOT EXISTS hosts (
     allowed_departments TEXT[]              -- NULL = 전사 공개
 );
 
--- W4 에서 채운다. 스키마를 지금 두는 이유는 나중에 마이그레이션하지 않기 위해서다.
+-- W4a 의 로그 적재(pipeline/ingest_logs.py)가 이 테이블을 채웠다 — 더 이상
+-- 비어 있지 않다. 스키마를 W1 에 미리 둔 이유는 나중에 마이그레이션하지 않기
+-- 위해서였고, 그 이유는 여전히 유효하다.
+--
+-- 행 수를 여기 적지 않는다. 이 자리에 있던 "W4 에서 채운다" 가 W4a 이후에도
+-- 남아 "테이블이 비어 있다" 는 거짓 문장을 화면까지 밀어 올렸다 — 현재
+-- 상태는 주석이 아니라 DB 에 물어본다.
 CREATE TABLE IF NOT EXISTS log_events (
     id             BIGSERIAL PRIMARY KEY,
     ts             TIMESTAMPTZ,
