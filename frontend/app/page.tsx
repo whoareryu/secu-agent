@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth, signInAction } from "@/auth";
+import { auth, signInAction, signOutAction } from "@/auth";
 import SignIn from "@/components/SignIn";
 import Hub from "@/components/Hub";
 import Blueprint from "@/components/Blueprint";
@@ -69,5 +69,22 @@ export default async function Home() {
     redirect("/ask");
   }
 
-  return <Hub personas={personas} 선택하기={선택하기} />;
+  // 허브에 서 있는데도 페르소나 쿠키가 남아 있을 수 있다 — SurfaceNav 의
+  // 로고 링크가 `/` 로 오는데 그 경로는 나가기와 달리 쿠키를 지우지 않는다.
+  // 그러면 사용자는 "김개발인 채로 직원 선택 화면" 에 서 있게 된다. 그 상태를
+  // 숨기지 않고 화면이 밝힌다(아래 Hub 의 활성페르소나). 지우는 쪽이 아니라
+  // 밝히는 쪽을 고른 이유: 로고를 눌러 돌아온 사람이 /ask 로 되돌아가면
+  // 여전히 그 계정이고, 링크가 조용히 쿠키를 지우면 그 사실이 어긋난다.
+  const jar = await cookies();
+  const 활성페르소나 = personaFrom(jar.get(PERSONA_COOKIE)?.value, personas.map((p) => p.name));
+
+  return (
+    <Hub
+      personas={personas}
+      선택하기={선택하기}
+      email={session.user.email}
+      signOutAction={signOutAction}
+      활성페르소나={활성페르소나}
+    />
+  );
 }
