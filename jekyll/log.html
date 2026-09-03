@@ -1,0 +1,98 @@
+---
+layout: base
+title: 개발 로그
+permalink: /log/
+description: 2026-08-31 착수 이후 남긴 개발 기록 전체. 커밋마다 무엇을 왜 했는지, 결정의 대가는 무엇이었는지.
+---
+
+{% assign logs = site.logs | sort: "path" | reverse %}
+{% comment %}
+  where: "date", d 는 동작하지 않는다 — 프론트매터의 date 가 Time 객체라
+  비교가 매번 빗나가 모든 날이 0편이 됐다. 문자열로 묶는다.
+{% endcomment %}
+{% assign days = logs | group_by_exp: "l", "l.date | date: '%Y-%m-%d'" %}
+
+<section style="padding:80px 0 56px;">
+  <div class="wrap">
+    <p class="eyebrow"><a href="{{ '/#appendix' | relative_url }}" style="color:var(--blue);">부록</a> · 개발 로그</p>
+    <h1 style="font-size:42px;">무엇을 왜 했는지.</h1>
+    <p class="lead">
+      커밋마다 한 편씩 남겼습니다. 결정의 이유와 그 대가,
+      그리고 잘못 짚었다가 되돌린 것까지 그대로 둡니다.
+    </p>
+
+    <div class="grid g4" style="margin-top:44px;">
+      <div class="stat">
+        <div class="n">{{ logs | size }}<small>편</small></div>
+        <div class="k">전체 기록</div>
+      </div>
+      <div class="stat">
+        <div class="n">{{ days | size }}<small>일</small></div>
+        <div class="k">기록된 날</div>
+        <div class="s">{{ days.last.name }} ~ {{ days.first.name }}</div>
+      </div>
+      {% assign areas = logs | map: "area" | uniq | sort %}
+      <div class="stat" style="grid-column:span 2;">
+        <div class="k" style="margin-top:0;">영역</div>
+        <div class="tags" style="margin-top:10px;">
+          {% for a in areas %}
+            {% assign n = logs | where: "area", a | size %}
+            <span class="tag tag-gray">{{ a }} · {{ n }}</span>
+          {% endfor %}
+        </div>
+        <div class="s" style="margin-top:10px;">
+          infra 배포·CI·설정 · api 백엔드 · web 프론트엔드 · rag 검색 · data 코퍼스
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding:0 0 120px;">
+  <div class="wrap-narrow" style="padding:0 24px;">
+    {% for day in days %}
+      <div style="margin-bottom:56px;">
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+                    padding-bottom:14px;margin-bottom:24px;border-bottom:2px solid var(--ink);">
+          <h2 style="font-size:26px;margin:0;">{{ day.name | date: "%Y년 %-m월 %-d일" }}</h2>
+          <span style="font-size:14px;color:var(--ink-3);font-weight:600;">{{ day.items | size }}편</span>
+        </div>
+
+        {% for log in day.items %}
+          <article style="padding:22px 24px;margin-bottom:12px;background:var(--bg-2);border-radius:var(--radius-s);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <span class="tag {% if log.area == 'infra' %}tag-amber{% elsif log.area == 'api' %}tag-blue{% elsif log.area == 'web' %}tag-green{% else %}tag-gray{% endif %}">{{ log.area }}</span>
+              <span style="font-family:var(--mono);font-size:12.5px;color:var(--ink-4);">#{{ log.seq }}</span>
+            </div>
+            <div class="logbody">{{ log.content | markdownify }}</div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <a class="btn btn-ghost" href="{{ '/' | relative_url }}">← 프로젝트 개요로</a>
+  </div>
+</section>
+
+<style>
+/* 로그 본문 — 목록·코드·강조가 촘촘하게 붙도록 별도로 조인다. */
+.logbody{font-size:15.5px;line-height:1.72;color:var(--ink-2);}
+.logbody > ul{margin:0;padding:0;list-style:none;}
+.logbody > ul > li{margin-bottom:18px;}
+.logbody > ul > li:last-child{margin-bottom:0;}
+.logbody > ul > li > strong:first-child{
+  display:block;color:var(--ink);font-size:17px;font-weight:700;
+  letter-spacing:-.02em;line-height:1.4;margin-bottom:8px;
+}
+.logbody ul ul,.logbody ol{margin:10px 0 0 0;padding-left:20px;}
+.logbody ul ul{list-style:disc;}
+.logbody ul ul li,.logbody ol li{margin-bottom:8px;}
+.logbody p{margin:0 0 10px;}
+.logbody p:last-child{margin-bottom:0;}
+.logbody code{background:#fff;border:1px solid var(--line-2);}
+.logbody pre{
+  background:#fff;border:1px solid var(--line-2);border-radius:10px;
+  padding:14px 16px;overflow-x:auto;font-size:13px;line-height:1.6;
+}
+.logbody pre code{background:transparent;border:0;padding:0;}
+</style>
