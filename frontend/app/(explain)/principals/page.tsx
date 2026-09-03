@@ -5,7 +5,7 @@ import PrincipalTable from "@/components/PrincipalTable";
 import Blueprint from "@/components/Blueprint";
 import type { Principal } from "@/components/PersonaSegment";
 
-// 세 페르소나는 하드코딩하지 않는다 — GET /api/principals 가 principals
+// 페르소나는 하드코딩하지 않는다 — GET /api/principals 가 principals
 // 테이블을 그대로 중계한다.
 export default function PrincipalsPage() {
   const [personas, setPersonas] = useState<Principal[] | null>(null);
@@ -54,7 +54,7 @@ export default function PrincipalsPage() {
             python -m pipeline.cli seed-principals
           </div>
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
-            data/principals.json 의 세 계정을 principals 테이블에 넣습니다.
+            data/principals.json 의 계정을 principals 테이블에 넣습니다.
           </p>
         </Blueprint>
         <Blueprint className="card" style={{ padding: 20, gap: 12 }}>

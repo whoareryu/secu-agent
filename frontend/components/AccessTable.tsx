@@ -58,7 +58,7 @@ const chipBase: React.CSSProperties = {
 const chipOn: React.CSSProperties = { ...chipBase, background: "var(--color-accent)", color: "var(--color-bg)" };
 
 // 필터 칩은 프로토타입 그대로(전체 / 차단만 / 페르소나별)지만 페르소나 이름은
-// 기록에서 뽑는다 — 세 계정을 하드코딩하지 않는다.
+// 기록에서 뽑는다 — 계정을 하드코딩하지 않는다.
 export default function AccessTable() {
   const [records, setRecords] = useState<AccessRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);

@@ -162,7 +162,7 @@ export default function LeakCompare() {
       {status === "loading" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-neutral-600)" }}>
-            세 계정 × 두 경로, 여섯 번 검색합니다. 임베딩은 한 번만 계산하고 LLM 은 부르지 않습니다.
+            김개발·박인사·최임원 세 계정 × 두 경로, 여섯 번 검색합니다. 임베딩은 한 번만 계산하고 LLM 은 부르지 않습니다.
           </p>
           {coldStart && (
             <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-accent-700)" }}>

@@ -1,5 +1,15 @@
 [
   {"name": "김개발", "department": "개발팀",     "clearance": 1},
+  {"name": "정개발", "department": "개발팀",     "clearance": 2},
+
+  {"name": "서인사", "department": "인사팀",     "clearance": 1},
   {"name": "박인사", "department": "인사팀",     "clearance": 2},
+
+  {"name": "이보안", "department": "정보보안팀", "clearance": 1},
+  {"name": "한보안", "department": "정보보안팀", "clearance": 2},
+  {"name": "오보안", "department": "정보보안팀", "clearance": 3},
+
+  {"name": "윤총무", "department": "경영지원팀", "clearance": 1},
+  {"name": "남감사", "department": "경영지원팀", "clearance": 2},
   {"name": "최임원", "department": "경영지원팀", "clearance": 3}
 ]

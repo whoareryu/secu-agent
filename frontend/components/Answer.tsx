@@ -110,7 +110,7 @@ export default function Answer({ result, elapsedMs }: { result: AskResult; elaps
         <div className="card-kicker">Pre-filtering</div>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--color-accent-900)" }}>
           권한 검사는 검색 <strong>이전</strong>에 SQL WHERE 절로 일어납니다. 권한을 통과한 문서 안에서 상위 k
-          건을 고르므로, 각 계정에 허용된 조항이 k 건 이상 있는 한 세 계정 모두 같은 개수의 결과를 받습니다 —{" "}
+          건을 고르므로, 각 계정에 허용된 조항이 k 건 이상 있는 한 모든 계정이 같은 개수의 결과를 받습니다 —{" "}
           <strong>개수가 등급에 따라 갈리지 않고, 숨겨진 문서는 순위의 빈자리로도 드러나지 않습니다.</strong>{" "}
           허용된 조항이 k 건에 못 미치면 그보다 적게 받지만, 그것은 그 계정이 볼 수 있는 것을 다 본 결과이지 무언가가
           걸러진 흔적이 아닙니다. 사후 필터링이라면 &quot;3건만 남았다&quot;는 사실 자체가 숨겨진 문서의 신호가

@@ -38,7 +38,7 @@ export default function RightRail({
           </button>
         ))}
         <p style={{ margin: 0, fontSize: 11.5, color: "var(--color-neutral-600)" }}>
-          같은 질문을 세 계정으로 비교하는 것은{" "}
+          같은 질문을 김개발·박인사·최임원 세 계정으로 비교하는 것은{" "}
           <a href="/how">동작 원리</a> 화면에서 볼 수 있습니다 — 그쪽은 LLM 을 부르지
           않아 질의 횟수를 쓰지 않습니다.
         </p>
