@@ -65,10 +65,10 @@ export default function Hub({
         </form>
       </header>
 
-      <div style={{ fontSize: 10.5, letterSpacing: ".18em", textTransform: "uppercase", color: "var(--color-accent)" }}>
-        Choose an employee
+      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-accent)" }}>
+        시연용 계정 고르기
       </div>
-      <h1 style={{ margin: "6px 0 8px", fontSize: 30, lineHeight: 1.15 }}>어느 직원으로 둘러보시겠습니까</h1>
+      <h1 style={{ margin: "10px 0 10px", fontSize: 36, lineHeight: 1.2 }}>어느 직원으로 둘러보시겠습니까</h1>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, margin: "0 0 28px" }}>
         <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: "var(--color-neutral-700)" }}>
           고른 계정의 부서와 등급이 실제 권한 필터를 그대로 탑니다. 답이 갈리는

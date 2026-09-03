@@ -73,7 +73,20 @@ export default function DocumentsPage() {
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
           아래에서 고른 계정 기준으로 표시합니다
         </span>
-        <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid var(--color-divider)" }}>
+        {/* PersonaSegment 와 같은 모양이되(app/_ds/industry.css 의 .seg) 이름만
+            담는 촘촘한 판이라 클래스를 쓰지 않고 여기서 그린다 — 저쪽은
+            부서·등급까지 두 줄로 담아 높이가 다르다. */}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 4,
+            padding: 4,
+            background: "var(--color-neutral-100)",
+            border: "1px solid var(--color-neutral-200)",
+            borderRadius: "var(--radius-md)",
+          }}
+        >
           {personas.map((p) => {
             const on = p.name === persona.name;
             return (
@@ -83,12 +96,14 @@ export default function DocumentsPage() {
                 onClick={() => setPersonaName(p.name)}
                 style={{
                   padding: "7px 13px",
-                  background: on ? "var(--color-accent)" : "transparent",
+                  background: on ? "var(--color-surface)" : "transparent",
                   border: 0,
-                  borderRight: "1px solid var(--color-divider)",
-                  fontSize: 12.5,
+                  borderRadius: "var(--radius-sm)",
+                  boxShadow: on ? "var(--shadow-sm)" : undefined,
+                  fontSize: 13,
+                  fontWeight: on ? 600 : 500,
                   cursor: "pointer",
-                  color: on ? "var(--color-bg)" : "var(--color-text)",
+                  color: on ? "var(--color-text)" : "var(--color-neutral-700)",
                   fontFamily: "var(--font-body)",
                 }}
               >

@@ -16,7 +16,11 @@ export default function EmployeeHeader({
 }) {
   const [열림, set열림] = useState(false);
   return (
-    <header style={{ borderBottom: "1px solid var(--color-divider)", padding: "18px 40px 14px" }}>
+    <header style={{
+      background: "var(--color-surface)",
+      borderBottom: "1px solid var(--color-divider)",
+      padding: "18px 40px 14px",
+    }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontFamily: "var(--font-heading)" }}>

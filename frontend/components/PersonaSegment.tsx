@@ -15,12 +15,17 @@ export default function PersonaSegment({
   onChange: (name: string) => void;
 }) {
   return (
-    <div className="seg" style={{ display: "flex" }}>
+    // flex 로 두면 마지막 줄의 항목만 남은 폭을 나눠 가져 칸 너비가 줄마다
+    // 달라진다(계정 10개 = 7 + 3). 격자로 두면 몇 줄이 되든 칸이 같다.
+    <div
+      className="seg"
+      style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(152px, 1fr))" }}
+    >
       {personas.map((p) => (
         <label
           key={p.name}
           className="seg-opt"
-          style={{ flex: "1 1 148px", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px" }}
+          style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px" }}
         >
           <input
             type="radio"

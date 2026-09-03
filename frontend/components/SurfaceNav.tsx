@@ -27,7 +27,7 @@ export default function SurfaceNav({
     <aside className="surface-nav">
       <div style={{ padding: "0 20px 22px" }}>
         <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>
-          <div style={{ fontFamily: "var(--font-heading)", fontSize: 19, letterSpacing: ".28em", textTransform: "uppercase" }}>
+          <div style={{ fontFamily: "var(--font-heading)", fontSize: 19, fontWeight: 800, letterSpacing: "-.03em" }}>
             Secu-Agent
           </div>
         </Link>

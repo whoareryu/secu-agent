@@ -1,4 +1,5 @@
 import Blueprint from "./Blueprint";
+import { parseBlocks, type Span } from "@/lib/answer-format";
 
 type Hit = { chunk_id: number; clause_code: string | null; doc_title: string; text: string };
 export type AskResult = {
@@ -51,20 +52,8 @@ export default function Answer({ result, elapsedMs }: { result: AskResult; elaps
             {Math.round(elapsedMs)}ms
           </span>
         </div>
-        <div
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: 13,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            color: "var(--color-accent)",
-          }}
-        >
-          Answer
-        </div>
-        <p style={{ margin: 0, fontSize: 15.5, lineHeight: 1.72, textWrap: "pretty", whiteSpace: "pre-wrap" }}>
-          {result.answer}
-        </p>
+        <div className="card-kicker">답변 / Answer</div>
+        <AnswerBody text={result.answer} />
         {result.log_scope && (
           <p style={{
             margin: "10px 0 0",
@@ -118,5 +107,61 @@ export default function Answer({ result, elapsedMs }: { result: AskResult; elaps
         </p>
       </Blueprint>
     </>
+  );
+}
+
+function Spans({ spans }: { spans: Span[] }) {
+  return (
+    <>
+      {spans.map((s, i) =>
+        s.t === "b" ? (
+          <strong key={i} style={{ fontWeight: 700, color: "var(--color-text)" }}>{s.v}</strong>
+        ) : s.t === "code" ? (
+          <code key={i} style={{
+            fontFamily: "var(--font-mono)", fontSize: ".9em", letterSpacing: 0,
+            background: "var(--color-neutral-200)", padding: "1px 5px", borderRadius: 5,
+          }}>{s.v}</code>
+        ) : (
+          <span key={i}>{s.v}</span>
+        )
+      )}
+    </>
+  );
+}
+
+// LLM 은 마크다운으로 답한다. 그대로 뿌리면 `* **[4.2.2] ...**:` 가
+// 기호째 보인다(2026-09-03 화면 확인). 파싱은 lib/answer-format.ts 가 하고
+// 여기서는 그리기만 한다.
+function AnswerBody({ text }: { text: string }) {
+  const blocks = parseBlocks(text);
+  const 본문 = { margin: 0, fontSize: 15.5, lineHeight: 1.75, color: "var(--color-neutral-900)" } as const;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {blocks.map((b, i) => {
+        if (b.kind === "hr") return <hr key={i} className="hr" style={{ margin: "4px 0" }} />;
+        if (b.kind === "h")
+          return (
+            <div key={i} style={{ fontSize: 16.5, fontWeight: 700, letterSpacing: "-.02em", marginTop: i ? 6 : 0 }}>
+              <Spans spans={b.spans} />
+            </div>
+          );
+        if (b.kind === "p")
+          return (
+            <p key={i} style={{ ...본문, textWrap: "pretty" }}>
+              <Spans spans={b.spans} />
+            </p>
+          );
+        const Tag = b.kind === "ol" ? "ol" : "ul";
+        return (
+          <Tag key={i} style={{ ...본문, paddingLeft: 22, display: "flex", flexDirection: "column", gap: 6 }}>
+            {b.items.map((item, j) => (
+              <li key={j}>
+                <Spans spans={item} />
+              </li>
+            ))}
+          </Tag>
+        );
+      })}
+    </div>
   );
 }

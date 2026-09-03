@@ -33,15 +33,16 @@ export default function Header({
         alignItems: "flex-end",
         gap: 20,
         padding: "26px 40px 18px",
+        background: "var(--color-surface)",
         borderBottom: "1px solid var(--color-divider)",
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: 10.5,
-            letterSpacing: ".18em",
-            textTransform: "uppercase",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 0,
             color: "var(--color-accent)",
           }}
         >

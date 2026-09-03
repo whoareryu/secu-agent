@@ -11,10 +11,6 @@ export default function Blueprint<T extends React.ElementType = "div">({
   const Tag = (as ?? "div") as React.ElementType;
   return (
     <Tag className={`blueprint ${className}`.trim()} {...rest}>
-      <i className="corner tl" />
-      <i className="corner tr" />
-      <i className="corner bl" />
-      <i className="corner br" />
       {children}
     </Tag>
   );
