@@ -47,7 +47,11 @@ export default function AlertTable() {
       ) : !records ? (
         <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>불러오는 중…</p>
       ) : (
-        <table className="table">
+        <div className="table-scroll">
+          {/* table-scroll: AccessTable 과 같은 모양이다 — 질의 열이 자유
+              텍스트라 좁은 화면에서 표가 카드보다 넓어진다. 그 스크롤을
+              표 안에 가둔다. */}
+          <table className="table">
           <thead>
             <tr>
               <th>발생 시각</th>
@@ -86,7 +90,8 @@ export default function AlertTable() {
               ))
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       )}
       <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
         알림에는 식별자만 담고 문서 본문·제목은 담지 않습니다.

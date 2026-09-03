@@ -37,7 +37,7 @@ export default function InquiryDialog({ adminEmail }: { adminEmail: string }) {
     <>
       <Blueprint className="card" style={{ padding: 22, gap: 14, background: "var(--color-accent-100)" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 20, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 280 }}>
+          <div style={{ flex: 1, minWidth: "min(280px, 100%)" }}>
             <div className="card-kicker">이상이 있나요?</div>
             <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.65, color: "var(--color-accent-900)" }}>
               보면 안 되는 서류가 열람되었거나 열람 이력이 실제와 다르면 secu-agent 담당자에게 문의하세요.
@@ -76,7 +76,7 @@ export default function InquiryDialog({ adminEmail }: { adminEmail: string }) {
         >
           <Blueprint
             className="dialog"
-            style={{ width: 520, padding: 26, display: "flex", flexDirection: "column", gap: 16, background: "var(--color-bg)" }}
+            style={{ width: "min(520px, 100%)", padding: 26, display: "flex", flexDirection: "column", gap: 16, background: "var(--color-bg)" }}
           >
             <div>
               <div className="card-kicker">Contact · secu-agent 담당자</div>
