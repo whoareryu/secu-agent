@@ -13,11 +13,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const role = roleFor(session.user.email);
   if (guard({ surface: "admin", hasPersona: false, role }) === "to-hub") redirect("/");
   return (
-    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", background: "var(--color-bg)" }}>
+    <div className="surface-shell">
       <SurfaceNav items={navFor("admin")} 부제="운영 · 감사" />
       <main style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header email={session.user.email} role={role} signOutAction={signOutAction} items={navFor("admin")} />
-        <div style={{ padding: "28px 40px 56px" }}>{children}</div>
+        <div className="surface-main-pad">{children}</div>
       </main>
     </div>
   );

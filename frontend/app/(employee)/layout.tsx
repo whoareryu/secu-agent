@@ -69,11 +69,11 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", background: "var(--color-bg)" }}>
+    <div className="surface-shell">
       <SurfaceNav items={navFor("employee")} 부제="사내 보안 규정 에이전트" />
       <main style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <EmployeeHeader principal={principal} 나가기={나가기} />
-        <div style={{ padding: "28px 40px 56px" }}>{children}</div>
+        <div className="surface-main-pad">{children}</div>
       </main>
     </div>
   );

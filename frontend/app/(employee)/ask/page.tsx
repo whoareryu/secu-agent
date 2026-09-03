@@ -8,15 +8,7 @@ import RightRail from "@/components/RightRail";
 export default function AskPage() {
   const [query, setQuery] = useState("");
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0,1fr) 320px",
-        gap: 32,
-        alignItems: "start",
-        maxWidth: 1240,
-      }}
-    >
+    <div className="ask-layout">
       <AskPanel query={query} onQueryChange={setQuery} />
       <RightRail query={query} onSelectSample={setQuery} />
     </div>

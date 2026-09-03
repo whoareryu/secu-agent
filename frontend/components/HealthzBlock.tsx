@@ -30,7 +30,12 @@ export default function HealthzBlock() {
   }, []);
 
   return (
+    // surface-nav-health: 900px 미만에서는 SurfaceNav 가 가로 막대가 되고
+    // 이 블록의 marginTop:auto 트릭(세로 사이드바 맨 아래로 밀기)이
+    // 막대 높이를 상태 3줄만큼 늘리는 쪽으로 뒤집힌다(app/_ds/industry.css
+    // 참조) — 그래서 그 폭에서는 숨긴다.
     <div
+      className="surface-nav-health"
       style={{
         marginTop: "auto",
         padding: 20,

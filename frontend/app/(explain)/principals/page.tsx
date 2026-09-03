@@ -39,7 +39,7 @@ export default function PrincipalsPage() {
   return (
     <div style={{ maxWidth: 1000, display: "flex", flexDirection: "column", gap: 22 }}>
       <PrincipalTable principals={personas} />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))", gap: 22 }}>
         <Blueprint className="card" style={{ padding: 20, gap: 12 }}>
           <div className="card-kicker">Seed</div>
           <div

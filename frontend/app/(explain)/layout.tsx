@@ -18,13 +18,13 @@ export default async function ExplainLayout({ children }: { children: React.Reac
   // (admin)/layout.tsx 도 같은 이유로 false 를 넘긴다.
   if (guard({ surface: "explain", hasPersona: false, role }) === "to-hub") redirect("/");
   return (
-    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "236px 1fr", background: "var(--color-bg)" }}>
+    <div className="surface-shell">
       {/* healthz: SurfaceNav.tsx 의 주석 참조 — 설명 면의 세 화면 모두
           백엔드를 부르므로 여기서만 readout 을 켠다. */}
       <SurfaceNav items={navFor("explain")} 부제="어떻게 동작하는가" healthz />
       <main style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header email={session.user.email} role={role} signOutAction={signOutAction} items={navFor("explain")} />
-        <div style={{ padding: "28px 40px 56px" }}>{children}</div>
+        <div className="surface-main-pad">{children}</div>
       </main>
     </div>
   );

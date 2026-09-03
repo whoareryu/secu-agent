@@ -114,52 +114,57 @@ export default function AccessTable() {
           ))}
         </div>
       </div>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>시각</th>
-            <th>페르소나</th>
-            <th>부서·등급</th>
-            <th style={{ width: "26%" }}>질의</th>
-            <th>조항</th>
-            <th style={{ textAlign: "right" }}>결과</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
+      {/* table-scroll: 질의 컬럼이 자유 텍스트라 좁은 화면에서 표가 카드보다
+          넓어질 수 있다 — 표를 반응형으로 접지는 않되(범위 밖), 그 넓어짐이
+          페이지 자체를 가로로 밀지 않게 여기서 가둔다(app/_ds/industry.css). */}
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
             <tr>
-              <td
-                colSpan={6}
-                style={{ padding: "40px 0", textAlign: "center", color: "var(--color-neutral-600)", fontSize: 13.5 }}
-              >
-                아직 기록이 없습니다. 질의를 하면 여기에 쌓입니다.
-              </td>
+              <th>시각</th>
+              <th>페르소나</th>
+              <th>부서·등급</th>
+              <th style={{ width: "26%" }}>질의</th>
+              <th>조항</th>
+              <th style={{ textAlign: "right" }}>결과</th>
             </tr>
-          ) : (
-            rows.map((r, i) => (
-              <tr key={`${r.ts}-${r.resource_kind}-${r.resource_id}-${i}`}>
-                <td style={{ fontSize: 12.5, color: "var(--color-neutral-600)", whiteSpace: "nowrap" }}>
-                  {formatTs(r.ts)}
-                </td>
-                <td style={{ fontSize: 14.5 }}>{r.persona}</td>
-                <td style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
-                  {r.department} · 등급 {r.clearance}
-                </td>
-                <td style={{ fontSize: 13 }}>{r.query}</td>
-                <td>
-                  <span className="tag tag-neutral">{r.clause_code ?? "—"}</span>
-                  <div style={{ fontSize: 11, color: "var(--color-neutral-600)", marginTop: 2 }}>
-                    {formatResource(r)}
-                  </div>
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  <span style={r.allowed ? okStyle : blockedStyle}>{r.allowed ? "정상 열람" : "차단"}</span>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  style={{ padding: "40px 0", textAlign: "center", color: "var(--color-neutral-600)", fontSize: 13.5 }}
+                >
+                  아직 기록이 없습니다. 질의를 하면 여기에 쌓입니다.
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              rows.map((r, i) => (
+                <tr key={`${r.ts}-${r.resource_kind}-${r.resource_id}-${i}`}>
+                  <td style={{ fontSize: 12.5, color: "var(--color-neutral-600)", whiteSpace: "nowrap" }}>
+                    {formatTs(r.ts)}
+                  </td>
+                  <td style={{ fontSize: 14.5 }}>{r.persona}</td>
+                  <td style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
+                    {r.department} · 등급 {r.clearance}
+                  </td>
+                  <td style={{ fontSize: 13 }}>{r.query}</td>
+                  <td>
+                    <span className="tag tag-neutral">{r.clause_code ?? "—"}</span>
+                    <div style={{ fontSize: 11, color: "var(--color-neutral-600)", marginTop: 2 }}>
+                      {formatResource(r)}
+                    </div>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <span style={r.allowed ? okStyle : blockedStyle}>{r.allowed ? "정상 열람" : "차단"}</span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
       <div style={{ fontSize: 12.5, color: "var(--color-neutral-600)" }}>
         {/* 받은 행이 상한과 같으면 그 위에 더 있을 수 있다. "전체" 라고 적으면
             거짓이 된다 — 실제로 일어난 요청만 보여준다고 밝힌 화면이다. */}
