@@ -20,7 +20,7 @@ export default function PersonaSegment({
         <label
           key={p.name}
           className="seg-opt"
-          style={{ flex: 1, flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px" }}
+          style={{ flex: "1 1 148px", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "10px 14px" }}
         >
           <input
             type="radio"

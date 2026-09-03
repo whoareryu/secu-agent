@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Blueprint from "@/components/Blueprint";
 import PersonaSegment, { type Principal } from "@/components/PersonaSegment";
+import { 이가 } from "@/lib/josa";
+import { personaFrom } from "@/lib/persona";
 
 type LogEvent = {
   id: number;
@@ -41,15 +43,23 @@ export default function LogsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/principals")
-      .then((r) => {
+    Promise.all([
+      fetch("/api/principals").then((r) => {
         if (!r.ok) throw new Error(`principals ${r.status}`);
         return r.json() as Promise<Principal[]>;
-      })
-      .then((p) => {
+      }),
+      // 세션 페르소나를 첫 값으로 쓴다 — 허브에서 고르고 온 사람에게
+      // 이 화면이 다른 사람의 로그부터 보여주지 않게. 못 가져와도
+      // 화면은 살아 있어야 하므로 null 로 떨어뜨린다.
+      fetch("/api/persona")
+        .then((r) => (r.ok ? (r.json() as Promise<{ name: string | null }>) : { name: null }))
+        .catch(() => ({ name: null })),
+    ])
+      .then(([p, 세션]) => {
         if (cancelled) return;
         set계정(p);
-        set주체((prev) => prev || p[0]?.name || "");
+        const 세션이름 = personaFrom(세션.name ?? undefined, p.map((x) => x.name));
+        set주체((prev) => prev || 세션이름 || p[0]?.name || "");
       })
       .catch(() => {
         if (!cancelled) set계정오류("주체 목록을 불러오지 못했습니다 — 백엔드가 잠들어 있을 수 있습니다.");
@@ -116,7 +126,7 @@ export default function LogsPage() {
           {/* "이" 로 고정한다 — 세 시드 이름(김개발·박인사·최임원) 모두
               받침으로 끝나 조사가 "이"다. 받침 없는 이름이 계정에 추가되면
               그때는 이 줄을 받침 유무로 조사를 고르도록 다시 봐야 한다. */}
-          <div style={{ fontSize: 13 }}>{주체}이 볼 수 있는 호스트의 로그 {이벤트.length}건</div>
+          <div style={{ fontSize: 13 }}>{주체}{이가(주체)} 볼 수 있는 호스트의 로그 {이벤트.length}건</div>
           {이벤트.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>
               이 주체가 볼 수 있는 호스트에 기록된 이벤트가 없습니다.

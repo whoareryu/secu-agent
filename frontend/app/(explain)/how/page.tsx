@@ -182,7 +182,7 @@ export default function HowPage() {
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-600)" }}>
           한 곳인 것은 이 <strong>SQL 조각</strong>이지 권한 <strong>규칙</strong> 자체가 아닙니다.{" "}
           <code>permission_sql.py</code> 의 모듈 독스트링이 스스로 적어두듯, 같은 규칙이 SQL(사전 필터링) ·{" "}
-          <code>core/access/visibility.py</code>(재검증) · <code>frontend/components/DocumentTable.tsx</code>
+          <code>core/access/visibility.py</code>(재검증) · <code>frontend/lib/visibility.ts</code>
           (화면 설명) 세 계층에 의도적으로 산다 — 각자 다른 일을 하기 때문입니다. 문제가 되는 것은 같은
           계층 안에서 사본이 늘어나는 것입니다.
         </p>

@@ -1,4 +1,5 @@
 import Blueprint from "./Blueprint";
+import { 으로 } from "@/lib/josa";
 import type { Principal } from "./PersonaSegment";
 
 // 이 화면이 홈이다. 직원 면에서 나가면 항상 여기로 온다.
@@ -76,7 +77,7 @@ export default function Hub({
         </p>
         {활성페르소나 && (
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: "var(--color-accent-700)" }}>
-            지금은 <strong>{활성페르소나}</strong> 로 보는 중입니다 — <a href="/ask">질의 화면</a>으로 돌아가면
+            지금은 <strong>{활성페르소나}</strong>{으로(활성페르소나)} 보는 중입니다 — <a href="/ask">질의 화면</a>으로 돌아가면
             그대로 이어지고, 아래에서 다른 직원을 고르면 그 계정으로 바뀝니다.
           </p>
         )}
@@ -86,15 +87,28 @@ export default function Hub({
         action={선택하기}
         style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}
       >
-        {personas.map((p) => (
-          <Blueprint key={p.name} as="button" className="card" name="persona" value={p.name} type="submit"
-            style={{ padding: 20, textAlign: "left", cursor: "pointer", background: "var(--color-surface)" }}>
-            <div style={{ fontFamily: "var(--font-heading)", fontSize: 20 }}>{p.name}</div>
-            <div style={{ fontSize: 12.5, color: "var(--color-neutral-700)", marginTop: 4 }}>
-              {p.department} · 등급 {p.clearance}
-            </div>
-          </Blueprint>
-        ))}
+        {personas.map((p) => {
+          // 지금 보는 중인 계정을 카드에도 표시한다. 계정이 셋일 때는 위
+          // 문장 하나로 충분했지만, 열 장이 깔리면 자기 카드를 문장에서
+          // 이름을 읽고 눈으로 찾아야 한다.
+          const 보는중 = p.name === 활성페르소나;
+          return (
+            <Blueprint key={p.name} as="button" className="card" name="persona" value={p.name} type="submit"
+              style={{
+                padding: 20, textAlign: "left", cursor: "pointer",
+                background: 보는중 ? "var(--color-accent-100)" : "var(--color-surface)",
+                borderColor: 보는중 ? "var(--color-accent)" : undefined,
+              }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-heading)", fontSize: 20 }}>{p.name}</span>
+                {보는중 && <span className="tag tag-accent">보는 중</span>}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--color-neutral-700)", marginTop: 4 }}>
+                {p.department} · 등급 {p.clearance}
+              </div>
+            </Blueprint>
+          );
+        })}
       </form>
 
       <div style={{ marginTop: 40, paddingTop: 22, borderTop: "1px solid var(--color-divider)" }}>

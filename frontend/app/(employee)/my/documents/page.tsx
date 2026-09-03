@@ -77,7 +77,7 @@ export default async function MyDocumentsPage() {
   return (
     <div style={{ maxWidth: 1000, display: "flex", flexDirection: "column", gap: 18 }}>
       <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: "var(--color-neutral-700)" }}>
-        {me.department} · 등급 {me.clearance} 로 열람 가능한 문서 {보이는것.length}건입니다.
+        {me.department} · 등급 {me.clearance} 계정이 열람할 수 있는 문서 {보이는것.length}건입니다.
         이 목록은 계정의 부서와 등급으로 결정됩니다.
       </p>
       <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>

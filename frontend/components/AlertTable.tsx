@@ -39,7 +39,11 @@ export default function AlertTable() {
         <span style={{ fontFamily: "var(--font-heading)", fontSize: 21 }}>권한 밖 열람 알림</span>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 12, color: "var(--color-neutral-600)" }}>
-          {records && records.length >= LOG_LIMIT ? `최근 ${LOG_LIMIT}건` : `기록 전체 · ${records ? records.length : 0}건`}
+          {!records
+            ? "…"
+            : records.length >= LOG_LIMIT
+              ? `최근 ${LOG_LIMIT}건`
+              : `기록 전체 · ${records.length}건`}
         </span>
       </div>
       {error ? (

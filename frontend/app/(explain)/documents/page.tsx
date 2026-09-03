@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DocumentTable, { type Document } from "@/components/DocumentTable";
 import type { Principal } from "@/components/PersonaSegment";
+import { personaFrom } from "@/lib/persona";
 
 // 페르소나 3명은 하드코딩하지 않는다 — GET /api/principals 를 그대로 쓴다.
 // 문서는 GET /api/documents 가 권한 필터 없이 전부 돌려준다: 이 화면은
@@ -31,11 +32,20 @@ export default function DocumentsPage() {
         if (!r.ok) throw new Error(`documents ${r.status}`);
         return r.json() as Promise<Document[]>;
       }),
+      // 세션 페르소나. 실패해도 화면을 못 쓰게 만들지 않는다 — 첫 값이
+      // 없을 뿐이므로 null 로 떨어뜨리고 목록의 첫 사람으로 시작한다.
+      fetch("/api/persona")
+        .then((r) => (r.ok ? (r.json() as Promise<{ name: string | null }>) : { name: null }))
+        .catch(() => ({ name: null })),
     ])
-      .then(([p, d]) => {
+      .then(([p, d, 세션]) => {
         if (cancelled) return;
         setPersonas(p);
-        setPersonaName((prev) => prev || p[0]?.name || "");
+        // 첫 값은 지금 보고 있는 직원이다. p[0] 로 시작하면 허브에서
+        // 한보안을 고르고 온 사람에게 이 화면이 김개발의 가시성을
+        // 보여주면서 "현재 페르소나 기준" 이라고 적게 된다.
+        const 세션이름 = personaFrom(세션.name ?? undefined, p.map((x) => x.name));
+        setPersonaName((prev) => prev || 세션이름 || p[0]?.name || "");
         setDocuments(d);
       })
       .catch(() => {
@@ -61,9 +71,9 @@ export default function DocumentsPage() {
     <div style={{ maxWidth: 1240, display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
-          현재 페르소나 기준 가시성으로 표시합니다
+          아래에서 고른 계정 기준으로 표시합니다
         </span>
-        <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", border: "1px solid var(--color-divider)" }}>
           {personas.map((p) => {
             const on = p.name === persona.name;
             return (
