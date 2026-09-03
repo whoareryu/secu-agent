@@ -113,7 +113,10 @@ export default function LogsPage() {
         <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>불러오는 중…</p>
       ) : (
         <>
-          <div style={{ fontSize: 13 }}>{주체} 가 볼 수 있는 호스트의 로그 {이벤트.length}건</div>
+          {/* "이" 로 고정한다 — 세 시드 이름(김개발·박인사·최임원) 모두
+              받침으로 끝나 조사가 "이"다. 받침 없는 이름이 계정에 추가되면
+              그때는 이 줄을 받침 유무로 조사를 고르도록 다시 봐야 한다. */}
+          <div style={{ fontSize: 13 }}>{주체}이 볼 수 있는 호스트의 로그 {이벤트.length}건</div>
           {이벤트.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>
               이 주체가 볼 수 있는 호스트에 기록된 이벤트가 없습니다.
