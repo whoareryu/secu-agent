@@ -24,7 +24,12 @@ def _소스들() -> list[Path]:
     for 뿌리 in ("app", "components", "lib"):
         d = _프론트 / 뿌리
         나온다 += sorted(d.rglob("*.tsx")) + sorted(d.rglob("*.ts"))
-    return [p for p in 나온다 if not p.name.endswith(".test.ts")]
+    # 세 루트 바깥, 프론트 최상위 파일도 본다 — auth.ts 가 여기 있다. 이
+    # 스펙(§2.1)을 실제로 어길 가장 자연스러운 자리인 NextAuth 설정이 세
+    # 루트 중 어디에도 없어서, 여기를 빼면 이 파일이 유일한 그물이라는
+    # 독스트링의 주장이 거짓이 된다.
+    나온다 += sorted(_프론트.glob("*.tsx")) + sorted(_프론트.glob("*.ts"))
+    return [p for p in 나온다 if not p.name.endswith((".test.ts", ".test.tsx"))]
 
 
 def test_검사할_파일이_있다():
