@@ -4,32 +4,35 @@ import { useEffect, useState } from "react";
 import Blueprint from "./Blueprint";
 import type { CompareResponse, DemoPersonaView } from "@/lib/types";
 
-// Task 2 Step 4 에서 확인하고 통제자가 2026-09-02 에 이 작업 코퍼스로
-// 재현한 질의. 셋이 갈라져 사전/사후 필터링의 차이가 눈에 보인다.
-const 기본_질의 = "임원 성과급은 어떤 기준으로 정해지나";
 const K = 10;
 
-// 이 목록의 첫 원소는 위의 기본_질의 — **갈라지는** 쪽이다. 나머지 셋은
-// 순진한 경로가 이번에는 새지 *않는* 예시다. 실측(2026-09-02, 작업 코퍼스,
-// k=10, 사전→사후):
-//   기본_질의            김개발 10→7 · 박인사 10→7 · 최임원 10→10
-//   나머지 세 질의       세 계정 모두 10→10
-// 갈리는 것과 갈리지 않는 것을 한 줄에 섞어 두는 것이 요점이다 — 눌러 보면
-// 어떤 질의는 갈라지고 어떤 질의는 갈라지지 않는다. 이 목록이 하는 일은
-// 값을 대신 보여주는 것이 아니라 눌러볼 자리를 가리키는 것뿐이다.
-// 화면의 숫자는 항상 이번 호출의 실제 응답에서 온다.
-const 예시_질의 = [
-  기본_질의,
+// **자유 입력창이 없는 이유 — 이 목록이 보안 경계다.**
+//
+// 이 비교는 세 계정의 결과를 한 응답에 함께 담는다. 그게 화면의 요점이지만,
+// 질의를 방문자가 정할 수 있으면 그 순간 존재 오라클이 된다 — 로그인한
+// 누구나 임의의 주제를 물어 "등급 3 계정에게는 어떤 조항이 잡히는가" 를
+// 열거할 수 있다. 로그인은 이 프로젝트가 스스로 정의했듯 권한이 아니라 요금
+// 게이트라, 그 앞을 막지 못한다. 실측 재현은 backend/demo/compare.py 의
+// 시연_질의 주석에 있다.
+//
+// 그래서 질의는 서버가 고르고 여기서는 **인덱스만** 보낸다. 아래 목록은
+// backend/demo/compare.py 의 시연_질의 와 **순서까지** 같아야 한다 —
+// 어긋나면 라벨과 결과가 조용히 엇갈린다.
+// backend/tests/test_demo_query_whitelist.py 가 두 목록을 대조한다.
+//
+// 첫 원소는 **갈라지는** 질의이고 나머지 셋은 갈라지지 않는다.
+// 실측(2026-09-02, 작업 코퍼스, k=10, 사전→사후):
+//   0번  김개발 10→7 · 박인사 10→7 · 최임원 10→10
+//   나머지  세 계정 모두 10→10
+// 갈리는 것과 갈리지 않는 것을 섞어 두는 것이 요점이다. 이 목록이 하는 일은
+// 값을 대신 보여주는 것이 아니라 눌러볼 자리를 가리키는 것뿐이고, 화면의
+// 숫자는 항상 이번 호출의 실제 응답에서 온다.
+const 시연_질의 = [
+  "임원 성과급은 어떤 기준으로 정해지나",
   "비밀번호는 얼마나 자주 바꿔야 하나",
   "이사회 의사록 열람 절차",
   "네트워크 접근 통제 정책",
 ];
-
-// `required` 는 빈 문자열만 막는다. 공백만 넣고 제출하면 run() 이 조용히 조기
-// 반환하고, 입력창은 한 질의를 보여주는데 아래 숫자들은 **다른 질의**의 것이
-// 그대로 남는다 — 뒷받침 없는 것을 한 줄도 두지 않는다는 이 화면의 규칙을
-// 정면으로 어긴다. 브라우저가 제출 자체를 막게 해서 그 상태가 생기지 않게 한다.
-const 공백만_금지 = ".*\\S.*";
 
 type Status = "idle" | "loading" | "done" | "error";
 type Path = "prefiltered" | "naive";
@@ -52,7 +55,7 @@ function 조항_묶기(codes: string[]): { code: string; count: number }[] {
 }
 
 export default function LeakCompare() {
-  const [query, setQuery] = useState(기본_질의);
+  const [고른_질의, set고른_질의] = useState(0);
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<CompareResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -72,8 +75,8 @@ export default function LeakCompare() {
     return () => clearTimeout(timer);
   }, [status]);
 
-  async function run(q: string) {
-    if (!q.trim()) return;
+  async function run(색인: number) {
+    set고른_질의(색인);
     setStatus("loading");
     // 실패했을 때 이전 값이 남아 있으면 로딩이 성공으로 끝난 것처럼
     // 보인다 — 먼저 비워서 화면에 지어낸 값이 남지 않게 한다.
@@ -83,7 +86,7 @@ export default function LeakCompare() {
       const r = await fetch("/api/demo-compare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, k: K }),
+        body: JSON.stringify({ demo_index: 색인, k: K }),
       });
       if (!r.ok) {
         const body: { error?: string } | null = await r.json().catch(() => null);
@@ -102,14 +105,9 @@ export default function LeakCompare() {
   // 마운트 시 기본 질의로 한 번 부른다 — 패널이 "라이브"라고 배지에 적어
   // 두고 실제로는 클릭을 기다리기만 하면 그 배지가 거짓이 된다.
   useEffect(() => {
-    run(기본_질의);
+    run(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault();
-    run(query);
-  }
 
   const 갈림 = (result?.personas ?? []).map((p: DemoPersonaView) => ({
     ...p,
@@ -119,45 +117,49 @@ export default function LeakCompare() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <form onSubmit={submit} style={{ display: "flex", gap: 10 }}>
-        <input
-          className="input"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="질의를 입력하세요"
-          required
-          pattern={공백만_금지}
-          title="공백만으로는 비교할 수 없습니다"
-          maxLength={500}
-          style={{ flex: 1, height: 40, fontSize: 14 }}
-        />
-        <button
-          type="submit"
-          className="btn btn-primary"
-          style={{ height: 40, minWidth: 88 }}
-          disabled={status === "loading"}
-        >
-          {status === "loading" ? "비교 중…" : "비교"}
-        </button>
-      </form>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {예시_질의.map((q) => (
-          <button
-            key={q}
-            type="button"
-            className="btn btn-secondary"
-            style={{ height: 30, fontSize: 12, padding: "0 10px" }}
-            disabled={status === "loading"}
-            onClick={() => {
-              setQuery(q);
-              run(q);
-            }}
-          >
-            {q}
-          </button>
-        ))}
+      <div
+        role="group"
+        aria-label="비교할 시연 질의"
+        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+      >
+        {시연_질의.map((q, i) => {
+          const 고름 = i === 고른_질의;
+          return (
+            <button
+              key={q}
+              type="button"
+              className={`btn ${고름 ? "btn-primary" : "btn-secondary"}`}
+              aria-pressed={고름}
+              style={{ height: 32, fontSize: 12, padding: "0 12px" }}
+              disabled={status === "loading"}
+              onClick={() => run(i)}
+            >
+              {q}
+            </button>
+          );
+        })}
       </div>
+
+      <p style={{ margin: 0, fontSize: 12.5, color: "var(--color-neutral-800)" }}>
+        질의는 서버가 고른 네 개 중에서만 고를 수 있습니다 — 자유 입력창을 두면 이 비교 자체가{" "}
+        <strong>존재 오라클</strong>이 됩니다. 임의의 주제를 물어 등급 밖 계정에게 어떤 조항이 잡히는지를
+        열거할 수 있기 때문입니다. 목록은 <code>backend/demo/compare.py</code> 의 <code>시연_질의</code> 이고,
+        아래 숫자는 캐시가 아니라 이번 호출에서 실제로 계산된 값입니다.
+      </p>
+
+      {/* AskPanel 과 같은 이유·같은 장치. 이 패널은 마운트 즉시 부르므로
+          첫 결과 도착이 특히 조용하다. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status === "loading"
+          ? `"${시연_질의[고른_질의]}" 로 여섯 번 검색하는 중입니다.`
+          : status === "done" && result
+            ? `비교가 끝났습니다. ${result.personas
+                .map((p) => `${p.name} 사전 ${p.prefiltered.count}건 대 사후 ${p.naive.count}건`)
+                .join(", ")}.`
+            : status === "error"
+              ? `비교가 실패했습니다. ${errorMsg}`
+              : ""}
+      </p>
 
       {status === "loading" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>

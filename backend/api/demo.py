@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from api.schemas import CompareRequest, CompareResponse, DemoPathResult, DemoPersonaView
 from api.security import 시크릿_검사
 from core.ports import Embedder, PrincipalStore
-from demo.compare import compare
+from demo.compare import compare, 시연_질의
 
 # 응답 순서가 계약이다(test_세_페르소나가_모두_나온다) — 상수로 고정한다.
 # department·clearance 는 여기 적지 않는다 — 클라이언트가 권한 값을 실어
@@ -41,6 +41,13 @@ def build_demo_router(
 
     @router.post("/demo/compare", response_model=CompareResponse)
     def demo_compare(req: CompareRequest) -> CompareResponse:
+        # 목록 길이를 아는 것은 demo 패키지다. api/schemas.py 에 상한을 적으면
+        # 그 파일이 demo 를 import 해야 하고, 그 순간 tests/test_demo_isolation.py
+        # 의 "demo 에 닿는 api/ 파일은 정확히 둘" 이 깨진다.
+        if req.demo_index >= len(시연_질의):
+            raise HTTPException(status_code=422, detail="시연 질의 범위 밖")
+        질의 = 시연_질의[req.demo_index]
+
         principals = []
         for 이름 in _페르소나_이름:
             p = 주체저장소.find(이름)
@@ -49,7 +56,7 @@ def build_demo_router(
             principals.append((이름, p))
 
         conn, embedder = 자원()
-        결과 = compare(conn, embedder, req.query, req.k, principals)
+        결과 = compare(conn, embedder, 질의, req.k, principals)
 
         return CompareResponse(
             query=결과["query"],

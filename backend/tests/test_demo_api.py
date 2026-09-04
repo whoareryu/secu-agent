@@ -272,7 +272,7 @@ def test_조항코드가_권한_밖_id_를_조용히_뺀다(_코퍼스):
 
 
 def test_응답에_본문이_없다(demo_client):
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 10}, headers=_시크릿)
     본문 = r.text
     assert "text" not in r.json()["personas"][0]["prefiltered"]
     # 실제 청크 본문의 한 조각이 응답 어디에도 없어야 한다
@@ -280,13 +280,13 @@ def test_응답에_본문이_없다(demo_client):
 
 
 def test_세_페르소나가_모두_나온다(demo_client):
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 10}, headers=_시크릿)
     이름 = [p["name"] for p in r.json()["personas"]]
     assert 이름 == ["김개발", "박인사", "최임원"]
 
 
 def test_사전_필터링_개수가_k_로_고정된다(demo_client):
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 10}, headers=_시크릿)
     assert all(p["prefiltered"]["count"] == 10 for p in r.json()["personas"])
 
 
@@ -301,7 +301,7 @@ def test_순진한_경로가_사전_필터링과_달라진다(demo_client):
     이 차이가 갈리지 않으면 naive 가 prefiltered 와 같은 함수를 부르고
     있다는 뜻이다.
     """
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿)
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 10}, headers=_시크릿)
     페르소나 = {p["name"]: p for p in r.json()["personas"]}
 
     최임원 = 페르소나["최임원"]
@@ -324,7 +324,7 @@ def test_k_에_상한이_있다(demo_client):
     20 이하가 나온다(리뷰 지적 Minor 3). 공개 문서만 30개라 김개발·박인사도
     풀이 20 을 넘는다.
     """
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 9999}, headers=_시크릿)
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 9999}, headers=_시크릿)
     assert r.json()["k"] == MAX_DEMO_K
     assert all(p["prefiltered"]["count"] == MAX_DEMO_K for p in r.json()["personas"])
 
@@ -335,11 +335,11 @@ def test_LLM_을_부르지_않는다(demo_client_모델_없음):
     이 경로가 무료라는 주장이 참인지를 구조로 확인한다.
     """
     r = demo_client_모델_없음.post(
-        "/demo/compare", json={"query": "비밀번호", "k": 10}, headers=_시크릿
+        "/demo/compare", json={"demo_index": 1, "k": 10}, headers=_시크릿
     )
     assert r.status_code == 200
 
 
 def test_시크릿_없이는_401(demo_client):
-    r = demo_client.post("/demo/compare", json={"query": "비밀번호", "k": 10})
+    r = demo_client.post("/demo/compare", json={"demo_index": 1, "k": 10})
     assert r.status_code == 401
