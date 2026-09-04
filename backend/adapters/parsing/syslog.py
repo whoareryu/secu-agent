@@ -63,8 +63,19 @@ def parse_line(line: str, year: int) -> ParsedLine | None:
     if not m:
         return None
 
-    시 = datetime.strptime(m["time"], "%H:%M:%S")
-    ts = datetime(year, _월[m["mon"]], int(m["day"]), 시.hour, 시.minute, 시.second)
+    # 정규식은 자릿수만 본다 — `Feb 30`, `25:00:00` 같은 값은 여기까지 통과한 뒤
+    # datetime 이 ValueError 를 던진다. 독스트링이 "형식이 아니면 None" 이라고
+    # 약속했으므로 그 약속을 지킨다.
+    #
+    # 던지게 두면 pipeline/ingest_logs.py 의 리스트 컴프리헨션이 한 번에
+    # 평가하므로, **손상된 줄 한 개가 파일 전체의 적재를 죽인다** — 그것도
+    # "건너뜀 N건" 에 잡히지 않는 원인 불명의 ValueError 로. 여기서 None 을
+    # 돌려주면 그 줄만 건너뜀에 정직하게 집계된다.
+    try:
+        시 = datetime.strptime(m["time"], "%H:%M:%S")
+        ts = datetime(year, _월[m["mon"]], int(m["day"]), 시.hour, 시.minute, 시.second)
+    except ValueError:
+        return None
 
     msg = m["msg"]
     event_type, who = "other", None

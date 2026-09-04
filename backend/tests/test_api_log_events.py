@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import build_app
-from core.types import Principal
+from core.types import LogEvent, Principal
 
 시크릿 = "test-secret-abc123"
 헤더 = {"X-Backend-Secret": 시크릿}
@@ -58,3 +58,32 @@ def test_주체가_검색기까지_전달된다(client, 검색):
     """
     client.get("/log-events?persona=김개발", headers=헤더)
     assert 검색.받은_주체 == [Principal(department="개발팀", clearance=1)]
+
+
+def test_권한_밖_이벤트가_섞이면_502_이고_raw_가_새지_않는다(client, 검색):
+    """**SQL 이 회귀했을 때의 2차 방어선.**
+
+    이 경로는 raw(로그 전문)를 그대로 돌려준다. 권한 필터가 깨지면
+    /ask 는 AccessViolation 으로 502 를 내며 시끄럽게 죽지만, 여기에
+    재검증이 없으면 200 OK 로 권한 밖 호스트의 원문이 조용히 나간다.
+    도구 경로(core/agent/tools.py)와 같은 규율을 HTTP 계층에도 건다.
+    """
+    샌_것 = LogEvent(
+        id=99,
+        ts=None,
+        host="hr-db-01",
+        process="sshd",
+        event_type="session_open",
+        principal_name="parkhr",
+        raw="Sep 1 09:00:00 hr-db-01 sshd[1]: Accepted publickey for parkhr",
+        severity=None,
+        required_clearance=3,  # 김개발(등급 1)이 볼 수 없다
+        allowed_departments=("인사팀",),
+    )
+    검색.query = lambda principal, event_type, since, limit: [샌_것]
+
+    r = client.get("/log-events?persona=김개발", headers=헤더)
+
+    assert r.status_code == 502
+    assert "parkhr" not in r.text
+    assert "hr-db-01" not in r.text

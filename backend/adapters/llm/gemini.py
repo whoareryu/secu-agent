@@ -24,6 +24,9 @@ MAX_OUTPUT_TOKENS = 4096
 # 실측으로 동작을 확인한 리전. 바꾸려면 실제로 호출해보고 바꾼다.
 DEFAULT_LOCATION = "global"
 
+# 한 번의 모델 호출 상한(초). 에이전트는 이것을 도구 호출마다 쓸 수 있다.
+TIMEOUT_SECONDS = 60
+
 
 def build_model(project: str | None = None, location: str | None = None) -> ChatGoogleGenerativeAI:
     """Vertex 백엔드로 모델을 만든다.
@@ -43,4 +46,12 @@ def build_model(project: str | None = None, location: str | None = None) -> Chat
         project=proj,
         location=location or os.environ.get("GOOGLE_CLOUD_LOCATION", DEFAULT_LOCATION),
         vertexai=True,
+        # 타임아웃이 없으면 Gemini 가 응답하지 않을 때 invoke() 가 무한히
+        # 기다린다. /ask 는 `def` 엔드포인트라 anyio 스레드풀 슬롯을 하나
+        # 잡은 채로 매달리고, 그런 요청이 쌓이면 /healthz 를 포함한 **모든**
+        # 엔드포인트가 응답을 멈춘다. 도구 호출 루프가 최대 MAX_TOOL_CALLS
+        # 번 돌 수 있으므로 한 번의 상한을 넉넉히 잡되 유한하게 둔다.
+        timeout=TIMEOUT_SECONDS,
+        # 일시적인 429/503 을 재시도 없이 그대로 500 으로 내보내지 않는다.
+        max_retries=2,
     )

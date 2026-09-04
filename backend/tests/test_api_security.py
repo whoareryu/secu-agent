@@ -7,8 +7,11 @@
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
+from api.main import build_app
 from api.security import 시크릿_검사
+from core.types import Principal
 
 
 def test_맞는_시크릿은_통과한다(monkeypatch):
@@ -94,3 +97,22 @@ def test_상수_시간_비교를_실제로_호출한다(monkeypatch):
     with pytest.raises(HTTPException):
         시크릿_검사("wrong")
     assert 호출 == [("wrong", "s3cret")], "틀린 시크릿이 상수 시간 비교를 거치지 않았다"
+
+
+class _주체저장소:
+    def find(self, name):
+        return Principal(department="개발팀", clearance=1) if name == "김개발" else None
+
+
+def test_스키마_문서가_노출되지_않는다(monkeypatch):
+    """/openapi.json 은 시크릿을 **어느 헤더에 달아야 하는지**까지 알려준다.
+
+    데이터 엔드포인트가 전부 401 이어도 이것 하나가 열려 있으면 공격면의
+    전체 지도가 인증 없이 공개된다. 이 백엔드는 터널로 외부에 노출돼 있고,
+    컨테이너 로그에 실제로 이 세 경로를 읽고 /ask 를 시도한 흔적이 있다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", "s3cret")
+    client = TestClient(build_app(lambda: None, _주체저장소()))
+
+    for 경로 in ("/openapi.json", "/docs", "/redoc"):
+        assert client.get(경로).status_code == 404, f"{경로} 가 열려 있다"

@@ -7,6 +7,8 @@
 
 from datetime import datetime
 
+import pytest
+
 from adapters.parsing.syslog import parse_line
 
 인증실패 = (
@@ -77,3 +79,22 @@ def test_사용자를_못_찾으면_None_이지_빈_문자열이_아니다():
     줄 = "Sep  1 04:00:00 dev-web-01 kernel: [12345.6] eth0: link up"
     e = parse_line(줄, year=2026)
     assert e.principal_name is None
+
+
+@pytest.mark.parametrize(
+    "줄",
+    [
+        "Feb 30 03:14:22 dev-web-01 sshd[4412]: Failed password for root",
+        "Jan 99 03:14:22 dev-web-01 sshd[4412]: Failed password for root",
+        "Sep  1 25:00:00 dev-web-01 sshd[4412]: Failed password for root",
+        "Sep  1 12:60:00 dev-web-01 sshd[4412]: Failed password for root",
+    ],
+)
+def test_자릿수는_맞지만_존재하지_않는_시각은_None(줄: str):
+    """정규식은 자릿수만 본다 — 값의 범위는 datetime 이 안다.
+
+    던지게 두면 pipeline/ingest_logs.py 가 줄들을 한 번에 평가하므로
+    손상된 줄 하나가 파일 전체의 적재를 원인 불명의 ValueError 로 죽인다.
+    독스트링의 약속("형식이 아니면 None")대로 그 줄만 건너뛴다.
+    """
+    assert parse_line(줄, 2026) is None
