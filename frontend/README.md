@@ -40,6 +40,10 @@ npx tsc --noEmit
 npm run build
 ```
 
-`lib/` 에만 테스트가 있습니다. 컴포넌트와 라우트 핸들러는 아직 없습니다 —
-그중 가장 위험한 자리는 `lib/surface.ts` 의 `guard()` 이고, 그것은 순수
-함수라 `lib/surface.test.ts` 가 덮습니다.
+`lib/` 에만 테스트가 있습니다. 컴포넌트와 라우트 핸들러를 실제로 실행하는
+테스트는 아직 없습니다 — 그래서 가장 위험한 자리는 `app/api/ask/route.ts` 의
+401 입니다. 로그인 벽이 여기 하나로 좁아졌고, 이 줄이 사라지면 유료 Gemini
+호출이 로그인 없이 열린 채 모든 검사가 녹색이라 청구서에서만 드러납니다.
+이 라우트를 실행하는 대신 소스를 읽어 `세션 검사 → 401 → 백엔드 호출` 순서를
+고정하는 그물이 `backend/tests/test_bff_admin_gate.py` 에 있습니다.
+`lib/surface.ts` 의 `guard()` 는 순수 함수라 `lib/surface.test.ts` 가 덮습니다.

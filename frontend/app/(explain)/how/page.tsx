@@ -82,9 +82,18 @@ export default function HowPage() {
           청크 본문도 문서 제목도 담는 컬럼이 없습니다 — <code>text</code>, <code>doc_title</code>,{" "}
           <code>title</code>, <code>body</code>, <code>content</code> 다섯 이름 전부 없습니다. 제목만으로도
           문서의 존재가 드러나기 때문입니다 — <code>AccessViolation</code> 이 예외 메시지에 식별자만 담고
-          본문·호스트 이름·문서 제목을 담지 않는 것과 같은 원칙입니다(core/agent/policy.py). 컬럼을 더하면
-          실패하는 테스트가 하나 있습니다:{" "}
-          <code>backend/tests/test_access_log.py::test_기록에_본문_컬럼이_없다</code>.{" "}
+          본문·호스트 이름·문서 제목을 담지 않는 것과 같은 원칙입니다(core/agent/policy.py).
+        </p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+          이 문단은 주장을 둘 하고 있어서 테스트도 둘입니다. 다섯 이름이 없다는 <strong>좁은</strong> 주장은{" "}
+          <code>backend/tests/test_access_log.py::test_기록에_본문_컬럼이_없다</code> 가 금지 목록으로
+          지킵니다 — 목록에 없는 이름의 컬럼이 새로 생기면 그 테스트는 그대로 통과합니다. 위 태그가 컬럼{" "}
+          <strong>전부</strong>라는 전수 주장은 그래서 다른 테스트가 필요합니다:{" "}
+          <code>test_화면이_인쇄한_컬럼_목록이_스키마와_같다</code> 가 이 화면이 인쇄한 배열과{" "}
+          <code>information_schema</code> 를 집합으로 비교합니다. 실제로 <code>session_id</code> 를 더할 때
+          앞의 테스트는 녹색이었습니다 — 뒤의 테스트는 그때 생겼습니다.
+        </p>
+        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           <code>session_id</code> 는 브라우저를 구분하는 난수입니다. 이메일·이름과 잇지 않으며,
           열람 이력 화면이 <strong>내 질의와 남의 질의를 가르는 데만</strong> 씁니다 — 이 표가
           본문도 제목도 담지 않는다는 주장은 그대로입니다.

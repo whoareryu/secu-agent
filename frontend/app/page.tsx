@@ -7,9 +7,9 @@ import { PERSONA_COOKIE, personaFrom } from "@/lib/persona";
 import { principals } from "@/lib/principals";
 import type { Principal } from "@/components/PersonaSegment";
 
-// 허브는 로그인 없이 열린다(스펙 §2.2). 예전에는 세션이 없으면 여기서
-// SignIn 화면을 대신 그려 이 페이지가 곧 로그인 벽이었다 — 그 벽이 유료
-// LLM 을 부르는 /ask 의 제출 하나로 좁아졌다.
+// 허브는 로그인 없이 열린다(스펙 §2.2). 예전에는 세션이 없으면 여기서 로그인
+// 화면을 대신 그려 이 페이지가 곧 로그인 벽이었다 — 그 벽이 유료 LLM 을
+// 부르는 /ask 의 제출 하나로 좁아지면서 그 화면도 지웠다.
 export default async function Home() {
   const session = await auth();
 

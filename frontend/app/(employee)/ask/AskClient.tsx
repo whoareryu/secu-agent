@@ -8,7 +8,7 @@ import RightRail from "@/components/RightRail";
 //
 // signInAction 은 서버 액션(frontend/auth.ts)이라 클라이언트 컴포넌트가
 // 직접 import 할 수 없다 — 이 컴포넌트를 렌더하는 서버 컴포넌트(page.tsx)가
-// prop 으로 내려준다(components/SignIn.tsx 와 같은 모양).
+// prop 으로 내려준다(components/Header.tsx 와 같은 모양).
 export default function AskClient({ signInAction }: { signInAction: () => Promise<void> }) {
   const [query, setQuery] = useState("");
   return (

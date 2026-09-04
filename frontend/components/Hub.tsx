@@ -1,5 +1,6 @@
 import Blueprint from "./Blueprint";
 import { 으로 } from "@/lib/josa";
+import { guard } from "@/lib/surface";
 import type { Principal } from "./PersonaSegment";
 
 // 이 화면이 홈이다. 직원 면에서 나가면 항상 여기로 온다.
@@ -95,6 +96,10 @@ export default function Hub({
           것은 질문이 그 계정의 권한 밖 문서에 닿을 때입니다 — 닿지 않는 질문에서는
           열 계정이 모두 같은 근거 조항을 받습니다.
         </p>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.7, color: "var(--color-neutral-700)" }}>
+          <span className="tag tag-outline">감사 화면</span> 이 붙은 계정으로 들어가면 열람 이력과 권한 이상
+          알림까지 함께 열립니다 — 그 화면을 여는 것은 로그인이 아니라 이 계정의 역할입니다.
+        </p>
         {활성페르소나 && (
           <p style={{ margin: 0, fontSize: 13, lineHeight: 1.7, color: "var(--color-accent-700)" }}>
             지금은 <strong>{활성페르소나}</strong>{으로(활성페르소나)} 보는 중입니다 — <a href="/ask">질의 화면</a>으로 돌아가면
@@ -112,6 +117,15 @@ export default function Hub({
           // 문장 하나로 충분했지만, 열 장이 깔리면 자기 카드를 문장에서
           // 이름을 읽고 눈으로 찾아야 한다.
           const 보는중 = p.name === 활성페르소나;
+          // 관리자 면이 어느 계정으로 열리는지를 카드가 말한다. 적지 않으면
+          // 이 변경이 열어둔 화면을 아무도 찾지 못한다 — 열 장 중 어느 것을
+          // 골라야 하는지 화면 어디에도 없었다.
+          //
+          // 역할 문자열과 비교하지 않고 guard 를 부른다: 판정은
+          // lib/surface.ts 한 곳에서만 한다(스펙 §2.1). hasPersona 에 true 를
+          // 박는 것이 여기서는 참이다 — 이 카드를 누르는 것이 곧 그 페르소나를
+          // 고르는 일이라, 묻고 있는 것이 "이 계정을 고르면 열리는가" 다.
+          const 감사면이_열린다 = guard({ surface: "admin", hasPersona: true, role: p.role }) === "ok";
           return (
             <Blueprint key={p.name} as="button" className="card" name="persona" value={p.name} type="submit"
               style={{
@@ -122,6 +136,7 @@ export default function Hub({
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontFamily: "var(--font-heading)", fontSize: 20 }}>{p.name}</span>
                 {보는중 && <span className="tag tag-accent">보는 중</span>}
+                {감사면이_열린다 && <span className="tag tag-outline">감사 화면</span>}
               </div>
               <div style={{ fontSize: 12.5, color: "var(--color-neutral-700)", marginTop: 4 }}>
                 {p.department} · 등급 {p.clearance}

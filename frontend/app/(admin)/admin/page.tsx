@@ -19,9 +19,17 @@ export default async function AdminPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingBottom: 2 }}>
         <span className="tag tag-outline">역할: 감사</span>
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
-          열람 이력과 권한 이상 알림은 고른 페르소나의 역할이 감사일 때만 보입니다 — 로그인은 필요하지 않습니다.
+          이 화면은 고른 페르소나의 역할이 감사일 때 열립니다 — 로그인은 필요하지 않습니다.
         </span>
       </div>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+        그 판정을 접근 통제로 읽으면 안 됩니다. 페르소나는 허브에서 누구나 고르므로 이 화면도 결국 누구나
+        열 수 있고, 막히는 것은 <strong>화면뿐</strong>입니다 — 이 표를 채우는{" "}
+        <code>/api/access-log</code> 와 <code>/api/log-events</code> 는 로그인도 역할도 묻지 않습니다. 실제
+        배포라면 역할은 인사 시스템에서 오고 방문자가 고를 수 있는 값이 아니지만, 여기서는 시연을 위해
+        고르게 둡니다. 그래서 남의 질의 원문을 실제로 지키는 것은 이 판정이 아니라 아래에 적은 서버 쪽
+        가리기입니다.
+      </p>
       <p
         style={{
           margin: 0,
