@@ -74,7 +74,9 @@ def test_관리자_문지기를_가진_라우트_목록이_그대로다():
     줄면 문지기가 사라진 것이고, 늘면 관리자 데이터를 중계하는 통로가
     새로 생긴 것이다 — 둘 다 리뷰에 끌어올려야 할 변경이다.
     """
-    실제 = {_이름(p) for p in _라우트_파일들() if _관리자_검사.search(p.read_text(encoding="utf-8"))}
+    실제 = {
+        _이름(p) for p in _라우트_파일들() if _관리자_검사.search(p.read_text(encoding="utf-8"))
+    }
     assert 실제 == 관리자_라우트
 
 

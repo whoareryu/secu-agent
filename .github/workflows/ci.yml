@@ -31,9 +31,13 @@ jobs:
         with:
           enable-cache: true
 
+      # --frozen 이 없으면 uv 가 매 실행마다 의존성을 **다시 해결**한다.
+      # 그러면 CI 초록불이 잠금 파일을 보증하지 않고, 같은 커밋을 다음 주에
+      # 다시 돌리면 다른 스택에서 도는 셈이 된다. langchain 1.x 는 마이너에서도
+      # 에이전트 API 가 움직인다.
       - name: 의존성 설치
         working-directory: backend
-        run: uv sync --dev
+        run: uv sync --dev --frozen
 
       - name: 린트
         working-directory: backend
@@ -94,3 +98,22 @@ jobs:
       - name: 빌드
         working-directory: frontend
         run: npm run build
+
+  # Dockerfile 과 compose 는 여기 들어오기 전까지 어떤 검사도 받지 않았다 —
+  # 깨진 채로 머지돼도 CI 는 초록불이고, 배포하려는 순간에야 안다.
+  # 이미지를 실제로 빌드해 본다(푸시하지 않는다). 임베딩 모델을 굽는
+  # 단계가 있어 느리지만, 그 단계가 깨지는 것이 정확히 잡고 싶은 일이다.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # compose 파일 셋의 병합이 유효한지. tunnel 오버레이는 이 머신 밖의
+      # 네트워크를 참조하므로 base 만 본다.
+      - name: compose 문법
+        run: docker compose config -q
+        env:
+          BACKEND_SHARED_SECRET: ci-syntax-check-only
+
+      - name: 백엔드 이미지 빌드
+        run: docker build -t secu-agent-backend:ci ./backend
