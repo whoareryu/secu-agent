@@ -50,9 +50,18 @@ def build_app(
 
     @app.get("/healthz")
     def healthz() -> dict:
-        # db 와 model 을 따로 보고한다 — cold start 중인지 배포가 깨졌는지
-        # 구분하려면 둘이 나뉘어야 한다.
+        # **model 을 먼저 본다.** 순서가 의미를 만든다.
         #
+        # 예전에는 DB 왕복이 먼저였고, 그 호출이 자원을 resolve 하면서
+        # 임베더까지 만들었다. 그래서 db=True 면 model 은 언제나 "ready",
+        # db=False 면 언제나 "loading" 이었다 — 두 필드가 같은 사실을 두 번
+        # 말할 뿐이라, 주석이 말하던 "cold start 인지 배포가 깨졌는지 구분"
+        # 은 실현되지 않았다.
+        #
+        # 아무것도 만들지 않고 상태만 읽으면 그 구분이 생긴다: 모델이 아직
+        # 없는데 DB 는 살아 있는 상태(콜드 스타트 중)가 관측된다.
+        model_ok = 모델_준비됨()
+
         # 실제로 DB 를 왕복한다. bool(주체저장소) 는 객체가 언제나 참이라
         # 아무것도 확인하지 않는다. 없는 이름을 찾으면 정상적으로 None 이
         # 돌아오고, 그 과정에서 연결이 실제로 쓰인다.
@@ -64,7 +73,7 @@ def build_app(
         return {
             "status": "ok" if db_ok else "degraded",
             "db": db_ok,
-            "model": "ready" if 모델_준비됨() else "loading",
+            "model": "ready" if model_ok else "loading",
         }
 
     @app.post("/ask", response_model=AskResponse, dependencies=[Depends(시크릿_검사)])

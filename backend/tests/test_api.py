@@ -1,11 +1,13 @@
 """API — DB 도 LLM 도 없이 검사한다."""
 
 import os
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
+import api.main
 from adapters.agent.runner import build_agent
 from api.main import build_app
 from core.agent.policy import 로그_범위_고지
@@ -511,3 +513,47 @@ def test_고지가_모델_출력에서_오지_않는다():
     client = _클라이언트(에이전트=_로그를_부르지만_침묵하는_에이전트())
     r = client.post("/ask", json={"query": "로그", "persona": "김개발"}, headers=_시크릿)
     assert r.json()["log_scope"] == 로그_범위_고지
+
+
+def test_healthz_의_model_이_db_와_독립적이다(monkeypatch):
+    """예전에는 두 필드가 같은 사실을 두 번 말했다.
+
+    DB 왕복이 먼저였고 그 호출이 자원을 resolve 하며 임베더까지 만들어서,
+    db=True 면 model 은 언제나 "ready" 였다. 주석이 말하던 "cold start 인지
+    배포가 깨졌는지 구분" 은 실현되지 않았다.
+
+    모델은 아직 없는데 DB 는 살아 있는 상태 — 콜드 스타트 중 — 가 실제로
+    관측되어야 한다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+    app = build_app(lambda: None, 스텁주체저장소({}), 모델_준비됨=lambda: False)
+
+    몸 = TestClient(app).get("/healthz").json()
+
+    assert 몸["db"] is True, "DB 는 살아 있다"
+    assert 몸["model"] == "loading", "모델은 아직 없다 — 두 필드가 갈려야 한다"
+    assert 몸["status"] == "ok", "모델 로딩 중은 degraded 가 아니다"
+
+
+def test_healthz_가_model_을_db_보다_먼저_읽는다():
+    """순서가 의미를 만든다 — 스텁으로는 검증할 수 없어 위치로 고정한다.
+
+    프로덕션에서 `주체저장소.find()` 는 api/deps.py 의 `_자원()` 을 거치며
+    **임베더까지 만든다.** 그래서 그 호출이 먼저면 `모델_준비됨()` 은 언제나
+    True 이고, model 필드가 db 필드를 되풀이할 뿐이다.
+
+    테스트는 `모델_준비됨` 을 스텁으로 주입하므로 이 결합이 재현되지 않는다.
+    tests/test_search_sql.py 가 권한 조건과 ORDER BY 의 위치 관계로 사전
+    필터링을 인코딩한 것과 같은 방식으로, 여기서는 호출 순서를 고정한다.
+    """
+    본문 = Path(api.main.__file__).read_text(encoding="utf-8")
+    시작 = 본문.index("def healthz()")
+    끝 = 본문.index("@app.post(", 시작)
+    몸통 = 본문[시작:끝]
+
+    모델_위치 = 몸통.index("모델_준비됨()")
+    db_위치 = 몸통.index('주체저장소.find("__healthz__")')
+    assert 모델_위치 < db_위치, (
+        "모델 상태를 DB 왕복보다 먼저 읽어야 한다 — 뒤에서 읽으면 그 왕복이 "
+        "임베더를 만들어, 두 필드가 같은 사실을 두 번 말하게 된다."
+    )
