@@ -106,6 +106,7 @@ export default function HowPage() {
           로그가 그대로 공유하기 위해서입니다 — 판정 함수가 두 벌이면 그 어긋남은 조용히 결과만 줄이고
           에러를 내지 않습니다.
         </p>
+        <div className="table-scroll">
         <table className="table">
           <thead>
             <tr>
@@ -132,6 +133,7 @@ export default function HowPage() {
             </tr>
           </tbody>
         </table>
+        </div>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           로그 쪽 장치는 <code>core/agent/policy.py</code> 의 <code>로그_범위_고지</code> 문구입니다 — 숨겨진
           이벤트가 1000건이든 0건이든 같은 문구가 붙어, 관측값이 숨은 데이터 유무에 따라 변하지 않습니다.
@@ -146,21 +148,25 @@ export default function HowPage() {
         </p>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           권한 SQL 조각도 한 곳에서 옵니다 — <code>adapters/db/permission_sql.py</code> 의{" "}
-          <code>권한_WHERE(alias)</code> 하나입니다. 이를 직접 import 하는 파일은 다섯입니다 — 문서 검색(
+          <code>권한_WHERE(alias)</code> 하나입니다. 이를 직접 import 하는 파일은 여섯입니다 — 문서 검색(
           <code>chunk_search.py</code>), 로그 검색(<code>log_search.py</code>),{" "}
           <strong>의도적으로 새는 데모 경로</strong>(<code>demo/naive_search.py</code>), 위 패널 ①의 조항 코드
-          조회(<code>demo/compare.py</code>), 그리고 <code>backend/tests/test_permission_sql.py</code> 입니다 —{" "}
+          조회(<code>demo/compare.py</code>), 그리고 테스트 둘(
+          <code>backend/tests/test_permission_sql.py</code> ·{" "}
+          <code>backend/tests/test_search_sql.py</code>) 입니다 —{" "}
           <code>
             grep -rn &quot;from adapters.db.permission_sql import 권한_WHERE&quot; backend --include=&quot;*.py&quot;
           </code>{" "}
-          를 돌리면 이 다섯 줄이 그대로 나옵니다. 비테스트 넷 중 사본을 따로 두는 것은{" "}
+          를 돌리면 이 여섯 줄이 그대로 나옵니다. 비테스트 넷 중 사본을 따로 두는 것은{" "}
           <code>chunk_search.py</code> 뿐입니다 — 40행이{" "}
           <code>_권한_WHERE = 권한_WHERE(&quot;d&quot;)</code> 로 모듈 상수에 저장해 둡니다.{" "}
-          <code>log_search.py</code>:34 · <code>naive_search.py</code>:40 · <code>compare.py</code>:28 은 반환값을
-          호출부 문자열에 바로 끼워 넣을 뿐 저장해두는 사본이 없습니다. 다섯째 파일의{" "}
-          <code>test_chunk_search_가_이_조각을_쓴다</code> 가 그 저장된 사본이 원본과 여전히 같은지를
-          단언합니다 — 사본이 없는 나머지 셋은 애초에 어긋날 자리가 없습니다. 이 목록과 행 번호는{" "}
-          <code>backend/tests/test_how_screen_claims.py</code> 가 집합 동일성으로 고정합니다 — 여섯째 파일이
+          <code>log_search.py</code>:34 · <code>naive_search.py</code>:40 · <code>compare.py</code>:57 은 반환값을
+          호출부 문자열에 바로 끼워 넣을 뿐 저장해두는 사본이 없습니다.{" "}
+          <code>test_permission_sql.py</code> 의 <code>test_chunk_search_가_이_조각을_쓴다</code> 가 그 저장된
+          사본이 원본과 여전히 같은지를 단언하고, <code>test_search_sql.py</code> 는 권한 조건을 담은 SQL 네
+          문장이 그 조각을 여전히 포함하는지와 그 위치가 <code>ORDER BY</code>·<code>LIMIT</code> 보다 앞인지를
+          단언합니다 — 뒤로 밀리는 순간 사후 필터링이기 때문입니다. 이 목록과 행 번호는{" "}
+          <code>backend/tests/test_how_screen_claims.py</code> 가 집합 동일성으로 고정합니다 — 일곱째 파일이
           생기면 이 문장이 조용히 거짓이 되는 대신 테스트가 먼저 터집니다.
         </p>
         <p

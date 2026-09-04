@@ -56,6 +56,30 @@ _벡터_SQL = f"""
     LIMIT %(k)s
 """
 
+# _벡터_SQL 과 같은 이유로 상수다. 메서드 안의 인라인 f-string 으로 두면
+# 테스트가 **실행되는 문장**에 닿지 못한다 — 실측: 이 두 문장에서 권한
+# 조건을 지워도 기본 스위트 274개가 전부 통과했다. 사후 필터링으로 바뀌는
+# 세 경로 중 둘이 여기다.
+_키워드_SQL = f"""
+    SELECT c.id
+    FROM chunks c
+    JOIN documents d ON d.id = c.document_id
+    WHERE {_권한_WHERE}
+      AND c.text_tsv @@ to_tsquery('simple', %(q)s)
+    ORDER BY ts_rank(c.text_tsv, to_tsquery('simple', %(q)s)) DESC
+    LIMIT %(k)s
+"""
+
+_히트_SQL = f"""
+    SELECT c.id, c.text, d.title, cl.code,
+           d.required_clearance, d.allowed_departments
+    FROM chunks c
+    JOIN documents d ON d.id = c.document_id
+    LEFT JOIN clauses cl ON cl.id = c.clause_id
+    WHERE c.id = ANY(%(ids)s)
+      AND {_권한_WHERE}
+"""
+
 
 class PgChunkSearch:
     def __init__(self, conn: psycopg.Connection) -> None:
@@ -112,15 +136,7 @@ class PgChunkSearch:
             return []
         with self.conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT c.id
-                FROM chunks c
-                JOIN documents d ON d.id = c.document_id
-                WHERE {_권한_WHERE}
-                  AND c.text_tsv @@ to_tsquery('simple', %(q)s)
-                ORDER BY ts_rank(c.text_tsv, to_tsquery('simple', %(q)s)) DESC
-                LIMIT %(k)s
-                """,
+                _키워드_SQL,
                 {
                     "clearance": principal.clearance,
                     "dept": principal.department,
@@ -150,15 +166,7 @@ class PgChunkSearch:
             return []
         with self.conn.cursor() as cur:
             cur.execute(
-                f"""
-                SELECT c.id, c.text, d.title, cl.code,
-                       d.required_clearance, d.allowed_departments
-                FROM chunks c
-                JOIN documents d ON d.id = c.document_id
-                LEFT JOIN clauses cl ON cl.id = c.clause_id
-                WHERE c.id = ANY(%(ids)s)
-                  AND {_권한_WHERE}
-                """,
+                _히트_SQL,
                 {
                     "ids": list(ids),
                     "clearance": principal.clearance,

@@ -28,22 +28,23 @@ from pathlib import Path
 _전체 = ("core", "adapters", "api", "pipeline", "eval", "demo", "tests")
 _비테스트 = ("core", "adapters", "api", "pipeline", "eval", "demo")
 
-# 화면 문장: "이를 직접 import 하는 파일은 다섯입니다 — …"
+# 화면 문장: "이를 직접 import 하는 파일은 여섯입니다 — …"
 권한_조각을_import_하는_파일 = {
     "adapters/db/chunk_search.py",
     "adapters/db/log_search.py",
     "demo/naive_search.py",
     "demo/compare.py",
     "tests/test_permission_sql.py",
+    "tests/test_search_sql.py",
 }
 
 # 화면 문장: "사본을 따로 두는 것은 chunk_search.py 뿐입니다 — 40행이 …
-# log_search.py:34 · naive_search.py:40 · compare.py:28 은 …"
+# log_search.py:34 · naive_search.py:40 · compare.py:57 은 …"
 권한_조각_호출_위치 = {
     ("adapters/db/chunk_search.py", 40),
     ("adapters/db/log_search.py", 34),
     ("demo/naive_search.py", 40),
-    ("demo/compare.py", 28),
+    ("demo/compare.py", 57),
 }
 
 # 화면 문장: "visible() 을 부르는 비테스트 호출부는 core/agent/policy.py 안에
@@ -125,7 +126,7 @@ def _권한_WHERE_를_import_하는가(node: ast.AST) -> bool:
 def test_권한_조각을_import_하는_파일_목록이_그대로다():
     """화면이 인쇄한 grep 의 결과를 집합 동일성으로 고정한다.
 
-    다섯째 importer 가 생기면 화면의 "다섯입니다" 가 조용히 거짓이 된다.
+    일곱째 importer 가 생기면 화면의 "여섯입니다" 가 조용히 거짓이 된다.
     """
     실제 = {
         str(py)
