@@ -279,10 +279,20 @@ footer{background:#fff;border-top:1px solid var(--line-2);padding:64px 0 72px;}
     <div class="foot-links">
       <a href="https://whoareryu.cloud" target="_blank" rel="noopener">라이브 데모 · whoareryu.cloud ↗</a>
       <a href="https://github.com/{{ site.github_username }}/secu-agent" target="_blank" rel="noopener">GitHub · {{ site.github_username }}/secu-agent ↗</a>
-      <a href="mailto:{{ site.email }}">{{ site.email }}</a>
+      {% include email.html %}
     </div>
   </div>
 </footer>
 
+<script>
+  // _includes/email.html 이 심어둔 조각을 합쳐 mailto 링크로 만든다.
+  // 소스에는 @ 로 이어진 문자열이 없고, 여기서 처음 이어진다.
+  // 실패해도 화면은 살아 있다 — 링크만 안 될 뿐 주소는 [at] 형태로 읽힌다.
+  for (const a of document.querySelectorAll("a[data-mail-user][data-mail-domain]")) {
+    const 주소 = a.dataset.mailUser + String.fromCharCode(64) + a.dataset.mailDomain;
+    a.href = "mailto:" + 주소;
+    a.textContent = 주소;
+  }
+</script>
 </body>
 </html>

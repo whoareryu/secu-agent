@@ -234,6 +234,11 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
         직원 면에는 페르소나 선택기가 없습니다 — 내가 그 사람이기 때문입니다.
         비교하는 도구는 설명 면과 관리자 면에만 둡니다.
       </p>
+      <p class="lead" style="font-size:14px;">
+        실행 중인 애플리케이션을 그대로 캡처했습니다. 한 곳만 손댔습니다 —
+        로그인 계정 자리의 메일 주소를 <code>demo@example.com</code> 으로 바꾸고 찍었습니다.
+        그 밖의 숫자와 문장은 전부 실제 화면의 것입니다.
+      </p>
     </div>
 
     {% assign shots =
@@ -677,7 +682,7 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
         <a class="btn btn-primary" href="https://whoareryu.cloud" target="_blank" rel="noopener">
           <span class="dot"></span> whoareryu.cloud
         </a>
-        <a class="btn btn-ghost" href="mailto:{{ site.email }}">{{ site.email }}</a>
+        {% include email.html class="btn btn-ghost" %}
       </div>
 
       <div class="grid g3" style="margin-top:48px;">
@@ -688,7 +693,7 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
         </div>
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--ink-3);margin-bottom:6px;">이메일</div>
-          <a href="mailto:{{ site.email }}" style="font-weight:600;">{{ site.email }}</a>
+          {% include email.html style="font-weight:600;" %}
         </div>
         <div>
           <div style="font-size:13px;font-weight:600;color:var(--ink-3);margin-bottom:6px;">GitHub</div>

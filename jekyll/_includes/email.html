@@ -1,0 +1,22 @@
+{%- comment -%}
+연락처 메일 주소. **소스에 @ 로 이어진 평문을 두지 않는다.**
+
+이 저장소는 public 이고 이 사이트는 GitHub Pages 로 배포된다. `site.email`
+을 그대로 인쇄하던 때는 정규식 한 줄로 긁혔다. 여기서는 사용자와 도메인을
+따로 담고(_config.yml 의 email_user · email_domain), 표시할 때 조립한다.
+
+JS 가 없거나 실패하면 `사용자 [at] 도메인` 이 그대로 보인다 — 사람은 읽을
+수 있고 링크만 안 될 뿐이다. 완벽하지 않다: JS 를 실행하는 스크래퍼는
+여전히 긁는다. 막는 것은 "정규식 한 줄" 하나이고, 그것이 가장 싸게 막을
+수 있는 것이다.
+
+인자: class(선택) · style(선택) — 호출부의 기존 모양을 유지하기 위해 받는다.
+{%- endcomment -%}
+<a
+  {%- if include.class %} class="{{ include.class }}"{% endif -%}
+  {%- if include.style %} style="{{ include.style }}"{% endif %}
+  href="#"
+  data-mail-user="{{ site.email_user }}"
+  data-mail-domain="{{ site.email_domain }}"
+  >{{ site.email_user }} [at] {{ site.email_domain | replace: ".", " [dot] " }}</a
+>

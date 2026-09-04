@@ -4,7 +4,11 @@
 # 같은 대용량 디렉토리가 생겨도 지킬 스캔 범위 밖이다.
 
 title: Secu-Agent
-email: fbwns1234@gmail.com
+# 주소를 사용자·도메인으로 나눠 담는다. 합치는 것은 _includes/email.html 이
+# 표시 시점에 한다 — 소스에 @ 로 이어진 평문을 두지 않기 위해서다.
+# backend/tests/test_no_personal_email.py 가 그 부재를 고정한다.
+email_user: fbwns1234
+email_domain: gmail.com
 description: >-
   기업 사내보안 규정 및 감사 로그 분석 AI 에이전트.
   권한별 접근 제어가 적용된 하이브리드 RAG 와, AI 가 생성한 코드를
