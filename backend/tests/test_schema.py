@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 
+import psycopg
 import pytest
 
 from core.types import EMBEDDING_DIM
@@ -84,3 +85,47 @@ def test_log_events_의_host_가_hosts_를_참조한다(db연결):
               AND kcu.column_name = 'host'
         """)
         assert cur.fetchone()[0] == 1
+
+
+@pytest.mark.db
+def test_principals_에_role_컬럼이_있다(db연결):
+    """역할을 서버가 정한다는 불변식이 이 컬럼에 걸려 있다.
+
+    프론트에 이름→역할 맵을 두면 권한 판정의 네 번째 사본이 된다(스펙 §2.1).
+    """
+    with db연결.cursor() as cur:
+        cur.execute(
+            "SELECT data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'principals' AND column_name = 'role'"
+        )
+        row = cur.fetchone()
+    assert row is not None, "principals.role 이 없다"
+    assert row == ("text", "NO")
+
+
+@pytest.mark.db
+def test_role_은_정해진_셋만_받는다(db연결):
+    """오타 하나가 조용히 새 역할을 만들면 guard 가 그 값을 모른 채 통과시킨다."""
+    with db연결.cursor() as cur:
+        cur.execute("TRUNCATE principals RESTART IDENTITY CASCADE")
+        with pytest.raises(psycopg.errors.CheckViolation):
+            cur.execute(
+                "INSERT INTO principals (name, department, clearance, role) "
+                "VALUES ('x', '개발팀', 1, 'superuser')"
+            )
+    db연결.rollback()
+
+
+@pytest.mark.db
+def test_access_records_에_session_id_가_있다(db연결):
+    """내 브라우저의 질의와 남의 것을 가르는 유일한 값이다(스펙 §2.4).
+
+    NULL 을 허용한다 — 이 컬럼이 생기기 전의 행이 이미 있다.
+    """
+    with db연결.cursor() as cur:
+        cur.execute(
+            "SELECT data_type, is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'access_records' AND column_name = 'session_id'"
+        )
+        row = cur.fetchone()
+    assert row == ("text", "YES")

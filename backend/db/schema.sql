@@ -102,7 +102,8 @@ CREATE TABLE IF NOT EXISTS principals (
     id         BIGSERIAL PRIMARY KEY,
     name       TEXT NOT NULL UNIQUE,
     department TEXT NOT NULL,
-    clearance  INT  NOT NULL
+    clearance  INT  NOT NULL,
+    role       TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member', 'auditor', 'developer'))
 );
 
 -- 열람 기록. 관리자 대시보드가 이것을 읽는다.
@@ -146,6 +147,25 @@ ALTER TABLE access_records
     ADD COLUMN IF NOT EXISTS resource_kind TEXT NOT NULL DEFAULT 'chunk'
     CHECK (resource_kind IN ('chunk', 'log_event'));
 ALTER TABLE access_records ALTER COLUMN resource_kind DROP DEFAULT;
+
+-- 역할은 등급·부서와 같은 자리에 둔다 — 쿠키에는 이름만 담기고 서버가
+-- 번역한다는 불변식(W6 §2.2)이 역할에도 그대로 적용된다. 프론트 상수 맵은
+-- 권한 판정의 네 번째 사본이 된다.
+--
+-- 기본값 'member' 는 기존 행의 백필을 위해서만 필요하다. resource_kind 와
+-- 달리 DEFAULT 를 떼지 않는다 — 새 페르소나를 넣을 때 역할을 빠뜨리는 것이
+-- "일반 사용자" 로 떨어지는 것은 닫히는 방향이라 안전하다.
+ALTER TABLE principals
+    ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'
+    CHECK (role IN ('member', 'auditor', 'developer'));
+
+-- 어느 브라우저가 남긴 기록인지. 난수이고 이메일·이름과 잇지 않는다.
+-- NULL 을 허용하는 이유: 이 컬럼이 생기기 전의 행이 이미 있고, 그 행들은
+-- 어느 세션의 것도 아니다 — 그래서 아무에게도 원문이 보이지 않는다.
+ALTER TABLE access_records
+    ADD COLUMN IF NOT EXISTS session_id TEXT;
+
+CREATE INDEX IF NOT EXISTS access_records_session_idx ON access_records (session_id);
 
 CREATE INDEX IF NOT EXISTS access_records_ts_idx ON access_records (ts DESC);
 CREATE INDEX IF NOT EXISTS access_records_allowed_idx ON access_records (allowed);
