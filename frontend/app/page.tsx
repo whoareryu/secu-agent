@@ -4,18 +4,8 @@ import { auth, signInAction, signOutAction } from "@/auth";
 import Hub from "@/components/Hub";
 import Blueprint from "@/components/Blueprint";
 import { PERSONA_COOKIE, personaFrom } from "@/lib/persona";
+import { principals } from "@/lib/principals";
 import type { Principal } from "@/components/PersonaSegment";
-
-// 서버 컴포넌트이므로 BFF 를 거치지 않고 백엔드를 직접 부른다. BFF 라우트가
-// 있는 이유는 브라우저가 시크릿을 가질 수 없어서이고, 여기는 서버다.
-async function principals(): Promise<Principal[]> {
-  const r = await fetch(`${process.env.BACKEND_URL}/principals`, {
-    headers: { "X-Backend-Secret": process.env.BACKEND_SHARED_SECRET ?? "" },
-    cache: "no-store",
-  });
-  if (!r.ok) throw new Error(`principals ${r.status}`);
-  return r.json();
-}
 
 // 허브는 로그인 없이 열린다(스펙 §2.2). 예전에는 세션이 없으면 여기서
 // SignIn 화면을 대신 그려 이 페이지가 곧 로그인 벽이었다 — 그 벽이 유료

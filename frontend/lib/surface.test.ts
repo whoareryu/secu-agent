@@ -15,6 +15,11 @@ test("관리자 면은 감사 역할만 통과한다", () => {
 test("관리자 면은 페르소나가 없으면 허브로 보낸다", () => {
   // 역할은 페르소나에서 온다. 페르소나가 없으면 역할도 없다.
   assert.equal(guard({ surface: "admin", hasPersona: false, role: "member" }), "to-hub");
+  // 역할이 auditor 인데도 페르소나가 없으면 막혀야 한다. 이 줄이 없으면 위
+  // 한 줄은 role !== "auditor" 만으로도 통과해서, 페르소나 없는 경로를 닫는
+  // 절(!hasPersona)에 덮개가 하나도 없게 된다 — 지우고 돌려도 여섯 개가 다
+  // 초록이었다. 통과하지만 이유가 틀린 단언은 덮개가 아니다.
+  assert.equal(guard({ surface: "admin", hasPersona: false, role: "auditor" }), "to-hub");
 });
 
 test("설명 면은 로그인도 페르소나도 요구하지 않는다", () => {

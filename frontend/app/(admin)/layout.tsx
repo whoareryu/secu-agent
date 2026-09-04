@@ -2,20 +2,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, signInAction, signOutAction } from "@/auth";
 import { PERSONA_COOKIE, personaFrom } from "@/lib/persona";
+import { principals, roleOf } from "@/lib/principals";
 import { guard, navFor } from "@/lib/surface";
 import SurfaceNav from "@/components/SurfaceNav";
 import Header from "@/components/Header";
-import Blueprint from "@/components/Blueprint";
+import BackendDown from "@/components/BackendDown";
 import type { Principal } from "@/components/PersonaSegment";
-
-async function principals(): Promise<Principal[]> {
-  const r = await fetch(`${process.env.BACKEND_URL}/principals`, {
-    headers: { "X-Backend-Secret": process.env.BACKEND_SHARED_SECRET ?? "" },
-    cache: "no-store",
-  });
-  if (!r.ok) throw new Error(`principals ${r.status}`);
-  return r.json();
-}
 
 // 관리자 면을 여는 것은 로그인이 아니라 페르소나의 역할이다(스펙 §2.2) —
 // 그래서 이 레이아웃도 직원 면처럼 페르소나를 확정해야 하고, 확정하려면
@@ -31,33 +23,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   try {
     목록 = await principals();
   } catch {
-    return (
-      <div style={{ maxWidth: 900, margin: "48px auto", padding: "0 20px" }}>
-        <Blueprint className="card" style={{ padding: 24, gap: 14, borderColor: "var(--color-accent-700)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="tag tag-outline">502</span>
-            <span style={{ fontFamily: "var(--font-heading)", fontSize: 22 }}>백엔드에 닿지 못했습니다</span>
-          </div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            이 배포는 상시 가동이 아니라 필요할 때만 백엔드를 켜 둡니다. 지금
-            꺼져 있어 계정 정보를 확인하지 못했습니다 — 켜지기 전에는
-            새로고침해도 같은 결과입니다.
-          </p>
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-            <a href="/">허브로 돌아가기</a>
-          </p>
-        </Blueprint>
-      </div>
-    );
+    return <BackendDown 무엇을="계정 정보를" />;
   }
 
   const jar = await cookies();
   const name = personaFrom(jar.get(PERSONA_COOKIE)?.value, 목록.map((p) => p.name));
-  // 역할을 못 찾으면 member 로 본다 — 닫히는 방향이다.
-  const role = 목록.find((p) => p.name === name)?.role ?? "member";
+  const role = roleOf(목록, name);
 
-  // 사이드바가 관리자 메뉴를 감추는 것은 프레젠테이션일 뿐이다 — 주소창에
-  // /admin 을 직접 입력할 수 있으므로 이 판정이 진짜 문이다.
+  // 이 판정이 막는 것은 **화면**이다. 데이터까지 막는다고 읽으면 안 된다 —
+  // /api/log-events 와 /api/access-log 는 이제 누구나 부를 수 있다(스펙 §2.2,
+  // 그 라우트들의 주석). 그쪽에서 남의 질의 원문을 가리는 것은 로그인이나
+  // 역할이 아니라 백엔드의 방문자 세션 마스킹이다. 그래도 이 줄이 필요한
+  // 이유는 사이드바에서 메뉴를 빼는 것이 프레젠테이션일 뿐이어서다 —
+  // 주소창에 /admin 을 직접 입력하면 그 화면은 여기서만 막힌다.
   if (guard({ surface: "admin", hasPersona: name !== null, role }) === "to-hub") redirect("/");
 
   return (
