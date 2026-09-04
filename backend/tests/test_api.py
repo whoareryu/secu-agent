@@ -11,7 +11,7 @@ import api.main
 from adapters.agent.runner import build_agent
 from api.main import build_app
 from core.agent.policy import 로그_범위_고지
-from core.types import EMBEDDING_DIM, PolicyHit, Principal
+from core.types import EMBEDDING_DIM, AccessRecord, PolicyHit, Principal
 from tests.fake_chat import 대본모델
 
 시크릿 = "test-secret-abc123"
@@ -557,3 +557,83 @@ def test_healthz_가_model_을_db_보다_먼저_읽는다():
         "모델 상태를 DB 왕복보다 먼저 읽어야 한다 — 뒤에서 읽으면 그 왕복이 "
         "임베더를 만들어, 두 필드가 같은 사실을 두 번 말하게 된다."
     )
+
+
+def test_access_log_이_남의_질의를_가린다(monkeypatch):
+    """**마스킹은 백엔드가 한다.** 프론트에서 가리면 원문이 이미 브라우저에
+    도착한 뒤라 누출이다 — 응답 JSON 수준에서 확인한다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+
+    class _기록:
+        def recent(self, limit):
+            return [
+                AccessRecord(
+                    persona="김개발",
+                    department="개발팀",
+                    clearance=1,
+                    query="내가 친 질문",
+                    clause_code=None,
+                    resource_kind="chunk",
+                    resource_id=1,
+                    allowed=True,
+                    session_id="sess-a",
+                ),
+                AccessRecord(
+                    persona="한보안",
+                    department="정보보안팀",
+                    clearance=2,
+                    query="남이 친 질문",
+                    clause_code=None,
+                    resource_kind="chunk",
+                    resource_id=2,
+                    allowed=True,
+                    session_id="sess-b",
+                ),
+            ]
+
+        def violations(self, limit):
+            return []
+
+        def record(self, rows):
+            return 0
+
+    c = TestClient(build_app(lambda: None, 스텁주체저장소({}), 열람기록=_기록()))
+    몸 = c.get("/access-log?session_id=sess-a", headers=헤더).json()
+
+    assert 몸[0]["query"] == "내가 친 질문"
+    assert 몸[1]["query"] == "(다른 방문자의 질의)"
+    assert "남이 친 질문" not in c.get("/access-log?session_id=sess-a", headers=헤더).text, (
+        "남의 원문이 응답 본문에 남아 있으면 안 된다"
+    )
+
+
+def test_세션을_모르면_전부_가린다(monkeypatch):
+    """쿠키 없는 요청이 옛 행 전부를 여는 일이 없어야 한다."""
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+
+    class _기록:
+        def recent(self, limit):
+            return [
+                AccessRecord(
+                    persona="김개발",
+                    department="개발팀",
+                    clearance=1,
+                    query="어떤 질문",
+                    clause_code=None,
+                    resource_kind="chunk",
+                    resource_id=1,
+                    allowed=True,
+                    session_id=None,
+                )
+            ]
+
+        def violations(self, limit):
+            return []
+
+        def record(self, rows):
+            return 0
+
+    c = TestClient(build_app(lambda: None, 스텁주체저장소({}), 열람기록=_기록()))
+    몸 = c.get("/access-log", headers=헤더).json()
+    assert 몸[0]["query"] == "(다른 방문자의 질의)"

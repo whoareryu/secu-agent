@@ -22,6 +22,7 @@ from api.schemas import (
     PrincipalView,
 )
 from api.security import 시크릿_검사
+from core.access.masking import 가린_질의
 from core.agent.policy import 로그_범위_고지
 from core.ports import AccessLog, DocumentCatalog, LogSearch, PrincipalStore
 from core.types import AccessRecord
@@ -115,6 +116,7 @@ def build_app(
                                 resource_kind=e.kind,
                                 resource_id=rid,
                                 allowed=False,
+                                session_id=req.session_id,
                             )
                             for rid in e.ids
                         ]
@@ -152,6 +154,7 @@ def build_app(
                             resource_kind="chunk",
                             resource_id=h.chunk_id,
                             allowed=True,
+                            session_id=req.session_id,
                         )
                         for h in ctx.collected
                     ]
@@ -221,16 +224,22 @@ def build_app(
         ]
 
     @app.get("/access-log", dependencies=[Depends(시크릿_검사)])
-    def access_log(limit: int = Query(default=50, ge=1, le=200)) -> list[AccessRecordView]:
+    def access_log(
+        limit: int = Query(default=50, ge=1, le=200),
+        session_id: str | None = None,
+    ) -> list[AccessRecordView]:
         if 열람기록 is None:
             raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
-        return [_기록으로(r) for r in 열람기록.recent(limit)]
+        return [_기록으로(r, session_id) for r in 열람기록.recent(limit)]
 
     @app.get("/access-log/violations", dependencies=[Depends(시크릿_검사)])
-    def access_violations(limit: int = Query(default=20, ge=1, le=200)) -> list[AccessRecordView]:
+    def access_violations(
+        limit: int = Query(default=20, ge=1, le=200),
+        session_id: str | None = None,
+    ) -> list[AccessRecordView]:
         if 열람기록 is None:
             raise HTTPException(status_code=503, detail="열람 기록 준비되지 않음")
-        return [_기록으로(r) for r in 열람기록.violations(limit)]
+        return [_기록으로(r, session_id) for r in 열람기록.violations(limit)]
 
     @app.get("/log-events", dependencies=[Depends(시크릿_검사)])
     def log_events(
@@ -279,12 +288,14 @@ def build_app(
     return app
 
 
-def _기록으로(r: AccessRecord) -> AccessRecordView:
+def _기록으로(r: AccessRecord, 내_세션: str | None) -> AccessRecordView:
+    # query 만 가린다. 누가·언제·어떤 조항에 닿았는지는 그대로다 —
+    # 가리는 것은 자유 입력뿐이라는 것이 이 화면의 계약이다.
     return AccessRecordView(
         persona=r.persona,
         department=r.department,
         clearance=r.clearance,
-        query=r.query,
+        query=가린_질의(r.query, r.session_id, 내_세션),
         clause_code=r.clause_code,
         resource_kind=r.resource_kind,
         resource_id=r.resource_id,

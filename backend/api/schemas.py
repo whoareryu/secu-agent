@@ -13,6 +13,11 @@ from pydantic import BaseModel, Field
 class AskRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     persona: str = Field(min_length=1, max_length=50)
+    # 어느 브라우저가 던진 질의인지. 권한과 무관하다 — 열람 이력에서
+    # 자기 질의를 알아보게 하는 데만 쓴다(스펙 §2.4). 클라이언트가 정하는
+    # 값이지만, 위조해도 얻는 것은 "그 세션의 질의 원문" 뿐이고 세션 id 는
+    # 난수라 남의 것을 알 방법이 없다.
+    session_id: str | None = None
 
 
 class PolicyHitView(BaseModel):
