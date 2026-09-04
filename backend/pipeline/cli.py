@@ -157,17 +157,20 @@ def main() -> int:
             for p in 계정들:
                 cur.execute(
                     """
-                    INSERT INTO principals (name, department, clearance)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO principals (name, department, clearance, role)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (name) DO UPDATE SET
                         department = EXCLUDED.department,
-                        clearance = EXCLUDED.clearance
+                        clearance = EXCLUDED.clearance,
+                        role = EXCLUDED.role
                     """,
-                    (p["name"], p["department"], p["clearance"]),
+                    (p["name"], p["department"], p["clearance"], p.get("role", "member")),
                 )
         conn.commit()
         for p in 계정들:
-            print(f"  {p['name']} · {p['department']} · 등급 {p['clearance']}")
+            역할 = p.get("role", "member")
+            꼬리 = "" if 역할 == "member" else f" · {역할}"
+            print(f"  {p['name']} · {p['department']} · 등급 {p['clearance']}{꼬리}")
         conn.close()
 
     if args.cmd == "seed-hosts":
