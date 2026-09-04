@@ -16,6 +16,12 @@ DEFAULT_K = 60
 
 def rrf_scores(rankings: Sequence[Sequence[int]], k: int = DEFAULT_K) -> dict[int, float]:
     """후보 id → RRF 점수. 점수 = Σ 1/(k + 순위), 순위는 0부터."""
+    if k <= 0:
+        # k=0 이면 첫 순위(순위 0)에서 1/(0+0) 이다. 도달 불가라고 두지
+        # 않는 이유: k 는 공개 인자이고, 튜닝하려고 0 을 넣어 보는 것이
+        # 가장 그럴듯한 첫 시도다. 그때 나오는 것이 나눗셈 오류면 무엇이
+        # 잘못됐는지 알 수 없다.
+        raise ValueError(f"k 는 양수여야 한다: {k}")
     scores: dict[int, float] = {}
     for ranking in rankings:
         본_것: set[int] = set()

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from core.types import EMBEDDING_DIM, Chunk, Clause, Document
 from pipeline.ingest import IngestReport, ingest
 
@@ -137,3 +139,17 @@ def test_청크_삭제는_배치마다가_아니라_적재당_한_번이다():
     ingest(Path("a.pdf"), _문서(), 큰로더, e, s, batch_size=64)
     assert s.delete_calls == 1
     assert len(s.chunks) == 250
+
+
+def test_배치_크기가_0_이하이면_거부한다():
+    """range(0, n, 0) 은 ValueError 를 낸다 — 무엇이 잘못됐는지 말하지 않는다.
+
+    batch_size 는 ingest() 의 공개 인자다. 0 을 넣어 보는 것이 그럴듯한
+    첫 시도이고, 그때 나오는 것이 range 의 오류면 원인을 찾기 어렵다.
+    """
+    from pipeline.ingest import _배치
+
+    with pytest.raises(ValueError, match="batch_size"):
+        list(_배치([], 0))
+    with pytest.raises(ValueError, match="batch_size"):
+        list(_배치([], -1))

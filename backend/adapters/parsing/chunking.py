@@ -21,6 +21,13 @@ def chunk_clauses(clauses: list[Clause], max_chars: int = 900, overlap: int = 15
     chunks: list[Chunk] = []
     for c in clauses:
         본문 = c.text
+        if not 본문.strip():
+            # 본문이 없는 조항은 청크를 만들지 않는다. 만들면 빈 텍스트가
+            # 임베딩·저장까지 가고, 검색에 걸리면 조항 제목만 출력된다 —
+            # 근거로 쓸 수 없는 행이 결과에 자리를 차지한다.
+            # 실코퍼스에는 없지만(실측: 빈 청크 0건) 조항 코드 줄 바로 뒤에
+            # 다음 조항 코드가 오는 문서면 생긴다.
+            continue
         if len(본문) <= max_chars:
             chunks.append(Chunk(clause_code=c.code, ordinal=0, text=본문))
             continue

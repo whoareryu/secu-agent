@@ -40,9 +40,13 @@ def create_app():
         conn, _ = _자원()
         return PgPrincipalStore(conn)
 
+    # 모델 객체는 상태가 없고 매 요청 같은 것을 만든다. 그런데 생성 안에
+    # ADC 자격증명 해석이 들어 있어, 요청마다 그 일을 다시 했다.
+    _모델 = lru_cache(maxsize=1)(build_model)
+
     def 에이전트_공장():
         conn, embedder = _자원()
-        return build_agent(embedder, PgChunkSearch(conn), build_model(), PgLogSearch(conn))
+        return build_agent(embedder, PgChunkSearch(conn), _모델(), PgLogSearch(conn))
 
     class _지연주체저장소:
         def find(self, name):

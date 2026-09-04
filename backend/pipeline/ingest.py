@@ -23,6 +23,10 @@ class IngestReport:
 
 
 def _배치(items: Sequence[Chunk], size: int):
+    if size <= 0:
+        # range(0, n, 0) 은 "range() arg 3 must not be zero" 만 말한다.
+        # batch_size 는 ingest() 의 공개 인자라 여기서 이름을 밝힌다.
+        raise ValueError(f"batch_size 는 양수여야 한다: {size}")
     for i in range(0, len(items), size):
         yield items[i : i + size]
 

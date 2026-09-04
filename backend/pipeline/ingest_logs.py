@@ -23,8 +23,9 @@ class MissingHost(Exception):
 
 @dataclass(frozen=True)
 class 적재결과:
-    적재: int
+    적재: int  # 실제로 들어간 행. 중복이면 파싱보다 작다(ON CONFLICT DO NOTHING)
     건너뜀: int  # 파싱되지 않은 줄. 조용히 버리지 않고 세어서 보고한다
+    파싱: int = 0  # 파싱에 성공한 줄. 적재와 다르면 이미 있던 행이다
 
 
 def ingest_logs(path: Path, year: int, conn: psycopg.Connection) -> 적재결과:
@@ -42,6 +43,10 @@ def ingest_logs(path: Path, year: int, conn: psycopg.Connection) -> 적재결과
         )
 
     with conn.cursor() as cur:
+        # rowcount 를 쓴다. len(이벤트) 는 **파싱된 줄 수**이지 들어간 행
+        # 수가 아니다 — 아래 INSERT 는 ON CONFLICT DO NOTHING 이라, 같은
+        # 파일을 두 번 적재하면 0행이 들어가는데도 "적재 33건" 이라고
+        # 출력했다. 재적재가 됐는지 안 됐는지를 출력으로 구별할 수 없었다.
         cur.executemany(
             """
             INSERT INTO log_events (ts, host, process, event_type, principal_name, raw, severity)
@@ -53,5 +58,6 @@ def ingest_logs(path: Path, year: int, conn: psycopg.Connection) -> 적재결과
                 for e in 이벤트
             ],
         )
+        들어간_행 = cur.rowcount
     conn.commit()
-    return 적재결과(적재=len(이벤트), 건너뜀=건너뜀)
+    return 적재결과(적재=들어간_행, 건너뜀=건너뜀, 파싱=len(이벤트))

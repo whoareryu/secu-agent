@@ -153,6 +153,29 @@ def test_인용_근거가_컨텍스트에_모인다():
     assert [h.clause_code for h in ctx.collected] == ["2.6.1", "2.5.1"]
 
 
+def test_같은_청크를_두_번_검색해도_근거에_한_번만_담긴다():
+    """모델은 비슷한 질의로 두 번 검색한다. 그때 같은 청크가 두 줄이 됐다.
+
+    영향이 둘이다. /ask 응답의 `hits` 가 부풀어 화면의 "hits 10" 이 실제로
+    본 청크 수가 아니게 되고, access_records 가 같은 자원을 중복해서 센다 —
+    열람 이력이 "몇 번 열람했나" 가 아니라 "모델이 몇 번 검색했나" 를 세게
+    된다.
+
+    순서는 처음 담긴 순서를 지킨다. hits 의 순서가 곧 순위이고 화면이
+    그것을 "#1, #2 …" 로 인쇄한다.
+    """
+    검색기 = 스텁검색기([_hit(1, "2.6.1"), _hit(2, "2.5.1")])
+    모델 = 대본모델(대본=[_도구_호출(), _도구_호출(), AIMessage(content="답변")])
+    ctx = AgentContext(principal=사원)
+
+    build_agent(고정임베더(), 검색기, 모델, _로그검색기()).invoke(
+        {"messages": [{"role": "user", "content": "질문"}]}, context=ctx
+    )
+
+    assert ctx.tool_calls == 2, "도구는 두 번 실행됐다 — 중복 제거는 그 뒤의 일이다"
+    assert [h.chunk_id for h in ctx.collected] == [1, 2]
+
+
 def test_도구를_안_부르면_근거가_비어_있다():
     검색기 = 스텁검색기([_hit()])
     모델 = 대본모델(대본=[AIMessage(content="도구 없이 바로 답한다")])

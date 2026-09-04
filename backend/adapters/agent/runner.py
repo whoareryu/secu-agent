@@ -69,7 +69,15 @@ def build_tools(embedder: Embedder, searcher: ChunkSearch, log_searcher: LogSear
         ctx = runtime.context
         ctx.tool_calls += 1
         hits = core_tools.search_policy(query, ctx.principal, embedder, searcher, k=k)
-        ctx.collected.extend(hits)
+        # 이미 담은 청크는 다시 담지 않는다. 모델이 비슷한 질의로 두 번
+        # 검색하면 같은 청크가 /ask 응답의 hits 와 access_records 에 여러 줄
+        # 들어갔다 — 화면의 "hits 10" 이 실제로 본 청크 수가 아니게 되고,
+        # 열람 기록도 같은 자원을 중복해서 센다.
+        #
+        # 순서는 처음 담긴 순서를 지킨다. hits 의 순서가 곧 순위이고,
+        # Answer.tsx 가 그것을 "#1, #2 …" 로 인쇄한다.
+        이미 = {h.chunk_id for h in ctx.collected}
+        ctx.collected.extend(h for h in hits if h.chunk_id not in 이미)
 
         if not hits:
             return 결과_없음

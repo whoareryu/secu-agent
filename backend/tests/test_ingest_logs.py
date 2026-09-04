@@ -95,3 +95,33 @@ def test_두_번_적재해도_중복되지_않는다(db연결, tmp_path):
     with db연결.cursor() as cur:
         cur.execute("SELECT count(*) FROM log_events")
         assert cur.fetchone()[0] == 1
+
+
+@pytest.mark.db
+def test_같은_파일을_두_번_적재하면_적재가_0_이다(db연결, tmp_path):
+    """`적재` 는 파싱된 줄 수가 아니라 **들어간 행 수**다.
+
+    INSERT 가 ON CONFLICT DO NOTHING 이라 재적재하면 0행이 들어간다.
+    예전에는 len(이벤트) 를 보고해서, 아무것도 안 들어갔는데도 "적재 33건"
+    이라고 출력했다 — 재적재가 됐는지 안 됐는지를 출력으로 구별할 수 없었다.
+    """
+    파일 = tmp_path / "dup.log"
+    파일.write_text(
+        "Sep  1 09:05:44 dev-web-01 sshd[4501]: Accepted publickey for kimdev\n",
+        encoding="utf-8",
+    )
+    with db연결.cursor() as cur:
+        cur.execute("TRUNCATE log_events RESTART IDENTITY CASCADE")
+        cur.execute("TRUNCATE hosts RESTART IDENTITY CASCADE")
+        cur.execute(
+            "INSERT INTO hosts (name, department, required_clearance) "
+            "VALUES ('dev-web-01','개발팀',1)"
+        )
+    db연결.commit()
+
+    첫째 = ingest_logs(파일, year=2026, conn=db연결)
+    둘째 = ingest_logs(파일, year=2026, conn=db연결)
+
+    assert 첫째.적재 == 1
+    assert 둘째.적재 == 0, "이미 있는 행은 다시 들어가지 않는다"
+    assert 둘째.파싱 == 1, "파싱은 됐다 — 적재와 다른 사실이므로 따로 센다"

@@ -58,3 +58,16 @@ def test_순위_0은_절대_점수로_시작한다():
     # 기본값 k=60일 때 단일 항목의 점수는 정확히 1/60이어야 한다.
     scores = rrf_scores([[7]])
     assert scores[7] == pytest.approx(1.0 / 60.0)
+
+
+def test_k_가_0_이하이면_거부한다():
+    """k=0 이면 첫 순위(순위 0)에서 1/(0+0) 으로 ZeroDivisionError 가 난다.
+
+    도달 불가라고 두지 않는 이유: k 는 공개 인자다. 튜닝하려고 0 을 넣어
+    보는 것이 가장 그럴듯한 첫 시도이고, 그때 나오는 것이 나눗셈 오류면
+    무엇이 잘못됐는지 알 수 없다.
+    """
+    with pytest.raises(ValueError, match="k"):
+        rrf_scores([[1, 2]], k=0)
+    with pytest.raises(ValueError, match="k"):
+        rrf([[1, 2]], k=-1)

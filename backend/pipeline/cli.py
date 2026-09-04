@@ -212,7 +212,9 @@ def main() -> int:
             print(f"거부: {e}", file=sys.stderr)
             conn.close()
             return 1
-        print(f"  적재 {결과.적재}건 · 건너뜀 {결과.건너뜀}건")
+        중복 = 결과.파싱 - 결과.적재
+        꼬리 = f" · 이미 있음 {중복}건" if 중복 else ""
+        print(f"  적재 {결과.적재}건 · 건너뜀 {결과.건너뜀}건{꼬리}")
         conn.close()
 
     if args.cmd == "demo":
