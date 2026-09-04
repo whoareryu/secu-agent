@@ -177,4 +177,8 @@ class AccessRecord:
     resource_kind: str  # "chunk" | "log_event"
     resource_id: int
     allowed: bool
+    # 어느 브라우저가 남긴 기록인지. 난수이고 이메일·이름과 잇지 않는다.
+    # 관리자 면이 페르소나로 열리므로(스펙 §2.2) 이 값이 "내 질의" 와
+    # "남의 질의" 를 가르는 유일한 근거가 된다.
+    session_id: str | None = None
     ts: datetime | None = None

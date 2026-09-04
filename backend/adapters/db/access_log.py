@@ -10,7 +10,10 @@ import psycopg
 
 from core.types import AccessRecord
 
-_삽입_열 = "persona, department, clearance, query, clause_code, resource_kind, resource_id, allowed"
+_삽입_열 = (
+    "persona, department, clearance, query, clause_code, "
+    "resource_kind, resource_id, allowed, session_id"
+)
 _조회_열 = _삽입_열 + ", ts"
 
 
@@ -24,7 +27,8 @@ def _행에서(row) -> AccessRecord:
         resource_kind=row[5],
         resource_id=row[6],
         allowed=row[7],
-        ts=row[8],
+        session_id=row[8],
+        ts=row[9],
     )
 
 
@@ -38,7 +42,7 @@ class PgAccessLog:
         try:
             with self.conn.cursor() as cur:
                 cur.executemany(
-                    f"INSERT INTO access_records ({_삽입_열}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
+                    f"INSERT INTO access_records ({_삽입_열}) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     [
                         (
                             r.persona,
@@ -49,6 +53,7 @@ class PgAccessLog:
                             r.resource_kind,
                             r.resource_id,
                             r.allowed,
+                            r.session_id,
                         )
                         for r in rows
                     ],

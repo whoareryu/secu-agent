@@ -92,3 +92,58 @@ def test_기록에_본문_컬럼이_없다(log):
         컬럼 = {r[0] for r in cur.fetchall()}
     for 금지 in ("text", "doc_title", "title", "body", "content"):
         assert 금지 not in 컬럼, f"기록 스키마에 {금지} 컬럼이 있다"
+
+
+@pytest.mark.db
+def test_세션_id_가_저장되고_되돌아온다(db연결):
+    """어느 브라우저가 남긴 기록인지가 마스킹의 유일한 근거다."""
+    로그 = PgAccessLog(db연결)
+    with db연결.cursor() as cur:
+        cur.execute("TRUNCATE access_records RESTART IDENTITY")
+    db연결.commit()
+
+    로그.record(
+        [
+            AccessRecord(
+                persona="김개발",
+                department="개발팀",
+                clearance=1,
+                query="질의",
+                clause_code="2.6.1",
+                resource_kind="chunk",
+                resource_id=1,
+                allowed=True,
+                session_id="sess-a",
+            )
+        ]
+    )
+
+    행 = 로그.recent(10)
+    assert len(행) == 1
+    assert 행[0].session_id == "sess-a"
+
+
+@pytest.mark.db
+def test_세션_없이_기록해도_터지지_않는다(db연결):
+    """이 컬럼이 생기기 전의 경로가 남아 있을 수 있다. NULL 로 들어간다."""
+    로그 = PgAccessLog(db연결)
+    with db연결.cursor() as cur:
+        cur.execute("TRUNCATE access_records RESTART IDENTITY")
+    db연결.commit()
+
+    로그.record(
+        [
+            AccessRecord(
+                persona="김개발",
+                department="개발팀",
+                clearance=1,
+                query="질의",
+                clause_code=None,
+                resource_kind="chunk",
+                resource_id=1,
+                allowed=True,
+            )
+        ]
+    )
+
+    assert 로그.recent(10)[0].session_id is None
