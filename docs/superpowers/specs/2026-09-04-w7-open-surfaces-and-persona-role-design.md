@@ -1,0 +1,227 @@
+# W7 설계 — 로그인 벽을 걷고, 역할을 페르소나에 담는다
+
+- **작성일**: 2026-09-04
+- **상태**: 검토 대기
+- **상위 문서**: `docs/superpowers/specs/2026-08-31-secu-agent-design.md`
+- **정정 대상**: `docs/superpowers/specs/2026-09-02-persona-as-session-design.md` §2.1 (네 면의 접근 조건)
+
+---
+
+## 1. 문제
+
+### 1.1 로그인이 사이트 전체를 막고 있다
+
+로그인이 있는 이유는 하나다. README 가 스스로 적어둔 대로 **요금**이다 —
+`/ask` 뒤에 Gemini 가 있어 열어두면 누구나 크레딧을 쓴다.
+
+그런데 그 게이트가 사이트 전체에 걸려 있다. 레이아웃 넷이 전부
+`auth()` → 없으면 `redirect("/")` 이고, 허브는 세션이 없으면 `SignIn` 을
+그린다. 결과:
+
+- 이 저장소는 취업 포트폴리오다. 링크를 연 사람이 보는 **첫 화면이 구글
+  로그인 벽**이고, 상당수가 거기서 나간다.
+- 정작 이 프로젝트가 증명하려는 것 — `/how` 의 사전 대 사후 필터링 비교,
+  `/documents` 가시성 표, `/principals`, 허브에서 직원이 되어 보는 경험,
+  `/my/documents` — 는 **전부 DB 읽기라 요금이 0원**이다. `/how` 화면이
+  직접 적는다: *"그쪽은 LLM 을 부르지 않아 질의 횟수를 쓰지 않습니다."*
+
+즉 **지키려는 것(요금)과 막고 있는 것(전부)이 어긋나 있다.**
+
+### 1.2 관리자 판정이 이메일에 묶여 있다
+
+`lib/session.ts` 의 `roleFor(email)` 이 `ADMIN_EMAILS` 알리스트를 본다.
+로그인을 걷으면 이메일이 없고, 이메일이 없으면 관리자 판정 자체가 성립하지
+않는다. 그러면 `/logs` · `/admin` 두 화면을 방문자가 영영 못 본다 — 문서
+사이트 스크린샷에는 있는데 실물은 못 보는 상태가 된다.
+
+### 1.3 열람 이력이 남의 질의를 보여준다
+
+`/admin` 은 `access_records` 최근 200건을 **전부** 보여준다. 지금은 이메일
+알리스트가 막고 있어 소유자만 보지만, 관리자 면을 열면 방문자 A 가 친
+질문 텍스트를 방문자 B 가 본다. `access_records` 에 이메일은 없고 페르소나
+이름만 있어 신원까지 붙지는 않지만, `query` 는 자유 입력이다.
+
+---
+
+## 2. 결정
+
+### 2.1 역할을 `principals` 에 담고 서버가 번역한다
+
+```sql
+ALTER TABLE principals ADD COLUMN role TEXT NOT NULL DEFAULT 'member'
+  CHECK (role IN ('member','auditor','developer'));
+```
+
+시드: `남감사` → `auditor`, `정개발` → `developer`, 나머지 여덟은 `member`.
+
+`GET /principals` 응답에 `role` 이 실린다. 프론트는 현재 페르소나를 그
+목록에서 찾아 역할을 읽는다.
+
+**프론트에 이름→역할 상수 맵을 두지 않는다.** W6 스펙 §2.2 가 못박은
+불변식이 그것이다 —
+
+> 쿠키에 담기는 것은 **이름뿐**이고 등급·부서는 백엔드가 `principals`
+> 테이블에서 번역한다.
+
+역할도 신원 속성이므로 같은 자리에 둔다. 프론트 상수 맵은 권한 판정의
+네 번째 사본이 되고, `(explain)/documents` 화면이 *"이 화면의 계산은
+표시용이고, 실제 강제는 서버의 SQL 이 합니다"* 라고 경고한 그 함정을
+새로 파는 일이다.
+
+**역할은 권한과 직교한다.** `core/access/visibility.py` 도
+`adapters/db/permission_sql.py` 도 손대지 않는다. 역할이 정하는 것은
+"어느 면에 들어갈 수 있나" 뿐이고, 문서·로그 가시성은 여전히
+등급·부서만 본다.
+
+### 2.2 면 접근 조건 (W6 §2.1 정정)
+
+| 면 | W6 | W7 |
+|---|---|---|
+| 허브 `/` | 로그인 필요 | **누구나** |
+| 설명 `/how` · `/documents` · `/principals` | 로그인 필요 | **누구나** |
+| 직원 `/ask` · `/my/documents` | 로그인 + 페르소나 | **페르소나만** |
+| 관리자 `/logs` · `/admin` | 로그인 + 이메일 알리스트 | **페르소나 역할이 `auditor`** |
+
+`lib/surface.ts` 의 `guard()` 는 시그니처를 유지하되 `role` 의 출처가
+이메일에서 페르소나로 바뀐다. 레이아웃 넷에서 세션 `redirect("/")` 가
+빠진다.
+
+`Header` 는 세션이 있으면 이메일과 로그아웃을, 없으면 "로그인 / Sign in"
+을 보인다.
+
+### 2.3 `/ask` 는 제출 순간에만 로그인을 요구한다
+
+화면은 누구에게나 열린다. 배관은 이미 있다 — `app/api/ask/route.ts` 가
+세션 없으면 401 이고 `AskPanel` 에 401 카드가 있다. 문구를 "세션이
+만료되었습니다" 에서 **"질의하려면 로그인이 필요합니다"** 로 바꾸고 그
+자리에 로그인 동작을 단다.
+
+이메일을 키로 쓰는 일일 한도(`lib/rate-limit.ts`)는 **그대로 살아 있다.**
+비로그인 질의를 허용하지 않는 이유가 이것이다 — 키가 없으면 카운터가
+성립하지 않고, IP·쿠키 기반 대체는 시크릿 창 하나로 우회된다.
+
+### 2.4 열람 이력을 브라우저 단위로 좁힌다
+
+익명 세션 id 쿠키(`httpOnly`, 랜덤)를 첫 방문에 심는다.
+`access_records` 에 `session_id` 컬럼을 더하고, `/access-log` 가 그 값으로
+거른다.
+
+**`/how` 화면을 같이 고쳐야 한다.** 그 화면이 `access_records` 의 컬럼
+**전부**를 인쇄하고 `backend/tests/test_how_screen_claims.py` 가 집합
+동일성으로 고정한다. 컬럼이 늘면 테스트가 빨개지는 것이 정상이고, 그게
+그 테스트가 존재하는 이유다. 화면에 다음을 적는다:
+
+> `session_id` 는 브라우저를 구분하는 난수다. 이메일·이름과 잇지 않으며,
+> 이 화면이 "본문도 제목도 담지 않는다" 는 주장은 그대로다.
+
+`/logs` 는 `log_events`(합성 syslog)를 읽으므로 거를 것이 없다.
+
+### 2.5 `ADMIN_EMAILS` 를 없앤다
+
+이 변경 뒤에는 소비자가 없다. 설정해야만 동작하는 게이트를 쓰지 않는 채로
+두면 다음 사람이 그것을 보안 장치로 착각한다. `lib/session.ts` 의
+`roleFor` 와 `Role` 타입, `lib/session.test.ts`, `.env.example` ·
+`frontend/.env.example` 의 항목을 함께 걷는다.
+
+**대가**: 전체 열람 이력을 화면에서 볼 수 있는 사람이 없어진다. 소유자도
+DB 를 직접 봐야 한다. 시연용 배포에서는 맞는 거래로 본다 — 그 화면의
+목적은 "감사 담당자가 무엇을 보는가" 를 보여주는 것이지 실제 운영 감사가
+아니다.
+
+---
+
+## 3. 버린 대안
+
+**역할을 프론트엔드 상수 맵으로.** `lib/persona-role.ts` 에
+`{ 남감사: "auditor" }` 를 두면 스키마를 안 건드린다. 버린 이유는 §2.1 —
+서버가 신원 속성을 정한다는 불변식을 깬다.
+
+**관리자 면을 그냥 전부 연다(역할 없이).** 결정 2.4 로 이미 안전하므로
+가능하다. 버린 이유: "감사 담당자가 되어 본다" 는 경험이 사라지고, 관리자
+면이 왜 따로 있는지가 흐려진다. 그리고 후속 작업(문의가 개발자에게
+도착)의 도착지가 없어진다.
+
+**비로그인 질의 허용.** 체험은 가장 매끄럽지만 §2.3 대로 요금 방어가
+성립하지 않는다.
+
+**전체 열람 이력을 보이되 화면에 고지.** "이 화면은 모든 방문자의 질의를
+보여줍니다" 로 정직하게 처리할 수 있고 변경이 0 이다. 버린 이유: 방문자가
+그 문장을 읽기 전에 이미 남의 자유 입력을 본다. 고지는 사후다.
+
+---
+
+## 4. 영향 범위
+
+```
+backend/db/schema.sql                  principals.role · access_records.session_id
+backend/core/types.py                  Principal 에 role (권한 판정에는 안 쓴다)
+backend/adapters/db/principal_store.py SELECT 에 role
+backend/adapters/db/access_log.py      session_id 저장 · 필터
+backend/api/schemas.py                 PrincipalView.role · AskRequest.session_id
+backend/api/main.py                    /access-log 가 session_id 로 거른다
+backend/pipeline/cli.py                seed-principals 가 역할을 심는다
+
+frontend/lib/surface.ts                guard() 의 role 출처가 바뀐다
+frontend/lib/session.ts                삭제 (roleFor · Role)
+frontend/app/(*)/layout.tsx            세션 redirect 제거 · 역할 조회
+frontend/app/page.tsx                  비로그인도 허브를 본다
+frontend/components/Header.tsx         이메일 없으면 로그인 버튼
+frontend/components/AskPanel.tsx       401 카드를 로그인 유도로
+frontend/app/api/ask/route.ts          session_id 를 백엔드로
+frontend/app/api/access-log/route.ts   관리자 검사 제거 · session_id 전달
+frontend/app/(explain)/how/page.tsx    access_records 컬럼 목록 갱신
+```
+
+`backend/tests/test_bff_admin_gate.py` 의 관리자 문지기 집합이 바뀐다 —
+`roleFor` 가 사라지므로 그 테스트의 전제가 통째로 달라진다. 지우지 말고
+**새 전제로 다시 쓴다**: "시크릿을 들고 백엔드로 나가는 라우트는 먼저
+세션을 본다" 는 `/ask` 에만 남고, 나머지는 `session_id` 를 전달하는지를
+본다.
+
+---
+
+## 5. 배포 순서
+
+스키마 마이그레이션이 새 코드보다 **먼저**여야 한다. 새 코드가 없는
+컬럼을 읽으면 전 요청이 실패한다.
+
+`backend/db/schema.sql` 에 이미 `DO $$ ... EXCEPTION WHEN undefined_column`
+형태의 인라인 마이그레이션이 둘 있다. 같은 모양으로 더하고, 적재 CLI 를
+한 번 돌려 반영한다(`apply_schema()` 는 적재 서브커맨드가 부른다 — API 는
+부르지 않는다).
+
+```
+1. 마이그레이션 반영    python -m pipeline.cli seed-principals
+2. 백엔드 이미지 재빌드·재기동
+3. 프론트 배포
+```
+
+역순으로 하면 2와 3 사이에 프론트가 없는 필드를 요구한다.
+
+---
+
+## 6. 검증
+
+- `guard()` 새 규칙 — `lib/surface.test.ts`
+- **프론트에 이름→역할 맵이 없다** — 백엔드 주장 테스트로 고정
+  (`test_document_screen_claims.py` 와 같은 방식). 이 스펙의 §2.1 이
+  지켜지는지를 코드로 보는 유일한 그물이다.
+- `/access-log` 가 다른 `session_id` 의 기록을 돌려주지 않는다 — `-m db`
+- 비로그인 방문자가 허브·설명 면·직원 면에 닿는다
+- `/api/ask` 는 세션 없으면 401, 있으면 200
+- `access_records` 컬럼 목록과 `/how` 화면 문장이 일치한다
+  (기존 `test_how_screen_claims.py`)
+
+---
+
+## 7. 남는 한계
+
+- **역할을 아무나 고른다.** 허브에서 `남감사` 를 고르면 누구나 감사 화면을
+  본다. 이것은 결함이 아니라 이 시연의 성질이다 — 페르소나가 원래 그렇게
+  설계됐다 — W6 §2.2 는 그것을 이렇게 적는다: *"쿠키를 조작해도 얻을 수
+  있는 것은 「다른 페르소나 되기」이고, 그것은 애초에 허브에서 클릭 한
+  번으로 되는 일이다. 새로 열리는 문이 없다."* 실제
+  배포라면 역할은 인사 시스템에서 온다. 그 사실을 화면에 적는다.
+- **전체 열람 이력을 볼 수 있는 사람이 없다** (§2.5).
+- `session_id` 쿠키가 지워지면 그 브라우저의 이전 기록을 다시 볼 수 없다.
+  기록 자체는 남고 화면에서만 안 보인다.
