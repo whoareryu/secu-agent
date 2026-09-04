@@ -1,27 +1,24 @@
-import { auth } from "@/auth";
-import { roleFor } from "@/lib/session";
+import { cookies } from "next/headers";
+import { VISITOR_COOKIE } from "@/lib/visitor";
 
 // 감사 로그 · 위반 알림 BFF. 백엔드의 GET /access-log 와
 // GET /access-log/violations 를 한 파일로 중계한다(?violations=1 로 분기).
-// 관리자 대시보드 전용 데이터이므로 로그인만으로는 부족하다 — role === "admin"
-// 이어야 한다. 사이드바가 관리자 메뉴를 숨기는 것은 프레젠테이션일 뿐이라
-// 서버가 다시 확인한다(콘솔에서 누구나 이 경로를 fetch 할 수 있다).
+// 방문자 id 를 넘겨 백엔드가 "이 브라우저가 보낸 질의"의 원문만 풀게 한다 —
+// 그 외 열람 권한은 여전히 페르소나의 등급·부서가 정한다.
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  }
-  if (roleFor(session.user.email) !== "admin") {
-    return Response.json({ error: "권한이 없습니다" }, { status: 403 });
-  }
-
   const url = new URL(req.url);
   const limit = url.searchParams.get("limit");
   const violations = url.searchParams.get("violations") === "1";
   const path = violations ? "/access-log/violations" : "/access-log";
-  const qs = limit ? `?limit=${encodeURIComponent(limit)}` : "";
 
-  const upstream = await fetch(`${process.env.BACKEND_URL}${path}${qs}`, {
+  const jar = await cookies();
+  const 방문자 = jar.get(VISITOR_COOKIE)?.value ?? "";
+  const qs = new URLSearchParams();
+  if (limit) qs.set("limit", limit);
+  if (violations) qs.set("violations", "1");
+  if (방문자) qs.set("session_id", 방문자);
+
+  const upstream = await fetch(`${process.env.BACKEND_URL}${path}?${qs}`, {
     headers: { "X-Backend-Secret": process.env.BACKEND_SHARED_SECRET ?? "" },
   });
 
