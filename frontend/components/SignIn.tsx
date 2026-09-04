@@ -2,10 +2,11 @@
 
 import Blueprint from "./Blueprint";
 
-// 프로토타입(docs/handoff/prototype.dc.html)의 로그인 화면을 재현한다. 여기서
-// 고르는 role 은 화면 전환 스위치일 뿐이다 — 실제 role 은 서버가 이메일
-// 알리스트로 정한다(frontend/lib/session.ts). 그 사실을 아래 고지에 한 줄
-// 더한다.
+// 프로토타입(docs/handoff/prototype.dc.html)의 로그인 화면을 재현한다.
+//
+// 이 화면은 더 이상 문이 아니다 — 로그인 벽이 유료 LLM 을 부르는 /ask 의
+// 제출 하나로 좁아졌다(스펙 §2.3). 역할도 여기서 정해지지 않는다: 관리자
+// 면을 여는 것은 고른 페르소나의 역할이고, 그 값은 서버가 준다.
 
 // signInAction 은 서버 액션(frontend/auth.ts)이라 클라이언트 컴포넌트가
 // 직접 import 할 수 없다 — 이 컴포넌트를 렌더하는 서버 컴포넌트가 prop 으로
@@ -68,9 +69,9 @@ export default function SignIn({ signInAction }: { signInAction: () => Promise<v
               padding: "10px 12px",
             }}
           >
-            직원별 서류 열람 이력과 권한 밖 열람 알림은 관리자만 볼 수 있습니다.
-            관리자 여부는 <strong>서버가 이메일 알리스트로</strong> 정합니다 —
-            로그인 화면에서 고를 수 있는 값이 아닙니다.
+            직원별 서류 열람 이력과 권한 밖 열람 알림은 감사 담당 계정으로만
+            보입니다. 그 여부는 <strong>고른 직원의 역할을 서버가</strong>{" "}
+            정합니다 — 로그인 화면에서 고를 수 있는 값이 아닙니다.
           </div>
 
           <form action={signInAction}>

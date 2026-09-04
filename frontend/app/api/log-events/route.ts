@@ -1,17 +1,11 @@
-import { auth } from "@/auth";
-import { roleFor } from "@/lib/session";
-
-// 관리자 전용 데이터이므로 로그인만으로는 부족하다 — /api/access-log 와
-// 같은 이유, 같은 모양이다(사이드바가 감추는 것은 프레젠테이션일 뿐이라
-// 서버가 role 을 다시 확인한다).
+// /logs 화면의 데이터 통로. 세션 검사가 있었는데 걷었다 — 그 화면을 여는
+// 조건이 로그인에서 페르소나의 역할로 바뀌었으므로(스펙 §2.2), 여기 로그인
+// 검사가 남아 있으면 감사 페르소나로 들어온 방문자에게 화면은 열리고 표만
+// 영영 401 이 된다. /api/access-log 가 같은 이유로 먼저 걷었다.
+//
+// 가릴 것이 없다는 점도 같이 본다: log_events 는 합성 syslog 라 방문자별로
+// 감출 원문이 없다(access-log 의 query 와 다르다).
 export async function GET(req: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return Response.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  }
-  if (roleFor(session.user.email) !== "admin") {
-    return Response.json({ error: "권한이 없습니다" }, { status: 403 });
-  }
   const persona = new URL(req.url).searchParams.get("persona") ?? "";
   const upstream = await fetch(
     `${process.env.BACKEND_URL}/log-events?persona=${encodeURIComponent(persona)}&limit=100`,

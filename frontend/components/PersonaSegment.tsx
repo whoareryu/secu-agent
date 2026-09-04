@@ -1,9 +1,12 @@
 "use client";
 
+import type { Role } from "@/lib/surface";
+
 // GET /api/principals 가 돌려주는 형태 그대로. 이름을 하드코딩하지 않는
 // 이유는 백엔드가 principals 테이블을 읽기 때문 — 계정을 늘리면 화면이
-// 따라온다.
-export type Principal = { name: string; department: string; clearance: number };
+// 따라온다. role 도 같은 이유로 여기 있다: 관리자 면을 여는 조건이라
+// 프론트가 이름으로 되짚으면 안 되고, 서버 응답에서만 와야 한다.
+export type Principal = { name: string; department: string; clearance: number; role: Role };
 
 export default function PersonaSegment({
   personas,

@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth, signInAction, signOutAction } from "@/auth";
-import SignIn from "@/components/SignIn";
 import Hub from "@/components/Hub";
 import Blueprint from "@/components/Blueprint";
 import { PERSONA_COOKIE, personaFrom } from "@/lib/persona";
@@ -18,15 +17,15 @@ async function principals(): Promise<Principal[]> {
   return r.json();
 }
 
+// 허브는 로그인 없이 열린다(스펙 §2.2). 예전에는 세션이 없으면 여기서
+// SignIn 화면을 대신 그려 이 페이지가 곧 로그인 벽이었다 — 그 벽이 유료
+// LLM 을 부르는 /ask 의 제출 하나로 좁아졌다.
 export default async function Home() {
   const session = await auth();
-  if (!session?.user?.email) {
-    return <SignIn signInAction={signInAction} />;
-  }
 
   // 이 배포는 상시 가동이 아니다(docs/superpowers/plans/2026-09-02-w5-deploy.md
   // 결정 2) — 백엔드를 켜 둔 맥이 꺼져 있으면 principals() 가 던진다.
-  // 로그인 뒤 처음 보이는 문이 서버 예외를 그대로 뱉게 둘 수 없다 —
+  // 방문자가 처음 보는 문이 서버 예외를 그대로 뱉게 둘 수 없다 —
   // app/api/ask, app/api/principals 가 이미 하는 것과 같은 모양으로 잡는다.
   let personas: Principal[];
   try {
@@ -90,7 +89,8 @@ export default async function Home() {
     <Hub
       personas={personas}
       선택하기={선택하기}
-      email={session.user.email}
+      email={session?.user?.email ?? null}
+      signInAction={signInAction}
       signOutAction={signOutAction}
       활성페르소나={활성페르소나}
     />

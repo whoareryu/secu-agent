@@ -1,5 +1,9 @@
-import type { Role } from "./session.ts";
 import type { NavItem } from "./types.ts";
+
+// 역할은 서버가 준다 — GET /principals 응답의 role 이다. 여기에 이름→역할
+// 맵을 두지 않는다: 그러면 권한 판정의 네 번째 사본이 되고, 이 프로젝트가
+// 스스로 경고한 함정이다(스펙 §2.1).
+export type Role = "member" | "auditor" | "developer";
 
 // 화면을 네 면으로 나눈다. 허브는 면이 아니라 그 셋으로 들어가는 입구라
 // 여기 없다.
@@ -25,15 +29,20 @@ export function navFor(surface: Surface): NavItem[] {
   return NAV[surface];
 }
 
-// 면에 들어갈 수 있는지 판정한다. 세션 확인은 각 레이아웃이 이미 하므로
-// 여기서는 세션이 있다고 본다 — "to-login" 은 그 판정이 이 함수로 옮겨올
-// 날을 위해 남겨둔 값이 아니라, 호출부가 세션 없음을 알았을 때 쓰는 값이다.
+// 면에 들어갈 수 있는지 판정한다. 로그인은 더 이상 어느 면의 조건도 아니다 —
+// 로그인 벽이 남은 자리는 유료 LLM 을 부르는 /ask 의 제출 하나뿐이다(스펙
+// §2.3). "to-login" 은 그래서 여기서 나오지 않고, 호출부가 그 제출 시점에
+// 쓰는 값으로 남는다.
 export function guard(input: {
   surface: Surface;
   hasPersona: boolean;
   role: Role;
 }): "ok" | "to-hub" | "to-login" {
-  if (input.surface === "admin" && input.role !== "admin") return "to-hub";
+  // 관리자 면은 감사 역할만. 역할은 페르소나에서 오므로 페르소나가 없으면
+  // 판정할 근거 자체가 없다.
+  if (input.surface === "admin" && (!input.hasPersona || input.role !== "auditor")) {
+    return "to-hub";
+  }
   if (input.surface === "employee" && !input.hasPersona) return "to-hub";
   return "ok";
 }

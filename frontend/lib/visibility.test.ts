@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { visible, type Document } from "./visibility.ts";
+import type { Principal } from "../components/PersonaSegment.tsx";
 
 // 권한 규칙의 세 번째 사본이다 — SQL 과 파이썬에 이은. 앞의 둘은
 // test_permission_sql.py 와 test_visibility.py 가 지키는데 이것만
@@ -10,8 +11,10 @@ const 문서 = (등급: number, 부서: string[]): Document => ({
   id: 1, title: "t", doc_type: "md", required_clearance: 등급,
   allowed_departments: 부서, source_path: "p", chunk_count: 1,
 });
-const 사원 = { name: "김개발", department: "개발팀", clearance: 1 };
-const 임원 = { name: "최임원", department: "경영지원팀", clearance: 3 };
+// role 은 관리자 면을 여는 조건일 뿐 문서 가시성과 무관하다 — 여기서는
+// Principal 을 채우기 위해서만 있다.
+const 사원: Principal = { name: "김개발", department: "개발팀", clearance: 1, role: "member" };
+const 임원: Principal = { name: "최임원", department: "경영지원팀", clearance: 3, role: "member" };
 
 test("등급이 모자라면 안 보인다", () => {
   assert.equal(visible(문서(3, []), 사원), false);

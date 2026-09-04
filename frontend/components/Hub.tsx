@@ -29,16 +29,23 @@ import type { Principal } from "./PersonaSegment";
 // 로그아웃이 여기 있는 이유(W6 스펙 §2.6): 나가기로 직원 면을 벗어나면 허브가
 // 유일하게 남는 화면인데, 여기 버튼이 없으면 로그아웃하러 설명 면까지 가야
 // 했다. 스펙이 홈이라 부른 화면에 스펙의 결정이 빠져 있었다.
+//
+// 로그인 없이도 열린다(스펙 §2.2). 세션이 없으면 이메일 줄과 로그아웃 대신
+// 로그인 버튼이 그 자리에 선다 — 설명·관리자 면의 Header 와 같은 모양이다.
+// 여기 로그인이 남아 있는 이유는 벽이어서가 아니라, 유료 LLM 을 부르는
+// /ask 제출 앞에서 필요해질 때 미리 해 둘 수 있는 자리이기 때문이다.
 export default function Hub({
   personas,
   선택하기,
   email,
+  signInAction,
   signOutAction,
   활성페르소나,
 }: {
   personas: Principal[];
   선택하기: (formData: FormData) => Promise<void>;
-  email: string;
+  email: string | null;
+  signInAction: () => Promise<void>;
   signOutAction: () => Promise<void>;
   활성페르소나: string | null;
 }) {
@@ -54,15 +61,28 @@ export default function Hub({
           borderBottom: "1px solid var(--color-divider)",
         }}
       >
-        <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
-          <div style={{ fontSize: 13 }}>{email}</div>
-          <div style={{ fontSize: 11, color: "var(--color-neutral-600)" }}>Google OAuth</div>
-        </div>
-        <form action={signOutAction}>
-          <button className="btn btn-secondary" type="submit">
-            로그아웃 / Sign out
-          </button>
-        </form>
+        {email ? (
+          <>
+            <div style={{ flex: 1, minWidth: 0, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 13 }}>{email}</div>
+              <div style={{ fontSize: 11, color: "var(--color-neutral-600)" }}>Google OAuth</div>
+            </div>
+            <form action={signOutAction}>
+              <button className="btn btn-secondary" type="submit">
+                로그아웃 / Sign out
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <div style={{ flex: 1, minWidth: 0 }} />
+            <form action={signInAction}>
+              <button className="btn btn-secondary" type="submit">
+                로그인 / Sign in
+              </button>
+            </form>
+          </>
+        )}
       </header>
 
       <div style={{ fontSize: 14, fontWeight: 700, color: "var(--color-accent)" }}>

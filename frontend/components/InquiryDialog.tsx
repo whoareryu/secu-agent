@@ -23,7 +23,10 @@ const topicOn: React.CSSProperties = { ...topicBase, background: "var(--color-ac
 // 티켓 시스템이 없다. 프로토타입은 전송 후 티켓 번호·담당자 메일을 보여줬지만
 // 그런 시스템이 실제로 없어서, 전송 버튼은 mailto: 링크를 열 뿐이고 접수
 // 문구도 사실에 맞게 고쳤다.
-export default function InquiryDialog({ adminEmail }: { adminEmail: string }) {
+// adminEmail 이 null 일 수 있다 — 이 면은 로그인이 아니라 페르소나의 역할로
+// 열리므로(스펙 §2.2) 세션 없이 여기 서 있을 수 있다. 그때 메일 본문의
+// 문의자 줄을 비워 두면 담당자가 빈 칸을 오류로 읽는다.
+export default function InquiryDialog({ adminEmail }: { adminEmail: string | null }) {
   const [open, setOpen] = useState(false);
   const [sent, setSent] = useState(false);
   const [topic, setTopic] = useState(TOPICS[0]);
@@ -49,7 +52,7 @@ export default function InquiryDialog({ adminEmail }: { adminEmail: string }) {
   }
 
   const subject = `[secu-agent] ${topic}`;
-  const body = `문의자: ${adminEmail}\n문의 유형: ${topic}\n\n${text}`;
+  const body = `문의자: ${adminEmail ?? "(비로그인 방문자)"}\n문의 유형: ${topic}\n\n${text}`;
   const mailtoHref = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
