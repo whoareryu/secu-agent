@@ -1,7 +1,7 @@
 # W7 설계 — 로그인 벽을 걷고, 역할을 페르소나에 담는다
 
 - **작성일**: 2026-09-04
-- **상태**: 검토 대기
+- **상태**: 구현됨 (2026-09-04)
 - **상위 문서**: `docs/superpowers/specs/2026-08-31-secu-agent-design.md`
 - **정정 대상**: `docs/superpowers/specs/2026-09-02-persona-as-session-design.md` §2.1 (네 면의 접근 조건)
 
