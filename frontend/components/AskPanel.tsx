@@ -5,7 +5,7 @@ import Blueprint from "./Blueprint";
 import Answer, { type AskResult } from "./Answer";
 
 type Status = "idle" | "loading" | "done" | "error";
-type ErrorKind = "401" | "429" | "other";
+type ErrorKind = "401" | "429" | "400" | "other";
 
 export default function AskPanel({
   query,
@@ -18,6 +18,10 @@ export default function AskPanel({
   const [result, setResult] = useState<AskResult | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [errorKind, setErrorKind] = useState<ErrorKind>("other");
+  // 배지에 실제 상태 코드를 싣는다. 예전에는 "502" 가 리터럴로 박혀 있어
+  // 어떤 실패든 502 로 보였다.
+  const [errorStatus, setErrorStatus] = useState(0);
+  const [errorDetail, setErrorDetail] = useState("");
   const [coldStart, setColdStart] = useState(false);
   // 알리스트 사용자는 null 로 남아 배지가 뜨지 않는다.
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -47,7 +51,16 @@ export default function AskPanel({
       const ms = performance.now() - start;
       if (!r.ok) {
         setElapsedMs(ms);
-        setErrorKind(r.status === 401 ? "401" : r.status === 429 ? "429" : "other");
+        // 400 은 백엔드가 아니라 **이쪽 상태**가 문제라는 뜻이다 — 대개
+        // 페르소나 쿠키가 없거나 principals 에서 사라진 이름이다. 이걸
+        // "other" 로 접으면 화면이 "백엔드에 닿지 못했습니다(502)" 라는
+        // 거짓 진단을 내놓는다(백엔드는 멀쩡하다).
+        const body: { error?: string } | null = await r.json().catch(() => null);
+        setErrorStatus(r.status);
+        setErrorDetail(body?.error ?? "");
+        setErrorKind(
+          r.status === 401 ? "401" : r.status === 429 ? "429" : r.status === 400 ? "400" : "other"
+        );
         setStatus("error");
         return;
       }
@@ -57,6 +70,8 @@ export default function AskPanel({
       setRemaining(data.remaining);
       setStatus("done");
     } catch {
+      setErrorStatus(0);
+      setErrorDetail("");
       setElapsedMs(performance.now() - start);
       setErrorKind("other");
       setStatus("error");
@@ -109,9 +124,27 @@ export default function AskPanel({
         </div>
       </Blueprint>
 
+      {/* 상태 전환을 보조기술에 알리는 유일한 자리다. 스켈레톤이 뛰는 것과
+          답변 카드가 DOM 에 꽂히는 것은 눈에만 보이고, 이 화면은 콜드
+          스타트에서 수십 초가 걸린다 — 알림이 없으면 스크린리더 사용자는
+          끝났는지조차 모른 채 직접 훑어 내려가야 한다.
+          영역 자체는 항상 렌더한다. 조건부로 넣으면 브라우저가 새 노드로
+          보고 내용을 읽지 않는 경우가 있다. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {status === "loading"
+          ? coldStart
+            ? "답변을 생성하는 중입니다. 백엔드가 모델을 올리는 중이라 수십 초 걸릴 수 있습니다."
+            : "답변을 생성하는 중입니다."
+          : status === "done" && result
+            ? `답변이 도착했습니다. 근거 조항 ${result.hits.length}건.`
+            : status === "error"
+              ? "질의가 실패했습니다. 아래 오류 내용을 확인하세요."
+              : ""}
+      </p>
+
       {status === "loading" && (
         <Blueprint className="card" style={{ padding: 22, gap: 14 }}>
-          <div className="card-kicker">Running</div>
+          <div className="card-kicker">질의 중 / Running</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div
               style={{
@@ -150,7 +183,8 @@ export default function AskPanel({
       )}
 
       {status === "error" && errorKind === "401" && (
-        <Blueprint className="card" style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
+        <Blueprint className="card" role="alert"
+          style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="tag tag-outline">401</span>
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>세션이 만료되었습니다</span>
@@ -167,7 +201,8 @@ export default function AskPanel({
       )}
 
       {status === "error" && errorKind === "429" && (
-        <Blueprint className="card" style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
+        <Blueprint className="card" role="alert"
+          style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="tag tag-outline">429</span>
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>
@@ -180,10 +215,32 @@ export default function AskPanel({
         </Blueprint>
       )}
 
-      {status === "error" && errorKind === "other" && (
-        <Blueprint className="card" style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
+      {status === "error" && errorKind === "400" && (
+        <Blueprint className="card"
+          role="alert"
+          style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span className="tag tag-outline">502</span>
+            <span className="tag tag-outline">400</span>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>
+              직원을 다시 골라 주세요
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--color-neutral-800)" }}>
+            {errorDetail || "고른 계정을 확인할 수 없습니다. 허브에서 다시 고르면 이어집니다."}
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <a className="btn btn-secondary" href="/">
+              허브로 / Hub
+            </a>
+          </div>
+        </Blueprint>
+      )}
+
+      {status === "error" && errorKind === "other" && (
+        <Blueprint className="card" role="alert"
+          style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span className="tag tag-outline">{errorStatus || "네트워크"}</span>
             <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>
               백엔드에 닿지 못했습니다 / Upstream unavailable
             </span>

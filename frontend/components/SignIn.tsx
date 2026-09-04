@@ -22,10 +22,10 @@ export default function SignIn({ signInAction }: { signInAction: () => Promise<v
         display: "grid",
         placeItems: "center",
         background: "var(--color-bg)",
-        padding: 48,
+        padding: "48px 20px",
       }}
     >
-      <div style={{ width: 420, display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ width: "min(420px, 100%)", display: "flex", flexDirection: "column", gap: 28 }}>
         <div>
           <div
             style={{

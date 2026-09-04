@@ -15,10 +15,14 @@ const visStyleOn: React.CSSProperties = {
   border: "1px solid var(--color-accent)",
   padding: "2px 9px",
 };
+// "가려짐" 이 이 화면의 요점인데 neutral-500 은 흰 배경 위 2.01:1 이라
+// 가장 안 읽히는 글자였다. neutral-800 은 7.11:1 이다. 흐릿함으로 "못 본다"를
+// 표현하면 저시력 사용자에게는 그 정보 자체가 사라진다 — 점선 테두리와
+// 라벨 문구가 그 역할을 한다.
 const visStyleOff: React.CSSProperties = {
   fontSize: 12,
-  color: "var(--color-neutral-500)",
-  border: "1px dashed var(--color-neutral-400)",
+  color: "var(--color-neutral-800)",
+  border: "1px dashed var(--color-neutral-600)",
   padding: "2px 9px",
 };
 

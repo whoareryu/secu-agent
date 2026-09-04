@@ -75,6 +75,19 @@ export default function Answer({ result, elapsedMs }: { result: AskResult; elaps
             hits[] · 순서가 곧 순위입니다 (RRF 점수는 노출하지 않습니다)
           </span>
         </div>
+        {clauses.length === 0 && (
+          // 0건이면 제목과 캡션만 남고 아래가 완전한 공백이었다. 이 화면에서는
+          // 특히 나쁘다 — 아래 Pre-filtering 설명이 "허용된 조항이 k 건에
+          // 못 미치면 그보다 적게 받는다" 고 적어 두는데, 정확히 그 상황에서
+          // 화면이 아무 말도 하지 않으면 "고장났나" 와 "내 권한 안에 없구나"
+          // 를 구별할 수 없다.
+          <Blueprint className="card" style={{ padding: 18 }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--color-neutral-800)" }}>
+              이 계정 권한 안에서 관련 조항을 찾지 못했습니다 — 걸러진 흔적이
+              아니라 검색 결과 자체가 비어 있다는 뜻입니다.
+            </p>
+          </Blueprint>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 18 }}>
           {clauses.map((h, i) => (
             <Blueprint key={h.chunk_id} className="card" style={{ padding: 18, gap: 8 }}>
@@ -135,6 +148,16 @@ function Spans({ spans }: { spans: Span[] }) {
 function AnswerBody({ text }: { text: string }) {
   const blocks = parseBlocks(text);
   const 본문 = { margin: 0, fontSize: 15.5, lineHeight: 1.75, color: "var(--color-neutral-900)" } as const;
+  // parseBlocks("") 는 빈 배열이다(lib/answer-format.test.ts 가 고정한다).
+  // 그대로 두면 "답변 / Answer" 키커 아래가 빈 상자로 남아, 모델이 아무것도
+  // 돌려주지 않은 것과 화면이 못 그린 것이 같아 보인다.
+  if (blocks.length === 0) {
+    return (
+      <p style={{ ...본문, color: "var(--color-neutral-800)" }}>
+        모델이 빈 답변을 돌려줬습니다. 아래 근거 조항은 실제로 검색된 것입니다.
+      </p>
+    );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {blocks.map((b, i) => {

@@ -65,7 +65,15 @@ export default async function Home() {
     const jar = await cookies();
     // httpOnly 로 둔다. 클라이언트 자바스크립트가 읽을 이유가 없고,
     // 읽을 수 없으면 이 값이 화면 상태로 새어나가 두 벌이 되는 일도 없다.
-    jar.set(PERSONA_COOKIE, name, { httpOnly: true, sameSite: "lax", path: "/" });
+    //
+    // secure 는 배포에서만 켠다 — 로컬 http://localhost 에서 켜면 쿠키가
+    // 아예 심기지 않아 허브에서 직원 면으로 못 넘어간다.
+    jar.set(PERSONA_COOKIE, name, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+    });
     redirect("/ask");
   }
 

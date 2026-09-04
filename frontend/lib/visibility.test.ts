@@ -34,3 +34,10 @@ test("부서가 다르면 등급이 높아도 안 보인다", () => {
   assert.equal(visible(문서(1, ["개발팀"]), 임원), false);
   assert.equal(visible(문서(1, ["개발팀"]), 사원), true);
 });
+
+test("주체를 모르면 보이지 않는다", () => {
+  // (explain)/documents 는 personas 가 비면 personas[0] 으로 undefined 를
+  // 흘린다. 던지면 error.tsx 가 없어 화면 전체가 죽고, true 를 돌려주면
+  // 권한 없는 문서가 보인다 — 닫히는 쪽으로 답한다.
+  assert.equal(visible(문서(1, []), undefined), false);
+});

@@ -13,6 +13,9 @@ import type { Principal } from "./PersonaSegment";
 export default function PrincipalTable({ principals }: { principals: Principal[] }) {
   return (
     <Blueprint className="card" style={{ padding: 20 }}>
+      {/* table-scroll: 다른 세 표와 같은 이유 — 넘침을 표 안에 가둔다
+          (app/_ds/industry.css). */}
+      <div className="table-scroll">
       <table className="table">
         <thead>
           <tr>
@@ -31,6 +34,7 @@ export default function PrincipalTable({ principals }: { principals: Principal[]
           ))}
         </tbody>
       </table>
+      </div>
     </Blueprint>
   );
 }

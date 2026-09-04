@@ -62,10 +62,10 @@
   --color-on-accent-strong: #191f28;
   --color-on-accent: #333d4b;
   --color-on-accent-dim: #4e5968;
-  --color-on-accent-muted: #6b7684;
-  --color-on-accent-faint: #8b95a1;
-  --color-on-accent-ok: #00b25d;
-  --color-on-accent-danger: #f04452;
+  --color-on-accent-muted: #4e5968;
+  --color-on-accent-faint: #6b7684;
+  --color-on-accent-ok: #00713c;
+  --color-on-accent-danger: #d32f3c;
   --color-on-accent-wash: #f9fafb;
   --color-on-accent-divider: #f2f4f6;
 
@@ -128,7 +128,7 @@ h4 { font-size: 18px; }
 h5 { font-size: 16px; }
 h6 { font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
 p { margin: 0 0 var(--space-3); }
-a { color: var(--color-accent); text-underline-offset: 3px; }
+a { color: var(--color-accent-700); text-underline-offset: 3px; }
 img { display: block; max-width: 100%; }
 figure { margin: 0; }
 figcaption {
@@ -168,9 +168,9 @@ figcaption {
 }
 .btn svg { display: block; }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-.btn-primary { background: var(--color-accent); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--color-accent-700); }
-.btn-primary:active:not(:disabled) { background: var(--color-accent-800); }
+.btn-primary { background: var(--color-accent-700); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-800); }
+.btn-primary:active:not(:disabled) { background: var(--color-accent-900); }
 .btn-secondary { border-color: var(--color-divider); background: #fff; }
 .btn-secondary:hover:not(:disabled) { background: var(--color-neutral-100); border-color: var(--color-neutral-400); }
 .btn-secondary:active:not(:disabled) { background: var(--color-neutral-200); }
@@ -188,10 +188,10 @@ figcaption {
   width: 100%; min-height: 44px; padding: 10px 14px; font: inherit;
   font-size: 15px; color: var(--color-text); caret-color: var(--color-accent);
   background: var(--color-neutral-100);
-  border: 1px solid transparent; border-radius: var(--radius-md);
+  border: 1px solid var(--color-neutral-600); border-radius: var(--radius-md);
   transition: background .15s, border-color .15s;
 }
-.input::placeholder { color: var(--color-neutral-500); }
+.input::placeholder { color: var(--color-neutral-800); }
 .input:hover { background: var(--color-neutral-200); }
 .input:focus, .input:focus-visible {
   background: #fff; border-color: var(--color-accent); outline: none;
@@ -242,7 +242,7 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.6; }
 }
 .card-kicker {
   font-size: 12px; font-weight: 700; letter-spacing: 0;
-  text-transform: none; color: var(--color-accent);
+  text-transform: none; color: var(--color-accent-700);
 }
 .card-title {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
@@ -251,7 +251,7 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.6; }
 .card-body { margin: 0; font-size: 14px; color: var(--color-neutral-800); flex: 1; }
 .card-meta {
   display: flex; align-items: center; gap: 6px; font-size: 12px;
-  color: var(--color-neutral-600);
+  color: var(--color-neutral-800);
 }
 .elev-sm { box-shadow: var(--shadow-sm); }
 .elev-md { box-shadow: var(--shadow-md); }
@@ -283,7 +283,7 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.6; }
 .table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .table th {
   text-align: left; font-size: 12.5px; font-weight: 600; letter-spacing: 0;
-  text-transform: none; color: var(--color-neutral-600);
+  text-transform: none; color: var(--color-neutral-800);
   padding: 12px var(--space-3); border-bottom: 1px solid var(--color-divider);
   white-space: nowrap;
 }
@@ -294,19 +294,41 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.6; }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover { background: var(--color-neutral-100); }
 
-/* — dialog — */
-.dialog-backdrop {
-  position: fixed; inset: 0; display: grid; place-items: center;
-  padding: var(--space-4);
-  background: rgba(25, 31, 40, .45);
-}
+/* — dialog —
+   네이티브 <dialog> + showModal() 을 쓴다. 포커스 트랩·ESC 닫기·배경
+   inert·role=dialog 를 브라우저가 전부 제공하므로 직접 구현하지 않는다.
+   직접 만든 오버레이는 그 넷을 모두 빠뜨렸었다. */
 .dialog {
-  width: min(480px, 100%); display: flex; flex-direction: column; gap: var(--space-3);
+  width: min(480px, 100%);
+  /* 짧은 뷰포트(가로 모드 폰)에서 내용이 넘치면 위아래가 동시에 잘려
+     제목에 도달할 방법이 없어진다. 잘리는 대신 안에서 스크롤한다. */
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-3);
   padding: var(--space-6); border-radius: var(--radius-lg);
   background: var(--color-surface); box-shadow: var(--shadow-lg);
+  border: 0;
+  color: var(--color-text);
 }
+.dialog::backdrop { background: rgba(25, 31, 40, .45); }
 .dialog-title { font-family: var(--font-heading); font-weight: var(--font-heading-weight); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* — 스크린리더 전용 —
+   화면에는 없고 보조기술에만 읽히는 텍스트. 로딩·완료 같은 상태 전환은
+   시각적으로는 스켈레톤과 카드 등장으로 충분히 드러나지만, 보조기술에는
+   아무 신호도 가지 않는다. aria-live 영역의 내용을 여기에 담는다.
+   display:none 이나 visibility:hidden 을 쓰면 안 된다 — 그러면 읽히지도
+   않는다. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* — 표 가로 스크롤 —
    source_path 같은 줄바꿈되지 않는 값을 담는 표는 좁은 화면에서 표 자체
@@ -357,9 +379,9 @@ textarea.input { min-height: 104px; resize: vertical; line-height: 1.6; }
   font-size: 11px;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--color-neutral-500);
+  color: var(--color-neutral-700);
 }
-.surface-nav-item[aria-current='page'] .surface-nav-sub { color: var(--color-accent-500); }
+.surface-nav-item[aria-current='page'] .surface-nav-sub { color: var(--color-accent-700); }
 
 .ask-layout {
   display: grid;
