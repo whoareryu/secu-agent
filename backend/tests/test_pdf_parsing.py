@@ -164,3 +164,32 @@ def test_overlap가_max_chars_이상이면_예외를_던진다():
             max_chars=100,
             overlap=100,
         )
+
+
+def test_사설영역_글리프가_정리된다():
+    """PDF 심볼 폰트의 불릿이 PUA 코드포인트로 새어 나온다.
+
+    유니코드가 의미를 정하지 않는 구간이라 폰트가 없으면 브라우저에서 tofu
+    박스가 되고, LLM 프롬프트와 tsvector·임베딩에는 잡음으로 남는다.
+    실측(작업 코퍼스): 338 청크 중 310 개에 2,062 자.
+
+    U+F020 은 심볼 폰트의 공백이라 공백으로, 나머지는 불릿이라 가운뎃점으로
+    돌려놓는다. 길이가 1:1 이라 청크 경계가 움직이지 않는다 — 네 변형의
+    실측 비교는 adapters/parsing/pdf.py 주석에 있다.
+    """
+    from adapters.parsing.pdf import 사설영역_정리
+
+    나온다 = 사설영역_정리("\uf09f 첫째\uf020항목\uf06e 둘째")
+
+    assert "\uf09f" not in 나온다
+    assert "\uf06e" not in 나온다
+    assert "\uf020" not in 나온다
+    assert 나온다 == "· 첫째 항목· 둘째"
+
+
+def test_사설영역_정리가_한글과_기호를_건드리지_않는다():
+    """정리 범위는 PUA 뿐이다. ▶ 나 ※ 같은 실제 기호는 원문의 일부다."""
+    from adapters.parsing.pdf import 사설영역_정리
+
+    원문 = "▶ 정보보호 최고책임자 ※ 제29조(안전조치의무) · 2.6.1"
+    assert 사설영역_정리(원문) == 원문

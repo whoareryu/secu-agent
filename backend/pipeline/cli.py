@@ -53,9 +53,18 @@ def main() -> int:
     )
     il.add_argument("--dsn", default=None)
 
-    dem = sub.add_parser("demo", help="같은 질의를 세 계정으로 던진다")
+    dem = sub.add_parser("demo", help="같은 질의를 여러 계정으로 던진다")
     dem.add_argument("query")
     dem.add_argument("-k", type=int, default=5)
+    # 시연 계정이 열 명이라 전부 찍으면 출력이 길다. README 가 세 계정만
+    # 인용하므로, 그 인용이 재현 가능하려면 명령 쪽에 좁히는 손잡이가 있어야
+    # 한다 — 없으면 문서가 "출력의 일부"를 보여주면서 전체인 척하게 된다.
+    dem.add_argument(
+        "--persona",
+        action="append",
+        default=None,
+        help="이 계정만 본다. 여러 번 줄 수 있다. 생략하면 전원.",
+    )
     dem.add_argument("--dsn", default=None)
 
     args = ap.parse_args()
@@ -221,6 +230,17 @@ def main() -> int:
         if not 계정들:
             print("시연 계정이 없다. 먼저: python -m pipeline.cli seed-principals", file=sys.stderr)
             return 1
+
+        if args.persona:
+            원했던 = list(args.persona)
+            있는_이름 = {행[0] for 행 in 계정들}
+            없는 = [이름 for 이름 in 원했던 if 이름 not in 있는_이름]
+            if 없는:
+                # 조용히 건너뛰면 "그 계정에는 결과가 없다" 로 읽힌다.
+                print(f"없는 계정: {', '.join(없는)}", file=sys.stderr)
+                return 1
+            순서 = {이름: i for i, 이름 in enumerate(원했던)}
+            계정들 = sorted((행 for 행 in 계정들 if 행[0] in 순서), key=lambda 행: 순서[행[0]])
 
         print(f'질의: "{args.query}"\n')
         for 이름, 부서, 등급 in 계정들:

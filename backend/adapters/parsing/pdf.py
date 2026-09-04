@@ -31,9 +31,50 @@ from core.types import Clause
 참고자료_표지 = "참고자료"
 
 
+# 사설 사용 영역(Private Use Area). 유니코드가 의미를 정하지 않는 구간이라
+# 폰트마다 다른 글자가 되고, 그 폰트가 없으면 아무것도 아니다.
+#
+# ISMS-P 안내서는 불릿을 Wingdings 계열 심볼 폰트로 찍었고, pypdf 는 그것을
+# 매핑 없이 원래 코드포인트 그대로 뽑는다. 실측(2026-09-04, 작업 코퍼스):
+# 338 청크 중 310 개에 2,062 자 — U+F09F 1,666 · U+F06E 378 · U+F0AB 9 ·
+# U+F020 9. 이것이 셋 모두를 오염시켰다:
+#   화면    브라우저에 폰트가 없어 tofu 박스로 그려진다(문서 사이트의
+#           ask-answer.png 에도 그대로 찍혀 있다)
+#   LLM     의미 없는 토큰 수천 개가 프롬프트에 들어간다
+#   검색    tsvector 와 임베딩에 잡음으로 남는다
+#
+# U+F020 은 심볼 폰트의 **공백**이라 공백으로 돌려놓고, 나머지는 불릿이므로
+# 가운뎃점으로 정규화한다. 지우지 않는 이유는 목록 항목의 경계를 남기기
+# 위해서이고, 길이가 1:1 이라 청크 경계가 움직이지 않기 때문이다.
+#
+# **네 가지를 실측하고 골랐다**(골든셋 30건 · k=10):
+#   유지        338청크  Recall .867  MRR .577  nDCG .644
+#   → 가운뎃점  338청크  Recall .867  MRR .526  nDCG .607   ← 채택
+#   → 공백      338청크  Recall .833  MRR .553  nDCG .619
+#   → 제거      337청크  Recall .867  MRR .531  nDCG .612
+# 정리하면 어느 쪽이든 MRR·nDCG 가 내려간다. 길이가 같은 두 변형에서도
+# 내려가므로 청크 경계 이동이 아니라 토크나이제이션 차이다 — PUA 는 e5
+# 토크나이저에서 미지 토큰이 되고, 그 자리에 실제 토큰이 들어가면 문서
+# 벡터가 움직인다. 순위가 흔들릴 뿐 **Recall 은 그대로**여서, 정답 문서를
+# 못 찾게 된 것이 아니라 같은 문서들의 순서가 바뀐 것이다.
+# 가운뎃점을 고른 근거: Recall 을 지키는 두 후보(가운뎃점·제거) 중 청크 수
+# 338 을 유지하는 쪽이다 — 코드 주석·테스트·문서 사이트가 그 숫자를 인용한다.
+#
+# 조항 분할보다 **먼저** 적용한다. 실측으로 조항 102개 · 청크 314개가 그대로
+# 유지되고 코드·제목 집합도 동일함을 확인했다(test_pdf_parsing.py).
+_PUA = re.compile(r"[-]")
+_PUA_공백 = ""
+
+
+def 사설영역_정리(text: str) -> str:
+    """PUA 글리프를 사람이 읽을 수 있는 것으로 바꾼다."""
+    return _PUA.sub("·", text.replace(_PUA_공백, " "))
+
+
 def extract_text(path: Path) -> str:
     reader = PdfReader(str(path))
-    return "\n".join((page.extract_text() or "") for page in reader.pages)
+    본문 = "\n".join((page.extract_text() or "") for page in reader.pages)
+    return 사설영역_정리(본문)
 
 
 def split_clauses(text: str) -> list[Clause]:
