@@ -15,8 +15,10 @@ class PgPrincipalStore:
 
     def find(self, name: str) -> Principal | None:
         with self.conn.cursor() as cur:
-            cur.execute("SELECT department, clearance FROM principals WHERE name = %s", (name,))
+            cur.execute(
+                "SELECT department, clearance, role FROM principals WHERE name = %s", (name,)
+            )
             row = cur.fetchone()
         if row is None:
             return None
-        return Principal(department=row[0], clearance=row[1])
+        return Principal(department=row[0], clearance=row[1], role=row[2])

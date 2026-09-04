@@ -237,3 +237,28 @@ def test_visible_이_Host_에도_그대로_쓰인다():
 
     assert not visible(h.required_clearance, h.allowed_departments, 개발자)
     assert visible(h.required_clearance, h.allowed_departments, 인사팀장)
+
+
+def test_principal_의_기본_역할은_일반_사용자다():
+    """역할을 빠뜨린 생성이 조용히 감사가 되면 안 된다 — 닫히는 방향이 기본값이다.
+
+    기존 호출부(pipeline/cli.py · api/demo.py)가 role 없이 Principal 을
+    만들므로 기본값이 필요하다.
+    """
+    p = Principal(department="개발팀", clearance=1)
+    assert p.role == "member"
+
+
+def test_역할은_권한_판정에_쓰이지_않는다():
+    """역할이 다르다고 보이는 문서가 달라지면 안 된다(스펙 §2.1).
+
+    가시성은 등급·부서만 본다. 이 테스트가 실패하면 visible() 이 role 을
+    보기 시작한 것이고, 그건 이 설계가 명시적으로 금지한 일이다.
+    """
+    from core.access.visibility import visible
+
+    사원 = Principal(department="개발팀", clearance=1, role="member")
+    감사 = Principal(department="개발팀", clearance=1, role="auditor")
+    for 등급 in (1, 2, 3):
+        for 부서 in ((), ("개발팀",), ("인사팀",)):
+            assert visible(등급, 부서, 사원) == visible(등급, 부서, 감사)

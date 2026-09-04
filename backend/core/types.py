@@ -27,6 +27,11 @@ class Principal:
 
     department: str
     clearance: int
+    # 어느 면에 들어갈 수 있는지만 정한다. **가시성에는 쓰이지 않는다** —
+    # visible() 도 권한_WHERE 도 이 값을 보지 않는다. 기본값이 "member" 인
+    # 이유는 닫히는 방향이기 때문이다: 역할을 빠뜨린 생성이 조용히 감사가
+    # 되면 안 된다.
+    role: str = "member"
 
 
 @dataclass(frozen=True)
@@ -107,6 +112,7 @@ class PrincipalRow:
     name: str
     department: str
     clearance: int
+    role: str = "member"
 
 
 @dataclass(frozen=True)

@@ -43,8 +43,9 @@ class PgDocumentCatalog:
     def principals(self) -> list[PrincipalRow]:
         with self.conn.cursor() as cur:
             cur.execute(
-                "SELECT name, department, clearance FROM principals ORDER BY clearance, name"
+                "SELECT name, department, clearance, role FROM principals ORDER BY clearance, name"
             )
             return [
-                PrincipalRow(name=r[0], department=r[1], clearance=r[2]) for r in cur.fetchall()
+                PrincipalRow(name=r[0], department=r[1], clearance=r[2], role=r[3])
+                for r in cur.fetchall()
             ]

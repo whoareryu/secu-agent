@@ -59,3 +59,12 @@ def test_작업DB_연결로는_쓸_수_없다(작업DB_읽기전용):
         with 작업DB_읽기전용.cursor() as cur:
             cur.execute("CREATE TEMP TABLE 쓰기시도 (x int)")
     작업DB_읽기전용.rollback()
+
+
+@pytest.mark.corpus
+def test_계정_목록이_역할을_싣는다(catalog):
+    """프론트가 역할을 서버에서만 얻도록 하려면 이 응답에 있어야 한다."""
+    이름별 = {p.name: p for p in catalog.principals()}
+    assert 이름별["남감사"].role == "auditor"
+    assert 이름별["정개발"].role == "developer"
+    assert 이름별["김개발"].role == "member"

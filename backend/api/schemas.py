@@ -52,6 +52,7 @@ class PrincipalView(BaseModel):
     name: str
     department: str
     clearance: int
+    role: str
 
 
 class AccessRecordView(BaseModel):

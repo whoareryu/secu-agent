@@ -216,7 +216,7 @@ def build_app(
         if 카탈로그 is None:
             raise HTTPException(status_code=503, detail="카탈로그 준비되지 않음")
         return [
-            PrincipalView(name=p.name, department=p.department, clearance=p.clearance)
+            PrincipalView(name=p.name, department=p.department, clearance=p.clearance, role=p.role)
             for p in 카탈로그.principals()
         ]
 
