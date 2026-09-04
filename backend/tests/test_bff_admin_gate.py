@@ -15,9 +15,6 @@ from pathlib import Path
 _저장소 = Path(__file__).resolve().parents[2]
 _라우트 = _저장소 / "frontend" / "app" / "api"
 
-# 이 문자열을 담은 파일은 백엔드로 나가는 통로다.
-_시크릿 = "BACKEND_SHARED_SECRET"
-
 _백엔드_호출 = re.compile(r"fetch\(\s*`\$\{process\.env\.BACKEND_URL\}")
 
 # 세션 검사를 가진 라우트를 찾는 정규식. 주석에 적어도 이 검사를 잡지만,
