@@ -119,13 +119,22 @@ export default function LogsPage() {
       )}
       {이벤트오류 ? (
         <p style={{ fontSize: 13, color: "var(--color-accent-700)" }}>{이벤트오류}</p>
+      ) : !계정오류 && 계정.length === 0 ? (
+        // 계정 목록을 **성공적으로** 가져왔는데 비어 있는 경우다. 주체가
+        // 정해지지 않아 아래 useEffect 가 조기 반환하고, 이벤트가 영원히
+        // null 로 남는다 — 예전에는 그 상태가 "불러오는 중…" 으로 무기한
+        // 표시됐다. 오류도 빈 상태도 아닌 세 번째 사실이므로 따로 말한다.
+        <p style={{ fontSize: 13, color: "var(--color-neutral-800)" }}>
+          등록된 계정이 없습니다 — 누구의 권한으로 로그를 걸러야 할지 정할 수 없어 목록을 만들지
+          않았습니다. <code>python -m pipeline.cli seed-principals</code> 로 시드하면 이어집니다.
+        </p>
       ) : 이벤트 === null ? (
-        <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>불러오는 중…</p>
+        <p style={{ fontSize: 13, color: "var(--color-neutral-800)" }}>불러오는 중…</p>
       ) : (
         <>
-          {/* "이" 로 고정한다 — 세 시드 이름(김개발·박인사·최임원) 모두
-              받침으로 끝나 조사가 "이"다. 받침 없는 이름이 계정에 추가되면
-              그때는 이 줄을 받침 유무로 조사를 고르도록 다시 봐야 한다. */}
+          {/* 조사는 lib/josa.ts 의 이가() 가 받침을 보고 고른다. 시드 계정이
+              열 명으로 늘며 받침 없는 이름(서인사·남감사)이 들어왔고, 그때
+              고정값 "이" 를 버렸다. */}
           <div style={{ fontSize: 13 }}>{주체}{이가(주체)} 볼 수 있는 호스트의 로그 {이벤트.length}건</div>
           {이벤트.length === 0 ? (
             <p style={{ fontSize: 13, color: "var(--color-neutral-600)" }}>

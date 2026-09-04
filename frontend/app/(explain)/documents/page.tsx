@@ -77,6 +77,8 @@ export default function DocumentsPage() {
             담는 촘촘한 판이라 클래스를 쓰지 않고 여기서 그린다 — 저쪽은
             부서·등급까지 두 줄로 담아 높이가 다르다. */}
         <div
+          role="group"
+          aria-label="기준 계정"
           style={{
             display: "flex",
             flexWrap: "wrap",
@@ -93,6 +95,7 @@ export default function DocumentsPage() {
               <button
                 key={p.name}
                 type="button"
+                aria-pressed={on}
                 onClick={() => setPersonaName(p.name)}
                 style={{
                   padding: "7px 13px",

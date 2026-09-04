@@ -55,7 +55,7 @@ const chipBase: React.CSSProperties = {
   color: "var(--color-text)",
   fontFamily: "var(--font-body)",
 };
-const chipOn: React.CSSProperties = { ...chipBase, background: "var(--color-accent)", color: "var(--color-bg)" };
+const chipOn: React.CSSProperties = { ...chipBase, background: "var(--color-accent-700)", color: "var(--color-bg)" };
 
 // 필터 칩은 프로토타입 그대로(전체 / 차단만 / 페르소나별)지만 페르소나 이름은
 // 기록에서 뽑는다 — 계정을 하드코딩하지 않는다.
@@ -108,7 +108,14 @@ export default function AccessTable() {
         <span style={{ flex: 1 }} />
         <div style={{ display: "flex", border: "1px solid var(--color-divider)" }}>
           {filters.map((f) => (
-            <button key={f} type="button" onClick={() => setFilter(f)} style={f === filter ? chipOn : chipBase}>
+            <button
+              key={f}
+              type="button"
+              // 선택 상태를 색으로만 전달하면 보조기술에는 같은 버튼 셋으로 들린다.
+              aria-pressed={f === filter}
+              onClick={() => setFilter(f)}
+              style={f === filter ? chipOn : chipBase}
+            >
               {f}
             </button>
           ))}

@@ -23,12 +23,22 @@ export default function EmployeeHeader({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontFamily: "var(--font-heading)" }}>
-            {principal.name}
-            <span style={{ fontSize: 12.5, color: "var(--color-neutral-700)", fontFamily: "inherit" }}>
-              {" · "}{principal.department} · 등급 {principal.clearance}
-            </span>
+          {/* h1 이다. 설명·관리자 면은 Header 가 화면 이름을 h1 으로 그리는데
+              직원 면에는 그것이 없어 /ask 의 첫 제목이 근거 조항(h2)이었다 —
+              보조기술의 제목 이동으로 이 화면을 훑을 수 없었다. 여기서는
+              "내가 누구로 보고 있는가" 가 화면의 제목이다. */}
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+            {/* 버튼은 h1 **밖**이다. 안에 두면 제목이 "김개발 · 개발팀 · 등급 1
+                시연용 계정" 으로 읽혀, 제목 이동으로 훑을 때 배지 문구까지
+                따라온다. */}
+            <h1 style={{ fontSize: 16, fontFamily: "var(--font-heading)", margin: 0, fontWeight: "inherit" }}>
+              {principal.name}
+              <span style={{ fontSize: 12.5, color: "var(--color-neutral-700)", fontFamily: "inherit" }}>
+                {" · "}{principal.department} · 등급 {principal.clearance}
+              </span>
+            </h1>
             <button onClick={() => set열림(!열림)} className="tag tag-outline"
+              aria-expanded={열림}
               style={{ marginLeft: 10, cursor: "pointer", fontSize: 11 }}>
               시연용 계정 ⓘ
             </button>

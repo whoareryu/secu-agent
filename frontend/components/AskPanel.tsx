@@ -104,7 +104,9 @@ export default function AskPanel({
               className="input"
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="규정에 대해 질문하세요"
+              // placeholder 는 입력을 시작하면 사라진다 — 라벨이 될 수 없다(WCAG 3.3.2).
+          aria-label="규정 질의"
+          placeholder="규정에 대해 질문하세요"
               required
               maxLength={500}
               style={{ height: 42, fontSize: 15 }}
