@@ -1,16 +1,10 @@
-"use client";
+import { signInAction } from "@/auth";
+import AskClient from "./AskClient";
 
-import { useState } from "react";
-import AskPanel from "@/components/AskPanel";
-import RightRail from "@/components/RightRail";
-
-// 페르소나는 이 화면이 모른다 — 셸이 쿠키로 정하고 BFF 가 쿠키에서 읽는다.
+// signInAction 은 "use server" 함수라 클라이언트 컴포넌트(AskClient)가 직접
+// import 할 수 없다 — auth.ts 가 NextAuth · next/headers 를 끌어오므로 클라
+// 번들에 섞이면 빌드가 깨진다. 그래서 이 파일은 서버 컴포넌트로 남기고,
+// 액션만 prop 으로 내려준다(components/SignIn.tsx 와 같은 모양).
 export default function AskPage() {
-  const [query, setQuery] = useState("");
-  return (
-    <div className="ask-layout">
-      <AskPanel query={query} onQueryChange={setQuery} />
-      <RightRail query={query} onSelectSample={setQuery} />
-    </div>
-  );
+  return <AskClient signInAction={signInAction} />;
 }

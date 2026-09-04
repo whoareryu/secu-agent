@@ -147,3 +147,41 @@ def test_세션_없이_기록해도_터지지_않는다(db연결):
     )
 
     assert 로그.recent(10)[0].session_id is None
+
+
+@pytest.mark.db
+def test_화면이_인쇄한_컬럼_목록이_스키마와_같다(db연결):
+    """`/how` 화면은 access_records 의 "컬럼 전부입니다" 라고 적고 목록을 인쇄한다.
+
+    그런 전수 주장은 컬럼이 늘어나는 순간 조용히 거짓이 된다. 위의
+    test_기록에_본문_컬럼이_없다 는 금지 목록이라 새 컬럼을 막지 못한다 —
+    막아서도 안 된다(session_id 는 더해야 하는 컬럼이다). 여기서는 막는
+    것이 아니라 **화면과 스키마가 같이 움직이도록** 묶는다.
+
+    tests/test_how_screen_claims.py 가 /how 의 다른 전수 주장에 하는 일과
+    같은 종류다.
+    """
+    import re
+    from pathlib import Path
+
+    화면 = (
+        Path(__file__).resolve().parents[2] / "frontend" / "app" / "(explain)" / "how" / "page.tsx"
+    )
+    assert 화면.exists(), f"{화면} 가 없다 — 이 테스트가 공허해진다"
+
+    블록 = re.search(
+        r"\{\[\s*\n(.*?)\]\.map\(\(컬럼\)", 화면.read_text(encoding="utf-8"), re.DOTALL
+    )
+    assert 블록, "화면에서 컬럼 배열을 찾지 못했다"
+    화면_컬럼 = set(re.findall(r'"([a-z_]+)"', 블록.group(1)))
+
+    with db연결.cursor() as cur:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = 'access_records'"
+        )
+        스키마_컬럼 = {r[0] for r in cur.fetchall()}
+
+    assert 화면_컬럼 == 스키마_컬럼, (
+        f"화면과 스키마가 어긋났다. 화면에만: {화면_컬럼 - 스키마_컬럼}, "
+        f"스키마에만: {스키마_컬럼 - 화면_컬럼}. 화면 문장도 같이 고친다."
+    )

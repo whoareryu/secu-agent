@@ -608,6 +608,57 @@ def test_access_log_이_남의_질의를_가린다(monkeypatch):
     )
 
 
+def test_access_log_violations_이_남의_질의를_가린다(monkeypatch):
+    """`/access-log` 와 같은 마스킹이 `/access-log/violations` 에도 적용된다.
+
+    두 엔드포인트가 같은 `_기록으로` 를 거치지만, 그것을 확인하는 테스트는
+    지금까지 `/access-log` 쪽에만 있었다 — 이 형제가 없으면 위반 목록
+    엔드포인트가 마스킹을 빼먹어도 아무 테스트도 잡지 못한다.
+    """
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)
+
+    class _기록:
+        def recent(self, limit):
+            return []
+
+        def violations(self, limit):
+            return [
+                AccessRecord(
+                    persona="김개발",
+                    department="개발팀",
+                    clearance=1,
+                    query="내가 친 질문",
+                    clause_code=None,
+                    resource_kind="chunk",
+                    resource_id=1,
+                    allowed=False,
+                    session_id="sess-a",
+                ),
+                AccessRecord(
+                    persona="한보안",
+                    department="정보보안팀",
+                    clearance=2,
+                    query="남이 친 질문",
+                    clause_code=None,
+                    resource_kind="chunk",
+                    resource_id=2,
+                    allowed=False,
+                    session_id="sess-b",
+                ),
+            ]
+
+        def record(self, rows):
+            return 0
+
+    c = TestClient(build_app(lambda: None, 스텁주체저장소({}), 열람기록=_기록()))
+    r = c.get("/access-log/violations?session_id=sess-a", headers=헤더)
+    몸 = r.json()
+
+    assert 몸[0]["query"] == "내가 친 질문"
+    assert 몸[1]["query"] == "(다른 방문자의 질의)"
+    assert "남이 친 질문" not in r.text, "남의 원문이 응답 본문에 남아 있으면 안 된다"
+
+
 def test_세션을_모르면_전부_가린다(monkeypatch):
     """쿠키 없는 요청이 옛 행 전부를 여는 일이 없어야 한다."""
     monkeypatch.setenv("BACKEND_SHARED_SECRET", 시크릿)

@@ -10,9 +10,11 @@ type ErrorKind = "401" | "429" | "400" | "other";
 export default function AskPanel({
   query,
   onQueryChange,
+  signInAction,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
+  signInAction: () => Promise<void>;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<AskResult | null>(null);
@@ -189,15 +191,21 @@ export default function AskPanel({
           style={{ padding: 22, gap: 12, borderColor: "var(--color-accent-700)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="tag tag-outline">401</span>
-            <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>세션이 만료되었습니다</span>
+            <span style={{ fontFamily: "var(--font-heading)", fontSize: 19 }}>
+              질의하려면 로그인이 필요합니다
+            </span>
           </div>
           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
-            다시 로그인한 뒤 질의를 다시 보내주세요.
+            이 화면 말고는 로그인이 필요 없습니다. <code>/ask</code> 뒤에는 LLM 이 있어,
+            열어두면 누구나 API 요금을 쓰게 됩니다 — 로그인은 권한이 아니라 요금 게이트입니다.
+            로그인하면 하루 정해진 횟수까지 질의할 수 있습니다.
           </p>
           <div style={{ display: "flex", gap: 8 }}>
-            <a className="btn btn-secondary" href="/">
-              다시 로그인
-            </a>
+            <form action={signInAction}>
+              <button type="submit" className="btn btn-secondary">
+                로그인 / Sign in
+              </button>
+            </form>
           </div>
         </Blueprint>
       )}

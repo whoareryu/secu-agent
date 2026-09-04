@@ -17,9 +17,9 @@ export default async function AdminPage() {
   return (
     <div style={{ maxWidth: 1100, display: "flex", flexDirection: "column", gap: 26 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingBottom: 2 }}>
-        <span className="tag tag-outline">Admin only</span>
+        <span className="tag tag-outline">역할: 감사</span>
         <span style={{ fontSize: 13, color: "var(--color-neutral-700)" }}>
-          열람 이력과 권한 이상 알림은 관리자 세션에서만 보입니다.
+          열람 이력과 권한 이상 알림은 고른 페르소나의 역할이 감사일 때만 보입니다 — 로그인은 필요하지 않습니다.
         </span>
       </div>
       <p
@@ -35,6 +35,11 @@ export default async function AdminPage() {
       >
         이 화면은 이 배포에서 실제로 일어난 요청만 보여줍니다. 표본이 적은 것은 아직 적게 썼기 때문이며, 시연용으로
         채운 데이터가 아닙니다.
+      </p>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
+        다른 방문자의 질의 원문은 가려집니다. 이 화면이 보여주는 것은 실제로 일어난 요청이고,
+        가려진 것은 그 요청의 <strong>본문뿐</strong>입니다 — 누가 · 언제 · 어떤 조항에
+        닿았는지는 그대로입니다. 가리는 일은 서버가 합니다.
       </p>
       <AdminSummary />
       <AlertTable />

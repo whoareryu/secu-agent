@@ -71,6 +71,7 @@ export default function HowPage() {
             "resource_kind",
             "resource_id",
             "allowed",
+            "session_id",
           ].map((컬럼) => (
             <span key={컬럼} className="tag tag-outline" style={{ fontSize: 11.5 }}>
               {컬럼}
@@ -83,7 +84,10 @@ export default function HowPage() {
           문서의 존재가 드러나기 때문입니다 — <code>AccessViolation</code> 이 예외 메시지에 식별자만 담고
           본문·호스트 이름·문서 제목을 담지 않는 것과 같은 원칙입니다(core/agent/policy.py). 컬럼을 더하면
           실패하는 테스트가 하나 있습니다:{" "}
-          <code>backend/tests/test_access_log.py::test_기록에_본문_컬럼이_없다</code>.
+          <code>backend/tests/test_access_log.py::test_기록에_본문_컬럼이_없다</code>.{" "}
+          <code>session_id</code> 는 브라우저를 구분하는 난수입니다. 이메일·이름과 잇지 않으며,
+          열람 이력 화면이 <strong>내 질의와 남의 질의를 가르는 데만</strong> 씁니다 — 이 표가
+          본문도 제목도 담지 않는다는 주장은 그대로입니다.
         </p>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
           열람 대상은 청크이거나 로그 이벤트입니다. <code>resource_kind</code> 는{" "}
