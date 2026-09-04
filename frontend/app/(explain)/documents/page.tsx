@@ -120,9 +120,39 @@ export default function DocumentsPage() {
 
       <DocumentTable documents={documents} persona={persona} />
 
+      {/* 이 문단이 없으면 이 화면은 /my/documents 와 모순으로 읽힌다. 저쪽은
+          "목록에 없는 문서는 제목조차 브라우저에 오지 않습니다" 라고 적는데
+          여기는 못 보는 문서의 제목을 대놓고 보여주기 때문이다. 둘 다 참인
+          이유를 화면이 직접 말한다.
+          backend/tests/test_document_screen_claims.py 가 이 문단의 존재를
+          고정한다 — 주석은 세지 않는다. */}
+      <p
+        style={{
+          margin: 0,
+          fontSize: 12.5,
+          lineHeight: 1.7,
+          color: "var(--color-neutral-800)",
+          maxWidth: 760,
+          borderLeft: "2px solid var(--color-accent-400)",
+          paddingLeft: 10,
+        }}
+      >
+        <strong>문서 카탈로그를 권한 필터 없이 브라우저로 받는 화면은 여기 하나입니다.</strong>{" "}
+        그래야 못 보는 문서가 &quot;가려짐&quot; 행으로 존재할 수 있고, 계정을 바꿔가며 무엇이 갈리는지
+        비교할 수 있습니다 — 규칙을 장치 밖에서 보여주는 자리이기 때문입니다. 답변 경로(<code>/ask</code>)와{" "}
+        <code>내 문서</code>는 반대로 서버에서 걸러, 못 보는 문서는 제목조차 브라우저로 내려가지 않습니다.
+      </p>
+      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--color-neutral-700)", maxWidth: 760 }}>
+        그렇게 해도 되는 이유는 이 표의 {documents.length}행 어느 것도 감출 것이 없기 때문입니다. 사내
+        규정 {documents.filter((d) => d.doc_type === "md").length}건은{" "}
+        <strong>합성</strong>이고 <code>data/policies/</code> 에 본문·머리말째 커밋돼 있어, 등급 3 문서도{" "}
+        <code>clearance: 3</code> 이 적힌 채 <strong>공개 저장소</strong>에서 그대로 읽힙니다. 남은 한 행인
+        ISMS-P 안내서는 등급 1 · 전사 공개라 애초에 가려지는 계정이 없습니다(PDF 본체는 저장소에 없고{" "}
+        <code>data/raw/</code> 로 따로 받습니다). 실제 사내 규정이었다면 이 화면은 이렇게 만들 수 없습니다.
+      </p>
       <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--color-neutral-700)", maxWidth: 760 }}>
         허용 부서가 비어 있으면 전사 공개입니다 — &quot;아무도 못 본다&quot;가 아닙니다. ISMS-P 안내서는 본문이
-        실제 공개 표준이고 권한 등급만 부여했으며, 사내 규정 문서와 시연 계정은 합성입니다.
+        실제 공개 표준이고 권한 등급만 부여했습니다.
       </p>
       <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: "var(--color-neutral-700)", maxWidth: 760 }}>
         이 가시성 계산은 SQL(chunk_search._권한_WHERE) · 파이썬(core/access/visibility.py)에 이은 세 번째

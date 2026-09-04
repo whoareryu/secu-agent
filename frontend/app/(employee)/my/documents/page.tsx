@@ -81,7 +81,14 @@ export default async function MyDocumentsPage() {
         이 목록은 계정의 부서와 등급으로 결정됩니다.
       </p>
       <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.65, color: "var(--color-neutral-700)" }}>
-        걸러내기는 서버에서 끝납니다 — 목록에 없는 문서는 제목조차 브라우저에 오지 않습니다.
+        <strong>이 화면에서는</strong> 걸러내기가 서버에서 끝납니다 — 목록에 없는 문서는 제목조차
+        브라우저에 오지 않습니다. 이 페이지가 서버 컴포넌트이고, 걸러낸 목록만 렌더에 들어가기
+        때문입니다. <code>backend/tests/test_document_screen_claims.py</code> 가 그 둘을 지킵니다 —
+        이 페이지에 <code>use client</code> 가 붙거나, 거르는 줄의 모양이 바뀌거나, 거르지 않은
+        목록이 화면 요소로 흘러가면 실패합니다. 다만 그 검사는 문자열 검사라, 이름을 갈아 끼워
+        우회하는 것까지 막지는 못합니다 — 흔한 모양까지입니다.{" "}
+        <a href="/documents">문서 가시성</a> 화면은 일부러 반대로 합니다 — 규칙을 밖에서 보여주려면
+        가려진 문서가 화면에 있어야 하기 때문입니다. 그쪽이 그래도 되는 이유는 그 화면이 직접 적어둡니다.
         다만 이 목록을 고른 것은 <code>lib/visibility.ts</code> 이고, 그것은
         SQL(<code>permission_sql.권한_WHERE</code>) · 파이썬(<code>core/access/visibility.py</code>)에
         이은 세 번째 사본입니다. 질의가 근거 조항을 고를 때 실제로 거는 것은 그 SQL 이지 이 사본이
