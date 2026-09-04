@@ -77,22 +77,22 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
 
     <div class="grid g4">
       <div class="stat">
-        <div class="n">358<small>건</small></div>
+        <div class="n">419<small>건</small></div>
         <div class="k">자동화 테스트</div>
-        <div class="s">백엔드 351 · 프론트엔드 30 · 코퍼스 검사 7</div>
+        <div class="s">백엔드 381 · 프론트엔드 38</div>
       </div>
       <div class="stat">
-        <div class="n">165<small>커밋</small></div>
-        <div class="k">4일간</div>
-        <div class="s">2026-08-31 ~ 09-03</div>
+        <div class="n">170<small>커밋</small></div>
+        <div class="k">5일간</div>
+        <div class="s">2026-08-31 ~ 09-04</div>
       </div>
       <div class="stat">
-        <div class="n">13.0<small>k줄</small></div>
+        <div class="n">13.1<small>k줄</small></div>
         <div class="k">애플리케이션 코드</div>
-        <div class="s">Python 8.5k · TypeScript 4.6k</div>
+        <div class="s">Python 8.8k · TypeScript 3.9k · CSS 0.4k</div>
       </div>
       <div class="stat">
-        <div class="n">106<small>편</small></div>
+        <div class="n">109<small>편</small></div>
         <div class="k">개발 로그</div>
         <div class="s">커밋마다 무엇을 왜 했는지 기록</div>
       </div>
@@ -238,7 +238,7 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
 
     {% assign shots =
       "hub|허브 — 누구로 둘러볼지 고른다|열 명의 시연 계정이 부서 4개 × 등급으로 격자를 이룹니다. 지금 보는 중인 계정은 카드에 표시됩니다.|/,
-       ask-answer|질의 — 근거 조항과 함께 답한다|김개발(개발팀·등급 1)이 운영 서버 접속을 묻자 개발팀 전용 규정 5.1.1 이 근거로 붙었습니다. 같은 질문을 다른 부서가 물으면 이 조항이 오지 않습니다.|/ask,
+       ask-answer|질의 — 근거 조항과 함께 답한다|한보안(정보보안팀·등급 2)이 운영 서버 접속을 묻자 ISMS-P 2.6.2·2.8.4 가 근거로 붙었습니다. 개발팀 전용인 사내 규정 5.1.1 은 등급이 더 낮은데도(요구 등급 1) 오지 않습니다 — 등급이 부서를 덮어쓰지 않기 때문입니다.|/ask,
        my-documents|내 문서 — 내가 볼 수 있는 것만|목록에 없는 문서는 제목조차 브라우저로 오지 않습니다. 화면은 이 목록을 고른 코드가 실제 강제 지점(SQL)의 사본이라는 사실까지 적어둡니다.|/my/documents,
        documents|문서 가시성 — 누가 무엇을 보는가|계정을 바꿔가며 같은 코퍼스가 어떻게 갈리는지 봅니다. 허용 부서가 비어 있으면 전사 공개라는 규칙까지 화면에 적혀 있습니다.|/documents,
        how|동작 원리 — 새는 것을 실행해 보인다|사전 필터링과 순진한 사후 필터링을 그 자리에서 여섯 번 검색해 비교합니다. LLM 을 부르지 않아 질의 횟수를 쓰지 않습니다.|/how,
@@ -280,7 +280,7 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
     {% assign stacks =
       "검색 · 데이터||Postgres 16 + pgvector;벡터 저장과 권한 필터를 한 트랜잭션에서;별도 벡터 DB 를 두면 권한 조건과 유사도 검색이 두 시스템으로 갈라진다. 한 곳에 두어야 WHERE 를 ORDER BY 앞에 놓을 수 있다.||multilingual-e5-small;한국어 규정 문서 임베딩 (384차원);로컬에서 돌아 API 비용이 0원이다. 첫 요청에만 모델 로드로 수십 초가 걸린다 — 화면이 그 사실을 알린다.||RRF (Reciprocal Rank Fusion);벡터 + 키워드 하이브리드 융합;조항 번호처럼 정확히 일치해야 하는 토큰은 벡터만으로 못 잡는다. 점수 스케일이 다른 두 랭킹을 순위로만 합친다.||pypdf;ISMS-P 안내서 255쪽을 조항 단위로 분할;문서 전체를 통으로 넣으면 근거를 조항 번호로 지목할 수 없다.,
        에이전트 · LLM||LangGraph;도구 호출 루프 (search_policy · query_logs);에이전트가 규정 본문을 직접 갖지 않고 도구로만 접근한다 — 도구가 권한을 걸므로 우회할 표면이 없다.||Gemini 3.7 Flash;근거 조항 기반 답변 생성;무료 티어 안에서 쓸 수 있고 한국어 규정 문서에 충분하다. 하루 질의 상한을 프론트에서 건다.||AccessViolation 정책;재검증 실패 시 예외;예외 메시지에 식별자만 담고 본문·제목을 담지 않는다 — 오류 메시지가 우회 경로가 되지 않게.,
-       프론트엔드||Next.js 16 (App Router);화면 7개 + BFF;서버 컴포넌트에서 쿠키를 읽어 페르소나를 판정한다. 브라우저는 백엔드를 직접 부르지 않는다.||Auth.js v5 (Google OAuth);로그인;비밀번호를 직접 다루지 않는다. 관리자 여부는 이메일 알리스트로 판정한다.||TypeScript 7;lib/ 순수 함수 + 타입;권한 판정·조사 처리 같은 순수 로직을 node --test 로 DOM 없이 검증한다.||CSS 단일 파일;디자인 시스템;프레임워크 없이 토큰과 컴포넌트 클래스만. 900px 한 갈래의 미디어 쿼리로 모바일을 접는다.,
+       프론트엔드||Next.js 16 (App Router);화면 8개 + BFF;서버 컴포넌트에서 쿠키를 읽어 페르소나를 판정한다. 브라우저는 백엔드를 직접 부르지 않는다.||Auth.js v5 (Google OAuth);로그인;비밀번호를 직접 다루지 않는다. 관리자 여부는 이메일 알리스트로 판정한다.||TypeScript 7;lib/ 순수 함수 + 타입;권한 판정·조사 처리 같은 순수 로직을 node --test 로 DOM 없이 검증한다.||CSS 단일 파일;디자인 시스템;프레임워크 없이 토큰과 컴포넌트 클래스만. 900px 한 갈래의 미디어 쿼리로 모바일을 접는다.,
        인프라 · 배포||Vercel;프론트엔드 (상시);무료 티어. 도메인 whoareryu.cloud 를 여기에 붙였다.||Cloudflare Tunnel;로컬 백엔드 공개;고정 IP 도 포트 개방도 없이 내 맥북의 도커를 공개한다. 24시간 가동하지 않는다는 것이 그 대가다.||Docker Compose;Postgres + FastAPI;서비스 이름을 secu-backend 로 둔다 — 같은 네트워크의 다른 프로젝트와 별칭이 충돌해 라이브 서비스를 절반 끊어먹은 적이 있다.||GitHub Actions;CI + Pages;계층 경계·권한 누출·화면 주장 테스트를 푸시마다 돌린다. 이 문서 사이트도 여기서 배포된다.,
        검증 도구||pytest (마커 분리);351건;llm·db·model·corpus 를 기본 제외한다 — 컨테이너나 API 키가 없는 환경에서도 기본 스위트가 돈다.||ruff;린트 + 포맷;line-length 100 · E,F,I,UP,B.||node --test;30건;프론트엔드 순수 함수. 별도 러너를 설치하지 않는다.||계층 경계 테스트;import 방향 강제;core/ 가 adapters 를 import 하면 실패한다. 규칙을 주석이 아니라 테스트가 지킨다."
       | split: "," %}
@@ -426,7 +426,7 @@ description: 부서·직급에 따라 검색 범위가 달라지는 사내 규�
       <div class="tl-item">
         <div class="tl-when">2026-09-01 · W3 · W3b</div>
         <h4>에이전트 · API · 프론트엔드 전체 화면 <span class="tag tag-green">완료</span></h4>
-        <p>LangGraph 도구 호출 루프, FastAPI 엔드포인트, Google 로그인 뒤의 Next.js 화면 7개와
+        <p>LangGraph 도구 호출 루프, FastAPI 엔드포인트, Google 로그인 뒤의 Next.js 화면 8개와
            관리자 대시보드. <strong>목 데이터를 화면에 두지 않는다</strong>는 규칙을 이때 세움 —
            지어낸 값 대신 진짜 데이터를 만들거나 없다는 사실을 명시.</p>
       </div>

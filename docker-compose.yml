@@ -2,6 +2,12 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    # 노트북 위에서 돌고 터널로 공개된다 — 도커 데몬 재시작이나 재부팅 뒤에
+    # 사람이 붙어야 살아나면 그건 배포가 아니다.
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
     environment:
       POSTGRES_USER: secuagent
       POSTGRES_PASSWORD: secuagent
@@ -24,6 +30,21 @@ services:
   # 끊겼다. 이름을 고유하게 두는 것이 그 사고를 구조적으로 막는다.
   secu-backend:
     build: ./backend
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+    # 헬스체크가 없으면 도커는 컨테이너가 살아 있다는 것만 알고, DB 가 한 번
+    # 튀어 커넥션이 죽은 채로 영구히 실패하는 상태를 구별하지 못한다.
+    # start_period 가 길다 — 콜드 스타트에서 첫 /healthz 가 임베딩 모델
+    # 로드를 동기로 트리거해 ~30초 걸린다. 짧게 주면 기동 중인 컨테이너를
+    # 계속 죽이는 루프에 빠진다.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz', timeout=10).status == 200 else 1)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
     depends_on:
       db:
         condition: service_healthy
@@ -45,7 +66,10 @@ services:
       # 서비스 계정 JSON. 이미지에 굽지 않는다 — 이미지는 레지스트리에 올라간다.
       - ./gcp-sa.json:/run/secrets/gcp-sa.json:ro
     ports:
-      - "8080:8080"
+      # 호스트 포트를 .env 로 옮길 수 있게 둔다. 커밋되지 않는
+      # docker-compose.override.yml 로 이것을 바꾸면, 저장소에 남은 배포
+      # 절차가 저장소에 없는 파일을 요구하게 된다.
+      - "${SECU_BACKEND_PORT:-8080}:8080"
 
 volumes:
   secuagent_pgdata:
