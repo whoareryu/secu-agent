@@ -160,7 +160,7 @@ API 를 부르지 않으므로, 터널로 공개되는 파드가 API 토큰을 �
 | 3 | 시크릿 헤더 없이 `POST /ask` | ✅ 401 |
 | 4 | 터널 도메인으로 왕복 | ✅ `secu.whoareryu.cloud` — `/healthz` 200, 무인증 401, 인증 200 |
 | 5 | `colima stop && colima start` 후 사람 개입 없이 2번 복구 | ✅ |
-| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ◐ LaunchAgent 가 끌고 오는 복구는 실측(아래 5.2). 로그인 트리거와 Docker Desktop 자동 기동은 미검증 |
+| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ◐ LaunchAgent 가 끌고 오는 복구는 실측, Docker Desktop 자동 기동도 켬(5.2). 로그인 트리거만 미검증 |
 | 7 | 공개 사이트가 실제 데이터를 그린다 | ✅ `whoareryu.cloud` 200, 페르소나 4명 렌더, 백엔드 `GET /principals` 200 |
 
 `deploy/secret.sh` 의 fail-closed 도 실측했다 — `TUNNEL_TOKEN` 이 비었을 때
@@ -219,15 +219,23 @@ plist 의 `EnvironmentVariables` 로 PATH 를 준다.
 등록된 것으로 보여주고 있었지만, 두 번째 칸의 종료코드가 `1` 이었다 —
 그 숫자를 보기 전까지는 갖춰진 것처럼 보였다.
 
-**아직 검증되지 않은 것 둘.**
+**Docker Desktop 자동 기동도 꺼져 있었다.** `AutoStart = False` 였다
+(`~/Library/Group Containers/group.com.docker/settings-store.json`). 그대로
+재부팅했다면 Colima 와 k3s 는 떠도 pgvector 가 뜨지 않아 `/healthz` 가
+`"db": false` 였을 것이다. Settings → General 에서 켰고 파일이 `True` 로
+바뀐 것을 확인했다.
 
-1. **로그인 시 트리거.** kickstart 는 환경을 재현하지만 launchd 가 로그인
-   때 실제로 이 job 을 무는지는 재부팅해야 안다.
-2. **Docker Desktop.** 설정이 `AutoStart = False` 다
-   (`~/Library/Group Containers/group.com.docker/settings-store.json`).
-   이대로 재부팅하면 pgvector 가 뜨지 않아 `/healthz` 가 `"db": false` 가
-   된다. Docker Desktop → Settings → General 에서 "Start Docker Desktop when
-   you sign in" 을 켜야 결정 4 가 성립한다.
+**아직 검증되지 않은 것 하나.** launchd 가 **로그인 시점에** 실제로 이 job 을
+무는지는 재부팅해야 안다. kickstart 는 환경을 재현하지만 트리거 자체를
+재현하지는 못한다. 재부팅 뒤 아래 둘이 사람 손 없이 통과하면 6 번이 닫힌다.
+
+```bash
+kubectl -n secu-agent get pods                    # 둘 다 Running
+curl -s https://secu.whoareryu.cloud/healthz      # db:true, model:ready
+```
+
+`"db": false` 면 Docker Desktop 이, 파드가 없거나 kubectl 이 연결을 거부하면
+Colima 가 안 뜬 것이다. 후자는 `/tmp/colima-launchagent.log` 에 원인이 남는다.
 
 ## 6. 이 설계가 건드리지 않는 것
 
