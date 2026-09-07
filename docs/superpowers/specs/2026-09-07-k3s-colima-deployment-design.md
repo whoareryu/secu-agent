@@ -158,12 +158,18 @@ API 를 부르지 않으므로, 터널로 공개되는 파드가 API 토큰을 �
 | 1 | `kubectl -n secu-agent get pods` → `Running` | ✅ 23초 만에 Ready, 재시작 0 |
 | 2 | `/healthz` → `{"status":"ok","db":true,"model":"ready"}` | ✅ `db:true` — VM 경계를 넘은 DB 도달까지 증명 |
 | 3 | 시크릿 헤더 없이 `POST /ask` | ✅ 401 |
-| 4 | 터널 도메인으로 프론트에서 왕복 | ⏸ `TUNNEL_TOKEN` 대기 |
+| 4 | 터널 도메인으로 왕복 | ✅ `secu.whoareryu.cloud` — `/healthz` 200, 무인증 401, 인증 200 |
 | 5 | `colima stop && colima start` 후 사람 개입 없이 2번 복구 | ✅ |
 | 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ⏸ LaunchAgent 등록됨, 재부팅 미시행 |
 
 `deploy/secret.sh` 의 fail-closed 도 실측했다 — `TUNNEL_TOKEN` 이 비었을 때
 Secret 을 만들지 않고 종료코드 1 로 죽는다.
+
+4번은 인터넷에서 잰 것이다. 브라우저가 닿는 경로 전체 — Cloudflare →
+클러스터의 cloudflared → ClusterIP → 백엔드 → VM 경계를 넘어 Docker Desktop
+의 pgvector — 가 한 번에 검증된다. 공개 호스트명은
+`secu.whoareryu.cloud` 이고 터널 설정은 Cloudflare 대시보드에 있다(저장소에는
+토큰도 라우트도 남기지 않는다).
 
 ## 6. 이 설계가 건드리지 않는 것
 
