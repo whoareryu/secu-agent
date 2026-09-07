@@ -160,7 +160,8 @@ API 를 부르지 않으므로, 터널로 공개되는 파드가 API 토큰을 �
 | 3 | 시크릿 헤더 없이 `POST /ask` | ✅ 401 |
 | 4 | 터널 도메인으로 왕복 | ✅ `secu.whoareryu.cloud` — `/healthz` 200, 무인증 401, 인증 200 |
 | 5 | `colima stop && colima start` 후 사람 개입 없이 2번 복구 | ✅ |
-| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ⏸ LaunchAgent 등록됨, 재부팅 미시행 |
+| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ⏸ LaunchAgent 등록·로드됨, 재부팅 미시행 |
+| 7 | 공개 사이트가 실제 데이터를 그린다 | ✅ `whoareryu.cloud` 200, 페르소나 4명 렌더, 백엔드 `GET /principals` 200 |
 
 `deploy/secret.sh` 의 fail-closed 도 실측했다 — `TUNNEL_TOKEN` 이 비었을 때
 Secret 을 만들지 않고 종료코드 1 로 죽는다.
@@ -170,6 +171,28 @@ Secret 을 만들지 않고 종료코드 1 로 죽는다.
 의 pgvector — 가 한 번에 검증된다. 공개 호스트명은
 `secu.whoareryu.cloud` 이고 터널 설정은 Cloudflare 대시보드에 있다(저장소에는
 토큰도 라우트도 남기지 않는다).
+
+7번이 4번과 다른 이유: 4번은 백엔드까지만 잰다. 7번은 **Vercel 이 새 주소와
+새 시크릿으로 백엔드를 부른다**는 것까지 포함한다. 전환 도중 한 번은
+`GET /principals` 가 401 이었는데, 그 401 이 백엔드 로그에 찍혔다는 사실
+자체가 `BACKEND_URL` 은 이미 맞고 `BACKEND_SHARED_SECRET` 만 옛 값이라는
+것을 가려주었다 — 화면의 "백엔드에 닿지 못했습니다" 카드는 네트워크 실패와
+401 을 구분해 주지 않는다(`frontend/lib/principals.ts` 가 `!r.ok` 에서 던진다).
+
+### 5.1 이전이 끝난 뒤 정리한 것
+
+- **옛 백엔드 컨테이너 제거**(`secu-agent-secu-backend-1`). 데이터 볼륨이
+  없어 잃은 것이 없다. 이것이 `cloudwhoareryu_app-network` 에 남아 있던
+  마지막 조각이었다 — 결정 3 이 말한 분리가 여기서 실제로 끝났다.
+- **옛 터널의 secu-agent 라우트 제거.** `whoareryu.cloud` 터널에는 새싹
+  라우트 넷만 남았고 `secu-backend:8080` 을 가리키는 줄은 없다.
+- **공유 시크릿과 터널 토큰 교체.** 둘 다 작업 중 노출됐다. 교체 뒤
+  `/principals` 가 옛 값으로 401, 새 값으로 200 인 것을 확인했다.
+
+`BACKEND_SHARED_SECRET` 노출은 `deploy/secret.sh` 의 버그였다 — bash 의
+`local` 이 비ASCII 변수명을 거부하면서 **assignment 전체를 에러 메시지로
+출력했다.** 변수 이름을 ASCII 로 바꿔 고쳤고 그 이유를 스크립트 주석에
+남겼다.
 
 ## 6. 이 설계가 건드리지 않는 것
 
