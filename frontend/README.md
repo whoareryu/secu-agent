@@ -10,8 +10,15 @@ cp .env.example .env.local    # AUTH_* · BACKEND_URL · BACKEND_SHARED_SECRET
 npm run dev                   # http://localhost:3000
 ```
 
-`BACKEND_URL` 은 백엔드가 실제로 떠 있는 포트를 가리켜야 합니다 — 루트
-`docker-compose.yml` 기본값은 8080 이고, 로컬에서 옮겼다면 그 포트입니다.
+`BACKEND_URL` 은 백엔드가 실제로 떠 있는 포트를 가리켜야 합니다. 백엔드는
+k3s 에서 돌고 ClusterIP 로만 열려 있으므로, 로컬 개발에서는 포트를 끌어옵니다:
+
+```bash
+kubectl -n secu-agent port-forward svc/secu-backend 8080:8080
+```
+
+`BACKEND_SHARED_SECRET` 은 클러스터 Secret 에 든 값과 같아야 합니다 —
+둘 다 루트 `.env` 에서 나옵니다(`deploy/secret.sh`).
 
 ## 화면
 

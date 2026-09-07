@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  로그인할 때 Colima 를 띄운다.
+
+  compose 의 `restart: unless-stopped` 는 "재부팅 뒤에 사람이 붙어야 살아나면
+  그건 배포가 아니다" 를 지키려고 있었다. k3s 로 오면서 그 보장이 한 겹
+  얇아진다 — 파드의 restartPolicy 는 VM 이 떠 있을 때만 의미가 있고,
+  Colima 는 부팅 시 스스로 뜨지 않는다. 이 파일이 그 빈자리를 메운다.
+
+  설치:
+    cp deploy/com.secuagent.colima.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.secuagent.colima.plist
+
+  확인:
+    launchctl list | grep secuagent
+
+  Docker Desktop 은 별도다 — pgvector 가 거기 있으므로 앱 설정에서
+  "Start Docker Desktop when you sign in" 을 켠다.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.secuagent.colima</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/colima</string>
+        <string>start</string>
+    </array>
+
+    <!-- VM 설정은 ~/.colima/default/colima.yaml 에 저장돼 있다. 여기에
+         --cpus 4 --memory 8 을 되풀이하면 두 곳이 진실을 주장하게 되고,
+         한쪽만 고쳤을 때 조용히 어긋난다. 인자 없이 부른다. -->
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- KeepAlive 를 쓰지 않는다. colima start 는 기동 후 종료하는 명령이라
+         KeepAlive 를 켜면 launchd 가 끝없이 재실행한다. -->
+
+    <key>StandardOutPath</key>
+    <string>/tmp/colima-launchagent.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/colima-launchagent.log</string>
+</dict>
+</plist>

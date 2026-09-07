@@ -108,12 +108,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # compose 파일 셋의 병합이 유효한지. tunnel 오버레이는 이 머신 밖의
-      # 네트워크를 참조하므로 base 만 본다.
+      # compose 는 이제 db 하나다. 오버레이도 변수 보간도 없으므로
+      # 문법이 깨진 채로 머지되는 것만 막으면 된다.
       - name: compose 문법
         run: docker compose config -q
-        env:
-          BACKEND_SHARED_SECRET: ci-syntax-check-only
 
       - name: 백엔드 이미지 빌드
         run: docker build -t secu-agent-backend:ci ./backend
+
+      # compose 가 검사받지 않던 것과 같은 자리에 k8s 매니페스트가 있었다 —
+      # 깨진 채로 머지돼도 초록불이고, 배포하려는 순간에야 안다.
+      #
+      # kubeconform 은 클러스터 없이 쿠버네티스 JSON 스키마로 검사한다.
+      # -strict 가 있어야 오타 필드(`imagePullpolicy`)를 잡는다 — 그것이
+      # 없으면 모르는 필드를 그냥 통과시켜서, 정작 배포에서 조용히 무시된다.
+      #
+      # **이 검사가 잡지 못하는 것을 적어 둔다.** 스키마는 맞지만 런타임에
+      # 죽는 것들 — 이름 USER 에 runAsNonRoot 만 준 경우,
+      # /run/secrets 를 디렉터리로 마운트해 서비스어카운트 토큰과 부딪히는
+      # 경우 — 은 실제 클러스터에서만 드러난다. 그 둘은 매니페스트 주석과
+      # 배포 스펙 §4.3 에 남겼다.
+      - name: k8s 매니페스트 스키마
+        run: |
+          curl -sL "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz" \
+            | tar xz kubeconform
+          ./kubeconform -strict -summary deploy/k8s/

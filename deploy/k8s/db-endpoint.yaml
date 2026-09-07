@@ -1,0 +1,46 @@
+# DB 는 클러스터 밖에 있다.
+#
+# pgvector 는 Docker Desktop 의 `secuagent_pgdata` 볼륨 위에서 계속 돈다
+# (루트 docker-compose.yml). 클러스터로 들이지 않은 이유는 두 가지다 —
+# 이관 없이 열람 기록을 그대로 살리는 것, 그리고 나중에 슈파베이스로 옮길
+# 때 버려질 작업을 지금 하지 않는 것.
+#
+# **192.168.5.2 는 Colima VM 에서 본 macOS 호스트다.** 파드는 CoreDNS 를
+# 쓰므로 VM 의 /etc/hosts 에 있는 `host.lima.internal` 을 풀지 못한다. 그래서
+# IP 를 직접 쓴다.
+#
+# 그 IP 를 DSN 에 박지 않고 셀렉터 없는 Service 뒤에 가두는 이유: 슈파베이스로
+# 옮길 때 고칠 곳을 한 곳으로 만들기 위해서다. 그때는 이 파일을 지우고
+# Secret 의 SECUAGENT_DSN 만 바꾼다 — backend.yaml 은 건드리지 않는다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: secu-db
+  namespace: secu-agent
+spec:
+  # 셀렉터가 없다. 어떤 파드도 고르지 않고, 아래 EndpointSlice 가 주소를 준다.
+  ports:
+    - name: postgres
+      port: 5432
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: secu-db
+  namespace: secu-agent
+  labels:
+    # 이 라벨이 위 Service 와의 유일한 연결이다. 오타 나면 Service 가 조용히
+    # 엔드포인트 0개가 되고, 백엔드는 연결 거부가 아니라 타임아웃을 본다.
+    kubernetes.io/service-name: secu-db
+addressType: IPv4
+# 이름이 Service 의 포트 이름과 같아야 5432 → 5433 매핑이 성립한다.
+ports:
+  - name: postgres
+    port: 5433
+endpoints:
+  - addresses:
+      - "192.168.5.2"
+    conditions:
+      # 클러스터 밖이라 kubelet 이 상태를 못 본다. 준비됐다고 선언해 두고,
+      # 실제 도달 여부는 백엔드의 /healthz 가 `"db": true` 로 말한다.
+      ready: true

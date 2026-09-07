@@ -1,0 +1,8 @@
+# 이 프로젝트의 것만 담는 네임스페이스.
+#
+# k3s 는 이 맥의 다른 것과 클러스터를 공유할 수 있다. default 에 두면
+# `kubectl delete -f` 같은 명령의 사정거리가 남의 것까지 닿는다.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: secu-agent

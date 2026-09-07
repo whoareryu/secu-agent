@@ -44,6 +44,3 @@ frontend/out/
 gcp-sa.json
 *-sa.json
 *service-account*.json
-
-# 로컬 전용 compose 덮어쓰기 (포트 충돌 회피 등). 커밋하지 않는다.
-docker-compose.override.yml

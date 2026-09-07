@@ -22,8 +22,7 @@ RUN python -c "\
 from sentence_transformers import SentenceTransformer; \
 SentenceTransformer('intfloat/multilingual-e5-small')"
 
-# 루트로 돌리지 않는다. 이 컨테이너는 Cloudflare 터널로 공개되고, 같은
-# 브리지에 남의 스택이 함께 있다(docker-compose.tunnel.yml 주석 참고).
+# 루트로 돌리지 않는다. 이 컨테이너는 Cloudflare 터널로 공개된다 —
 # 뚫렸을 때 루트인 것과 아닌 것은 다르다.
 #
 # 모델 캐시를 먼저 굽고 나서 사용자를 만든다 — 순서를 바꾸면 캐시를 쓰는

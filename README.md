@@ -254,16 +254,22 @@ curl -L -o data/raw/ismsp.pdf \
 
 사내 규정 8건(`data/policies/`)·계정·호스트·로그는 저장소에 있습니다.
 
-**2. 환경 변수와 컨테이너.**
+**2. 환경 변수와 DB.**
 
 ```bash
 cp .env.example .env      # BACKEND_SHARED_SECRET 는 반드시 새로 만든다
-docker compose up -d      # db(5433) + secu-backend(8080)
+docker --context desktop-linux compose up -d      # db(5433)
 ```
 
-`BACKEND_SHARED_SECRET` 이 비어 있으면 compose 가 기동을 거부합니다 —
-의도된 fail-closed 입니다. `.env.example` 의 예시 값은 저장소 히스토리에
-공개돼 있으니 그대로 쓰지 마세요.
+**컨텍스트를 반드시 지정합니다.** `colima start` 가 활성 docker 컨텍스트를
+가져가므로, 그냥 `docker compose up -d` 를 치면 Colima VM 안에 **빈 pgvector
+가 하나 더** 생깁니다. 데이터가 있는 것은 Docker Desktop 쪽입니다.
+
+compose 는 이제 DB 만 맡습니다. 백엔드는 k3s 에서 돕니다 — 아래 5번, 그리고
+설계는 `docs/superpowers/specs/2026-09-07-k3s-colima-deployment-design.md`.
+
+`.env.example` 의 예시 값은 저장소 히스토리에 공개돼 있으니 그대로 쓰지
+마세요.
 
 **3. 스키마와 적재.** 적재 서브커맨드가 `apply_schema()` 를 부르므로
 스키마는 첫 명령이 만듭니다.
@@ -278,15 +284,53 @@ cd backend
 .venv/bin/python -m pipeline.cli ingest-logs ../data/logs/2026-09-01.log --year 2026
 ```
 
-**4. 확인.** 여기까지 오면 아래가 그대로 나와야 합니다.
+**4. 코퍼스 확인.** 백엔드 없이 됩니다.
 
 ```bash
-curl -s localhost:8080/healthz     # {"status":"ok","db":true,"model":"ready"}
 cd backend && .venv/bin/python -m pytest -m corpus -v   # 코퍼스가 우리가 아는 그것인지
 ```
 
 적재 명령이 마지막에 찍는 `DB 총 청크` 가 **338** 이어야 합니다. 아니면
 1번이 빠졌거나 다른 개정판을 받은 것입니다(문서 9 · 조항 102 · 청크 338).
+
+**5. 백엔드 — k3s.**
+
+```bash
+brew install colima
+colima start --cpus 4 --memory 8 --disk 60 --kubernetes \
+  --k3s-arg='"--disable=servicelb,traefik,local-storage"'
+
+docker --context colima build -t secu-backend:local ./backend   # 레지스트리 없음
+./deploy/secret.sh                                              # .env → Secret
+kubectl apply -f deploy/k8s/
+```
+
+이미지는 Colima 의 도커 데몬에서 빌드합니다. k3s 가 같은 VM 의 그 데몬을
+CRI 로 쓰므로 레지스트리가 필요 없습니다 — 1.0GB 이미지를 어디에도 올리지
+않습니다.
+
+`deploy/secret.sh` 는 `BACKEND_SHARED_SECRET` 이 비었거나 비ASCII 이면
+거부합니다. compose 의 `${VAR:?}` 가 하던 일을 대신하는 자리입니다 —
+쿠버네티스는 빈 Secret 으로도 파드를 띄우기 때문입니다.
+
+확인:
+
+```bash
+kubectl -n secu-agent get pods     # 둘 다 Running
+kubectl -n secu-agent port-forward svc/secu-backend 8080:8080 &
+curl -s localhost:8080/healthz     # {"status":"ok","db":true,"model":"ready"}
+```
+
+`"db": true` 가 클러스터에서 Docker Desktop 의 pgvector 까지 닿았다는
+뜻입니다. 백엔드는 ClusterIP 로만 열려 있어서, 이 맥의 어떤 포트도 백엔드를
+노출하지 않습니다 — 바깥으로는 cloudflared 만 나갑니다.
+
+재부팅 뒤에도 사람 없이 살아나게 하려면:
+
+```bash
+cp deploy/com.secuagent.colima.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.secuagent.colima.plist
+```
 
 프론트엔드는 `frontend/README.md` 를 보세요.
 
@@ -307,7 +351,7 @@ DB·임베딩 모델이 필요한 테스트는 기본 스위트에서 제외됩�
 # 씁니다. db 테스트는 TRUNCATE 로 시작하므로 작업 코퍼스에 대고 돌리면
 # 안 됩니다. SECUAGENT_TEST_DSN 으로 위치를 바꿀 수 있고, 없으면
 # secuagent_test 를 자동으로 만들어 씁니다.
-docker compose up -d
+docker --context desktop-linux compose up -d
 cd backend && .venv/bin/python -m pytest -m db -v
 
 # 코퍼스 테스트 — 작업 데이터베이스(secuagent)를 읽기 전용 연결로 검사합니다.

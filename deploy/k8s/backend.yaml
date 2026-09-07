@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secu-backend
+  namespace: secu-agent
+spec:
+  # 1 이다. 1.0GB 이미지에 e5 임베딩 모델을 메모리에 올리므로 복제본마다
+  # 실비용이 크고, 단일 노드에서 둘을 띄워 얻는 것이 없다.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secu-backend
+  strategy:
+    # 노드가 하나이고 복제본이 하나다. RollingUpdate 로 두면 새 파드가
+    # 뜨는 동안 옛 파드가 남아 메모리를 두 배로 쓰다가 둘 다 죽는다.
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: secu-backend
+    spec:
+      # 이 백엔드는 쿠버네티스 API 를 부르지 않는다. 터널로 공개되는 파드에
+      # API 토큰을 넣어 둘 이유가 없다 — 뚫렸을 때 클러스터까지 가지 못하게
+      # 한다. Dockerfile 이 루트로 돌리지 않는 것과 같은 방향이다.
+      automountServiceAccountToken: false
+      containers:
+        - name: secu-backend
+          # Colima 의 도커 데몬에서 빌드한 이미지를 그대로 쓴다. k3s 가
+          # 같은 VM 의 그 데몬을 CRI 로 쓰기 때문에 레지스트리가 필요 없다.
+          image: secu-backend:local
+          # **이것이 없으면 쿠버네티스가 Docker Hub 에서 `secu-backend` 를
+          # 찾다가 ErrImagePull 로 죽는다.** 로컬에만 있는 태그다.
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # DSN 의 호스트는 클러스터 안 이름이다. 그 이름이 무엇을
+            # 가리키는지는 db-endpoint.yaml 한 곳에만 있다.
+            - name: SECUAGENT_DSN
+              valueFrom:
+                secretKeyRef: { name: secu-agent, key: SECUAGENT_DSN }
+            - name: BACKEND_SHARED_SECRET
+              valueFrom:
+                secretKeyRef: { name: secu-agent, key: BACKEND_SHARED_SECRET }
+            - name: GOOGLE_CLOUD_PROJECT
+              valueFrom:
+                secretKeyRef: { name: secu-agent, key: GOOGLE_CLOUD_PROJECT }
+            - name: GOOGLE_CLOUD_LOCATION
+              valueFrom:
+                secretKeyRef: { name: secu-agent, key: GOOGLE_CLOUD_LOCATION }
+            # compose 와 같은 경로다. 컨테이너 안에서 경로가 바뀌지 않으므로
+            # 백엔드 코드도 Dockerfile 도 손댈 것이 없다.
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: /run/secrets/gcp-sa.json
+          volumeMounts:
+            # **디렉터리가 아니라 파일 하나만 마운트한다(subPath).**
+            # /run/secrets 를 통째로 마운트하면 그 경로가 읽기 전용이 되고,
+            # kubelet 이 서비스어카운트 토큰을 넣으려는
+            # /var/run/secrets/kubernetes.io/serviceaccount (같은 경로다 —
+            # /var/run 은 /run 의 심볼릭 링크)를 만들지 못해
+            # RunContainerError 로 죽는다. compose 는 파일 하나를 마운트해서
+            # 이 충돌을 겪지 않았다.
+            - name: gcp-sa
+              mountPath: /run/secrets/gcp-sa.json
+              subPath: gcp-sa.json
+              readOnly: true
+          # 콜드 스타트에서 첫 /healthz 가 임베딩 모델 로드를 동기로
+          # 트리거해 ~30초 걸린다. compose 의 start_period: 90s 에 대응한다.
+          #
+          # **이 검사를 livenessProbe 로 옮기면 안 된다.** 기동 중인 파드를
+          # 계속 죽이는 루프가 된다 — compose 주석이 적어 둔 그 사고다.
+          # startupProbe 가 통과하기 전까지 liveness 는 아예 돌지 않는다.
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 12   # 120초. compose 의 90초에 여유를 더했다
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 3
+          # compose 에 없던 것이다. 모델이 로드되는 동안 cloudflared 가
+          # 트래픽을 보내지 않게 한다 — k3s 로 오면서 실제로 좋아지는 부분.
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              # torch + e5-small 이 상주한다. 실측 상주량은 1.2Gi 라 4Gi 는
+              # 3배 여유다.
+              #
+              # 6Gi 로 두지 않는 이유: VM 이 8GiB 다. 파드가 한계까지 차면
+              # 노드 전체가 압박을 받아 k3s 컨트롤플레인까지 같이 넘어간다.
+              # 파드 하나가 죽는 것과 클러스터가 죽는 것은 다르다.
+              cpu: "4"
+              memory: 4Gi
+          securityContext:
+            # Dockerfile 이 uid 10001 로 USER 를 바꾼다. 여기서 한 번 더
+            # 못박아 이미지가 바뀌어도 루트로 돌지 않게 한다.
+            #
+            # **runAsUser 를 함께 줘야 한다.** Dockerfile 의 USER 는 이름
+            # (`secuagent`)이라 kubelet 이 비root 인지 검증하지 못하고
+            # runAsNonRoot 만 있으면 CreateContainerConfigError 로 죽는다:
+            # "image has non-numeric user (secuagent), cannot verify user is
+            # non-root". 숫자는 Dockerfile 의 --uid 10001 과 같아야 한다.
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: gcp-sa
+          secret:
+            secretName: secu-agent
+            items:
+              - key: gcp-sa.json
+                path: gcp-sa.json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secu-backend
+  namespace: secu-agent
+spec:
+  # 클러스터 안에서만 닿는다. 바깥으로는 cloudflared 만 나간다 —
+  # 노드 포트를 열지 않으므로 이 맥의 어떤 포트도 백엔드를 노출하지 않는다.
+  type: ClusterIP
+  selector:
+    app: secu-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
