@@ -160,7 +160,7 @@ API 를 부르지 않으므로, 터널로 공개되는 파드가 API 토큰을 �
 | 3 | 시크릿 헤더 없이 `POST /ask` | ✅ 401 |
 | 4 | 터널 도메인으로 왕복 | ✅ `secu.whoareryu.cloud` — `/healthz` 200, 무인증 401, 인증 200 |
 | 5 | `colima stop && colima start` 후 사람 개입 없이 2번 복구 | ✅ |
-| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ⏸ LaunchAgent 등록·로드됨, 재부팅 미시행 |
+| 6 | 맥 재부팅 후 사람 개입 없이 2번 복구 | ◐ LaunchAgent 가 끌고 오는 복구는 실측(아래 5.2). 로그인 트리거와 Docker Desktop 자동 기동은 미검증 |
 | 7 | 공개 사이트가 실제 데이터를 그린다 | ✅ `whoareryu.cloud` 200, 페르소나 4명 렌더, 백엔드 `GET /principals` 200 |
 
 `deploy/secret.sh` 의 fail-closed 도 실측했다 — `TUNNEL_TOKEN` 이 비었을 때
@@ -193,6 +193,41 @@ Secret 을 만들지 않고 종료코드 1 로 죽는다.
 `local` 이 비ASCII 변수명을 거부하면서 **assignment 전체를 에러 메시지로
 출력했다.** 변수 이름을 ASCII 로 바꿔 고쳤고 그 이유를 스크립트 주석에
 남겼다.
+
+### 5.2 LaunchAgent 는 처음에 동작하지 않았다
+
+결정 4 의 장치가 **재부팅 때 죽는 상태로 설치돼 있었다.** 재부팅 없이
+`colima stop` 뒤 `launchctl kickstart` 로 발동시켜 보고 알았다 — kickstart 는
+launchd 컨텍스트에서 실행하므로 `RunAtLoad` 가 부팅 때 만드는 환경과 같다.
+
+두 번 죽었고, 둘 다 PATH 였다. launchd 는 로그인 셸이 아니라서
+`/usr/bin:/bin:/usr/sbin:/sbin` 만 물려준다.
+
+```
+lima compatibility error: exec: "limactl": executable file not found in $PATH
+dependency check failed for kubernetes: kubectl not found
+```
+
+`limactl` 은 `/opt/homebrew/bin` 에, `kubectl` 은 `/usr/local/bin` 에 있다.
+**둘 다 넣어야 한다** — 첫 번째만 고쳤을 때 두 번째에서 같은 방식으로 죽었다.
+plist 의 `EnvironmentVariables` 로 PATH 를 준다.
+
+고친 뒤 다시 발동시켜 실측했다: 종료코드 0, 노드가 약 20초 만에 `Ready`,
+두 파드 `Running`, 공개 사이트 200. **사람이 손대지 않았다.**
+
+교훈은 장치의 존재와 동작이 다르다는 것이다. `launchctl list` 는 이 에이전트를
+등록된 것으로 보여주고 있었지만, 두 번째 칸의 종료코드가 `1` 이었다 —
+그 숫자를 보기 전까지는 갖춰진 것처럼 보였다.
+
+**아직 검증되지 않은 것 둘.**
+
+1. **로그인 시 트리거.** kickstart 는 환경을 재현하지만 launchd 가 로그인
+   때 실제로 이 job 을 무는지는 재부팅해야 안다.
+2. **Docker Desktop.** 설정이 `AutoStart = False` 다
+   (`~/Library/Group Containers/group.com.docker/settings-store.json`).
+   이대로 재부팅하면 pgvector 가 뜨지 않아 `/healthz` 가 `"db": false` 가
+   된다. Docker Desktop → Settings → General 에서 "Start Docker Desktop when
+   you sign in" 을 켜야 결정 4 가 성립한다.
 
 ## 6. 이 설계가 건드리지 않는 것
 

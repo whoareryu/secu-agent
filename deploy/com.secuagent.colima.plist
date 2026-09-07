@@ -28,6 +28,27 @@
         <string>start</string>
     </array>
 
+    <!-- **PATH 를 직접 준다.** launchd 는 로그인 셸이 아니라서
+         /usr/bin:/bin:/usr/sbin:/sbin 만 물려준다. colima 바이너리는 절대
+         경로로 부르지만, colima 자신이 limactl 을 PATH 에서 찾는다:
+
+           lima compatibility error: error checking Lima version:
+           exec: "limactl": executable file not found in $PATH
+
+         **두 경로가 다 필요하다.** limactl 은 /opt/homebrew/bin 에 있고
+         kubectl 은 /usr/local/bin 에 있다. homebrew 경로만 주면 다음
+         의존성 검사에서 같은 방식으로 죽는다:
+
+           dependency check failed for kubernetes: kubectl not found
+
+         둘 다 실측으로 확인했다 — 이것이 없으면 재부팅 때 종료코드 1 로 죽고,
+         이 파일이 막으려던 바로 그 상황에서 아무 일도 하지 않는다. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
     <!-- VM 설정은 ~/.colima/default/colima.yaml 에 저장돼 있다. 여기에
          --cpus 4 --memory 8 을 되풀이하면 두 곳이 진실을 주장하게 되고,
          한쪽만 고쳤을 때 조용히 어긋난다. 인자 없이 부른다. -->
