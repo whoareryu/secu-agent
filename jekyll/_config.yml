@@ -39,5 +39,6 @@ exclude:
   - gemfiles/
   - Gemfile
   - Gemfile.lock
+  - vercel.json
   - node_modules/
   - vendor/
